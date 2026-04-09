@@ -1,0 +1,28 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+build/
+.next/
+
+# Ambiente
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,388 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// === Enums ===
+
+enum CompanyPlan {
+  FREE
+  STARTER
+  PRO
+  BUSINESS
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  FINANCE
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+  BOTH
+}
+
+enum BankAccountType {
+  CHECKING
+  SAVINGS
+  CASH
+  INVESTMENT
+  OTHER
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum TransactionSource {
+  MANUAL
+  WHATSAPP
+  IMPORT
+}
+
+enum BudgetPeriod {
+  MONTHLY
+  YEARLY
+}
+
+enum InvestmentType {
+  CDB
+  LCI
+  LCA
+  TESOURO
+  ACAO
+  FII
+  OUTRO
+}
+
+enum WhatsAppDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum AlertType {
+  OVERDUE
+  BUDGET_WARNING
+  BUDGET_EXCEEDED
+  WEEKLY_REPORT
+  MONTHLY_REPORT
+}
+
+enum AlertChannel {
+  WHATSAPP
+  EMAIL
+  PUSH
+  NONE
+}
+
+// === Modelos ===
+
+model Company {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  document       String?     @unique
+  email          String      @unique
+  phone          String?
+  plan           CompanyPlan @default(FREE)
+  planExpiresAt  DateTime?   @map("plan_expires_at")
+  whatsappNumber String?     @unique @map("whatsapp_number")
+  googleSheetId  String?     @map("google_sheet_id")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  users            User[]
+  categories       Category[]
+  clients          Client[]
+  suppliers        Supplier[]
+  bankAccounts     BankAccount[]
+  segments         Segment[]
+  transactions     Transaction[]
+  budgets          Budget[]
+  investments      Investment[]
+  whatsappMessages WhatsAppMessage[]
+  alerts           Alert[]
+
+  @@map("companies")
+}
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  phone        String?
+  role         UserRole @default(USER)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  company      Company       @relation(fields: [companyId], references: [id])
+  transactions Transaction[]
+
+  @@index([companyId])
+  @@map("users")
+}
+
+model Category {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId        String       @map("company_id") @db.Uuid
+  name             String
+  type             CategoryType
+  color            String
+  icon             String
+  parentCategoryId String?      @map("parent_category_id") @db.Uuid
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  company      Company       @relation(fields: [companyId], references: [id])
+  parent       Category?     @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  children     Category[]    @relation("CategoryHierarchy")
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("categories")
+}
+
+model Client {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  name      String
+  document  String?
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?  @map("zip_code")
+  notes     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company      Company       @relation(fields: [companyId], references: [id])
+  transactions Transaction[]
+
+  @@index([companyId])
+  @@index([companyId, name])
+  @@map("clients")
+}
+
+model Supplier {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  name      String
+  document  String?
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?  @map("zip_code")
+  notes     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company      Company       @relation(fields: [companyId], references: [id])
+  transactions Transaction[]
+
+  @@index([companyId])
+  @@index([companyId, name])
+  @@map("suppliers")
+}
+
+model BankAccount {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String          @map("company_id") @db.Uuid
+  name           String
+  type           BankAccountType
+  bankCode       String?         @map("bank_code")
+  initialBalance Decimal         @default(0) @map("initial_balance") @db.Decimal(15, 2)
+  currentBalance Decimal         @default(0) @map("current_balance") @db.Decimal(15, 2)
+  currency       String          @default("BRL")
+  isActive       Boolean         @default(true) @map("is_active")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  company             Company              @relation(fields: [companyId], references: [id])
+  accountTransactions AccountTransaction[]
+  investments         Investment[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("bank_accounts")
+}
+
+model Segment {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  name        String
+  description String?
+  color       String   @default("#8DFF6B")
+  icon        String   @default("tag")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("segments")
+}
+
+model Transaction {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId          String            @map("company_id") @db.Uuid
+  userId             String            @map("user_id") @db.Uuid
+  type               TransactionType
+  amount             Decimal           @db.Decimal(15, 2)
+  description        String
+  date               DateTime          @db.Date
+  dueDate            DateTime?         @map("due_date") @db.Date
+  paymentDate        DateTime?         @map("payment_date") @db.Date
+  status             TransactionStatus @default(PENDING)
+  categoryId         String?           @map("category_id") @db.Uuid
+  clientId           String?           @map("client_id") @db.Uuid
+  supplierId         String?           @map("supplier_id") @db.Uuid
+  segmentId          String?           @map("segment_id") @db.Uuid
+  isRecurring        Boolean           @default(false) @map("is_recurring")
+  recurrenceConfig   Json?             @map("recurrence_config")
+  installmentNumber  Int?              @map("installment_number")
+  totalInstallments  Int?              @map("total_installments")
+  installmentGroupId String?           @map("installment_group_id") @db.Uuid
+  tags               String[]
+  source             TransactionSource @default(MANUAL)
+  notes              String?
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  company             Company              @relation(fields: [companyId], references: [id])
+  user                User                 @relation(fields: [userId], references: [id])
+  category            Category?            @relation(fields: [categoryId], references: [id])
+  client              Client?              @relation(fields: [clientId], references: [id])
+  supplier            Supplier?            @relation(fields: [supplierId], references: [id])
+  segment             Segment?             @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  accountTransactions AccountTransaction[]
+
+  @@index([companyId])
+  @@index([companyId, status, date])
+  @@index([companyId, type, status])
+  @@index([companyId, dueDate])
+  @@index([companyId, segmentId])
+  @@index([installmentGroupId])
+  @@map("transactions")
+}
+
+model AccountTransaction {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transactionId String   @map("transaction_id") @db.Uuid
+  accountId     String   @map("account_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  bankAccount BankAccount @relation(fields: [accountId], references: [id])
+
+  @@unique([transactionId, accountId])
+  @@map("account_transactions")
+}
+
+model Budget {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String       @map("company_id") @db.Uuid
+  categoryId     String       @map("category_id") @db.Uuid
+  amount         Decimal      @db.Decimal(15, 2)
+  period         BudgetPeriod
+  startDate      DateTime     @map("start_date") @db.Date
+  endDate        DateTime     @map("end_date") @db.Date
+  alertThreshold Int          @default(80) @map("alert_threshold")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  company  Company  @relation(fields: [companyId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@index([companyId])
+  @@index([companyId, categoryId])
+  @@map("budgets")
+}
+
+model Investment {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String         @map("company_id") @db.Uuid
+  name           String
+  type           InvestmentType
+  amountInvested Decimal        @map("amount_invested") @db.Decimal(15, 2)
+  currentValue   Decimal        @map("current_value") @db.Decimal(15, 2)
+  startDate      DateTime       @map("start_date") @db.Date
+  maturityDate   DateTime?      @map("maturity_date") @db.Date
+  bankAccountId  String?        @map("bank_account_id") @db.Uuid
+  rate           Decimal?       @db.Decimal(8, 4)
+  notes          String?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  company     Company      @relation(fields: [companyId], references: [id])
+  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id])
+
+  @@index([companyId])
+  @@map("investments")
+}
+
+model WhatsAppMessage {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId            String?           @map("company_id") @db.Uuid
+  userId               String?           @map("user_id") @db.Uuid
+  phoneNumber          String            @map("phone_number")
+  direction            WhatsAppDirection
+  messageText          String            @map("message_text")
+  aiInterpretation     Json?             @map("ai_interpretation")
+  actionTaken          String?           @map("action_taken")
+  relatedTransactionId String?           @map("related_transaction_id") @db.Uuid
+  createdAt            DateTime          @default(now()) @map("created_at")
+
+  company Company? @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+  @@index([phoneNumber])
+  @@index([createdAt])
+  @@map("whatsapp_messages")
+}
+
+model Alert {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId         String       @map("company_id") @db.Uuid
+  type              AlertType
+  title             String
+  message           String
+  relatedEntityId   String?      @map("related_entity_id") @db.Uuid
+  relatedEntityType String?      @map("related_entity_type")
+  isRead            Boolean      @default(false) @map("is_read")
+  sentVia           AlertChannel @default(NONE) @map("sent_via")
+  sentAt            DateTime?    @map("sent_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@index([companyId])
+  @@index([companyId, isRead])
+  @@map("alerts")
+}
