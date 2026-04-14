@@ -37,8 +37,8 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setIsSubmitting(true);
     try {
-      await login(data.email, data.password);
-      router.push('/dashboard');
+      const user = await login(data.email, data.password);
+      router.push(user.role === 'SUPER_ADMIN' ? '/admin' : '/dashboard');
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Erro ao fazer login',

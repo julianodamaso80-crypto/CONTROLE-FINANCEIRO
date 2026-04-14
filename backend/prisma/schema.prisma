@@ -17,6 +17,7 @@ enum CompanyPlan {
 }
 
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
   USER
   FINANCE

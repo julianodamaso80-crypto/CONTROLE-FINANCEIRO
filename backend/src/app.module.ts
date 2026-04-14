@@ -16,6 +16,7 @@ import { SegmentsModule } from './modules/segments/segments.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
     TransactionsModule,
     DashboardModule,
     WhatsAppModule,
+    AdminModule,
   ],
   providers: [
     // O ThrottlerGuard precisa vir ANTES do JwtAuthGuard pra limitar
