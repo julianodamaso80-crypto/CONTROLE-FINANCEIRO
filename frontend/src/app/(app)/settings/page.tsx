@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WhatsAppConnect } from '@/components/settings/whatsapp-connect';
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -28,10 +27,6 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="profile">Perfil</TabsTrigger>
           <TabsTrigger value="company">Empresa</TabsTrigger>
-          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
-          <TabsTrigger value="sheets" disabled>
-            Google Sheets
-          </TabsTrigger>
           <TabsTrigger value="plan" disabled>
             Plano
           </TabsTrigger>
@@ -80,9 +75,6 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="whatsapp">
-          <WhatsAppConnect />
-        </TabsContent>
       </Tabs>
     </div>
   );

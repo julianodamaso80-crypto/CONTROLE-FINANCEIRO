@@ -2,7 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Building2, Users, LogOut } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Building2,
+  Users,
+  MessageCircle,
+  LogOut,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
 import { FinnixLogo } from '@/components/shared/finnix-logo';
@@ -13,6 +19,7 @@ const navItems = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/empresas', label: 'Empresas', icon: Building2 },
   { href: '/admin/usuarios', label: 'Usuários', icon: Users },
+  { href: '/admin/whatsapp', label: 'WhatsApp', icon: MessageCircle },
 ];
 
 export function AdminSidebar() {
