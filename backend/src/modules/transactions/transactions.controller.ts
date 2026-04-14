@@ -72,11 +72,7 @@ export class TransactionsController {
     @Param('id') id: string,
     @Body() dto: MarkAsPaidDto,
   ) {
-    return this.transactionsService.markAsPaid(
-      user.companyId,
-      id,
-      dto.paymentDate,
-    );
+    return this.transactionsService.markAsPaid(user.companyId, id, dto);
   }
 
   @Patch(':id/cancel')

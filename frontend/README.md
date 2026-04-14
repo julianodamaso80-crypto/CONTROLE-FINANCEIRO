@@ -1,6 +1,6 @@
-# Finnix — Frontend
+# Meu Caixa — Frontend
 
-Interface web do SaaS de controle financeiro Finnix.
+Interface web do SaaS de controle financeiro Meu Caixa.
 
 ## Stack
 

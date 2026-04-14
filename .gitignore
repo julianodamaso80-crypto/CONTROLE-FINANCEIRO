@@ -26,3 +26,12 @@ coverage/
 .vscode/
 *.swp
 *.swo
+
+# Claude Code
+.claude/
+
+# Vercel
+.vercel/
+
+# TS build info
+*.tsbuildinfo

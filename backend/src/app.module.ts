@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './common/prisma/prisma.module';
+import { AppConfigModule } from './common/config/app-config.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { CompaniesModule } from './modules/companies/companies.module';
@@ -13,11 +15,19 @@ import { BankAccountsModule } from './modules/bank-accounts/bank-accounts.module
 import { SegmentsModule } from './modules/segments/segments.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Rate limiting global com três janelas de proteção
+    ThrottlerModule.forRoot([
+      { name: 'short', ttl: 1000, limit: 3 },
+      { name: 'medium', ttl: 10000, limit: 20 },
+      { name: 'long', ttl: 60000, limit: 100 },
+    ]),
     PrismaModule,
+    AppConfigModule,
     AuthModule,
     CompaniesModule,
     UsersModule,
@@ -28,8 +38,15 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     SegmentsModule,
     TransactionsModule,
     DashboardModule,
+    WhatsAppModule,
   ],
   providers: [
+    // O ThrottlerGuard precisa vir ANTES do JwtAuthGuard pra limitar
+    // até tentativas de login não autenticadas
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

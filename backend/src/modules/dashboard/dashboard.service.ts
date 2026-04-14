@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { Decimal } from 'decimal.js';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { toMoney, subtractMoney } from '../../common/utils/money.util';
 import { DashboardQueryDto } from './dto/dashboard-query.dto';
 
 export interface ChartByDay {
@@ -44,12 +46,6 @@ export interface DashboardResponse {
   chartBySegment: ChartBySegment[];
   recentTransactions: unknown[];
   upcomingDue: unknown[];
-}
-
-// Converte Decimal do Prisma para number
-function decimalToNumber(value: Prisma.Decimal | null | undefined): number {
-  if (value === null || value === undefined) return 0;
-  return Number(value);
 }
 
 @Injectable()
@@ -147,7 +143,7 @@ export class DashboardService {
       }),
       // KPI: total de transações no período
       this.prisma.transaction.count({ where: periodWhere }),
-      // Chart by day: transações pagas no período pra montar o gráfico diário
+      // Chart by day: transações pagas no período
       this.prisma.transaction.findMany({
         where: { ...periodWhere, status: 'PAID' },
         select: { date: true, type: true, amount: true },
@@ -186,31 +182,28 @@ export class DashboardService {
       }),
     ]);
 
-    // Monta KPIs
-    const totalIncome = decimalToNumber(incomeAgg._sum.amount);
-    const totalExpense = decimalToNumber(expenseAgg._sum.amount);
+    // Monta KPIs com precisão decimal
+    const totalIncome = toMoney(incomeAgg._sum.amount);
+    const totalExpense = toMoney(expenseAgg._sum.amount);
 
     const kpis: DashboardKpis = {
       totalIncome,
       totalExpense,
-      balance: totalIncome - totalExpense,
-      pendingIncome: decimalToNumber(pendingIncomeAgg._sum.amount),
-      pendingExpense: decimalToNumber(pendingExpenseAgg._sum.amount),
+      balance: subtractMoney(totalIncome, totalExpense),
+      pendingIncome: toMoney(pendingIncomeAgg._sum.amount),
+      pendingExpense: toMoney(pendingExpenseAgg._sum.amount),
       overdueCount,
       transactionCount,
     };
 
-    // Monta chart by day
     const chartByDay = this.buildChartByDay(from, to, paidTransactions);
 
-    // Monta chart by category — busca nomes das categorias
     const chartByCategory = await this.buildChartByCategory(
       companyId,
       expenseByCategory,
       totalExpense,
     );
 
-    // Monta chart by segment
     const chartBySegment = await this.buildChartBySegment(
       companyId,
       transactionsBySegment,
@@ -233,38 +226,40 @@ export class DashboardService {
     to: Date,
     transactions: Array<{ date: Date; type: string; amount: Prisma.Decimal }>,
   ): ChartByDay[] {
-    // Mapa de dia -> { income, expense }
-    const dayMap = new Map<string, { income: number; expense: number }>();
+    // Mapa de dia -> acumuladores Decimal
+    const dayMap = new Map<
+      string,
+      { income: Decimal; expense: Decimal }
+    >();
 
     // Inicializa todos os dias do período
     const current = new Date(from);
     while (current <= to) {
       const key = current.toISOString().slice(0, 10);
-      dayMap.set(key, { income: 0, expense: 0 });
+      dayMap.set(key, { income: new Decimal(0), expense: new Decimal(0) });
       current.setDate(current.getDate() + 1);
     }
 
-    // Preenche com os dados reais
+    // Preenche com os dados reais usando Decimal pra precisão
     for (const tx of transactions) {
       const key = tx.date.toISOString().slice(0, 10);
       const entry = dayMap.get(key);
       if (entry) {
-        const amount = decimalToNumber(tx.amount);
+        const amount = new Decimal(tx.amount.toString());
         if (tx.type === 'INCOME') {
-          entry.income += amount;
+          entry.income = entry.income.plus(amount);
         } else {
-          entry.expense += amount;
+          entry.expense = entry.expense.plus(amount);
         }
       }
     }
 
-    // Converte pra array ordenado
     return Array.from(dayMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, values]) => ({
         date,
-        income: Math.round(values.income * 100) / 100,
-        expense: Math.round(values.expense * 100) / 100,
+        income: toMoney(values.income),
+        expense: toMoney(values.expense),
       }));
   }
 
@@ -277,7 +272,6 @@ export class DashboardService {
     }>,
     totalExpense: number,
   ): Promise<ChartByCategory[]> {
-    // Busca dados das categorias referenciadas
     const categoryIds = grouped
       .map((g) => g.categoryId)
       .filter((id): id is string => id !== null);
@@ -293,17 +287,22 @@ export class DashboardService {
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
     return grouped.map((g) => {
-      const total = decimalToNumber(g._sum.amount);
+      const total = toMoney(g._sum.amount);
       const cat = g.categoryId ? categoryMap.get(g.categoryId) : undefined;
 
       return {
         categoryId: g.categoryId,
         categoryName: cat?.name ?? 'Sem categoria',
         categoryColor: cat?.color ?? '#9ca3af',
-        total: Math.round(total * 100) / 100,
+        total,
         percentage:
           totalExpense > 0
-            ? Math.round((total / totalExpense) * 10000) / 100
+            ? Number(
+                new Decimal(total)
+                  .div(new Decimal(totalExpense))
+                  .mul(100)
+                  .toFixed(2),
+              )
             : 0,
       };
     });
@@ -318,27 +317,29 @@ export class DashboardService {
       _sum: { amount: Prisma.Decimal | null };
     }>,
   ): Promise<ChartBySegment[]> {
-    // Agrupa por segmentId somando income e expense
+    // Agrupa por segmentId usando Decimal pra precisão
     const segmentMap = new Map<
       string | null,
-      { income: number; expense: number }
+      { income: Decimal; expense: Decimal }
     >();
 
     for (const g of grouped) {
       const key = g.segmentId;
-      const existing = segmentMap.get(key) ?? { income: 0, expense: 0 };
-      const amount = decimalToNumber(g._sum.amount);
+      const existing = segmentMap.get(key) ?? {
+        income: new Decimal(0),
+        expense: new Decimal(0),
+      };
+      const amount = new Decimal((g._sum.amount ?? 0).toString());
 
       if (g.type === 'INCOME') {
-        existing.income += amount;
+        existing.income = existing.income.plus(amount);
       } else {
-        existing.expense += amount;
+        existing.expense = existing.expense.plus(amount);
       }
 
       segmentMap.set(key, existing);
     }
 
-    // Busca dados dos segmentos
     const segmentIds = Array.from(segmentMap.keys()).filter(
       (id): id is string => id !== null,
     );
@@ -359,9 +360,9 @@ export class DashboardService {
         segmentId: segId,
         segmentName: seg?.name ?? 'Sem segmento',
         segmentColor: seg?.color ?? '#9ca3af',
-        income: Math.round(values.income * 100) / 100,
-        expense: Math.round(values.expense * 100) / 100,
-        balance: Math.round((values.income - values.expense) * 100) / 100,
+        income: toMoney(values.income),
+        expense: toMoney(values.expense),
+        balance: subtractMoney(values.income, values.expense),
       };
     });
   }

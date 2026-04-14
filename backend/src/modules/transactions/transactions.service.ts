@@ -5,8 +5,10 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { BankAccountsService } from '../bank-accounts/bank-accounts.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { FilterTransactionsDto } from './dto/filter-transactions.dto';
+import { MarkAsPaidDto } from './dto/mark-as-paid.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 
 // Includes padrão para retornar dados relacionados
@@ -24,7 +26,10 @@ const transactionIncludes = {
 
 @Injectable()
 export class TransactionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly bankAccountsService: BankAccountsService,
+  ) {}
 
   async findAll(companyId: string, filters: FilterTransactionsDto) {
     const page = filters.page ?? 1;
@@ -32,39 +37,24 @@ export class TransactionsService {
     const sortBy = filters.sortBy ?? 'date';
     const sortOrder = filters.sortOrder ?? 'desc';
 
-    // Monta o where com companyId obrigatório
     const where: Prisma.TransactionWhereInput = { companyId };
 
-    if (filters.type) {
-      where.type = filters.type;
-    }
-    if (filters.status) {
-      where.status = filters.status;
-    }
-    if (filters.categoryId) {
-      where.categoryId = filters.categoryId;
-    }
-    if (filters.segmentId) {
-      where.segmentId = filters.segmentId;
-    }
+    if (filters.type) where.type = filters.type;
+    if (filters.status) where.status = filters.status;
+    if (filters.categoryId) where.categoryId = filters.categoryId;
+    if (filters.segmentId) where.segmentId = filters.segmentId;
     if (filters.bankAccountId) {
       where.accountTransactions = {
         some: { accountId: filters.bankAccountId },
       };
     }
 
-    // Filtro por intervalo de datas
     if (filters.dateFrom || filters.dateTo) {
       where.date = {};
-      if (filters.dateFrom) {
-        where.date.gte = new Date(filters.dateFrom);
-      }
-      if (filters.dateTo) {
-        where.date.lte = new Date(filters.dateTo);
-      }
+      if (filters.dateFrom) where.date.gte = new Date(filters.dateFrom);
+      if (filters.dateTo) where.date.lte = new Date(filters.dateTo);
     }
 
-    // Busca textual em descrição e notas
     if (filters.search) {
       where.OR = [
         { description: { contains: filters.search, mode: 'insensitive' } },
@@ -72,7 +62,6 @@ export class TransactionsService {
       ];
     }
 
-    // Executa query de dados e contagem em paralelo
     const [data, total] = await Promise.all([
       this.prisma.transaction.findMany({
         where,
@@ -109,10 +98,8 @@ export class TransactionsService {
   }
 
   async create(companyId: string, userId: string, dto: CreateTransactionDto) {
-    // Valida referências opcionais
     await this.validateReferences(companyId, dto);
 
-    // Se status PAID e paymentDate não informado, seta data atual
     let paymentDate = dto.paymentDate ? new Date(dto.paymentDate) : undefined;
     const status = dto.status ?? 'PENDING';
 
@@ -120,7 +107,6 @@ export class TransactionsService {
       paymentDate = new Date();
     }
 
-    // Valida que paymentDate não está no futuro (tolerância de 1 dia)
     if (paymentDate) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -131,7 +117,6 @@ export class TransactionsService {
       }
     }
 
-    // Cria transação e AccountTransaction (se bankAccountId informado) na mesma transação
     const transaction = await this.prisma.$transaction(async (tx) => {
       const created = await tx.transaction.create({
         data: {
@@ -153,7 +138,6 @@ export class TransactionsService {
         },
       });
 
-      // Vincula à conta bancária se informada
       if (dto.bankAccountId) {
         await tx.accountTransaction.create({
           data: {
@@ -166,17 +150,22 @@ export class TransactionsService {
       return created;
     });
 
-    // Retorna com todos os includes
+    // Recalcula saldo da conta vinculada se a transação já está paga
+    if (dto.bankAccountId && status === 'PAID') {
+      await this.bankAccountsService.recalculateBalance(
+        companyId,
+        dto.bankAccountId,
+      );
+    }
+
     return this.findOne(companyId, transaction.id);
   }
 
   async update(companyId: string, id: string, dto: UpdateTransactionDto) {
     const existing = await this.findOne(companyId, id);
 
-    // Valida referências opcionais (só as que foram informadas)
     await this.validateReferences(companyId, dto);
 
-    // Valida paymentDate se informado
     if (dto.paymentDate) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -187,8 +176,12 @@ export class TransactionsService {
       }
     }
 
+    // Guarda as contas antigas para recalcular depois
+    const oldAccountIds = existing.accountTransactions.map(
+      (at) => at.bankAccount.id,
+    );
+
     await this.prisma.$transaction(async (tx) => {
-      // Atualiza a transaction
       await tx.transaction.update({
         where: { id },
         data: {
@@ -208,14 +201,10 @@ export class TransactionsService {
         },
       });
 
-      // Se mudou bankAccountId, remove o antigo e cria o novo
       if (dto.bankAccountId !== undefined) {
-        // Remove vinculação anterior
         await tx.accountTransaction.deleteMany({
           where: { transactionId: id },
         });
-
-        // Cria nova vinculação se informado (pode ser null pra desvincular)
         if (dto.bankAccountId) {
           await tx.accountTransaction.create({
             data: {
@@ -227,19 +216,35 @@ export class TransactionsService {
       }
     });
 
+    // Recalcula saldo das contas afetadas (antigas e nova)
+    const newAccountIds = dto.bankAccountId ? [dto.bankAccountId] : [];
+    const allAccountIds = [...new Set([...oldAccountIds, ...newAccountIds])];
+    for (const accountId of allAccountIds) {
+      await this.bankAccountsService.recalculateBalance(companyId, accountId);
+    }
+
     return this.findOne(companyId, existing.id);
   }
 
   async remove(companyId: string, id: string) {
-    await this.findOne(companyId, id);
+    const transaction = await this.findOne(companyId, id);
 
-    // AccountTransactions são removidos por cascade (onDelete: Cascade no schema)
+    // Guarda as contas vinculadas antes de deletar (cascade remove os AccountTransaction)
+    const accountIds = transaction.accountTransactions.map(
+      (at) => at.bankAccount.id,
+    );
+
     await this.prisma.transaction.delete({ where: { id } });
+
+    // Recalcula saldo das contas que estavam vinculadas
+    for (const accountId of accountIds) {
+      await this.bankAccountsService.recalculateBalance(companyId, accountId);
+    }
 
     return { message: 'Transação excluída com sucesso' };
   }
 
-  async markAsPaid(companyId: string, id: string, paymentDate?: string) {
+  async markAsPaid(companyId: string, id: string, dto: MarkAsPaidDto) {
     const transaction = await this.findOne(companyId, id);
 
     if (transaction.status === 'PAID') {
@@ -252,16 +257,42 @@ export class TransactionsService {
       );
     }
 
-    const resolvedDate = paymentDate ? new Date(paymentDate) : new Date();
+    const paymentDate = dto.paymentDate ? new Date(dto.paymentDate) : new Date();
 
-    return this.prisma.transaction.update({
+    // Se informou bankAccountId, valida e cria/atualiza AccountTransaction
+    if (dto.bankAccountId) {
+      const bankAccount = await this.prisma.bankAccount.findFirst({
+        where: { id: dto.bankAccountId, companyId },
+      });
+      if (!bankAccount) {
+        throw new BadRequestException('Conta bancária não encontrada');
+      }
+
+      // Remove vínculos antigos e cria novo
+      await this.prisma.accountTransaction.deleteMany({
+        where: { transactionId: id },
+      });
+      await this.prisma.accountTransaction.create({
+        data: { transactionId: id, accountId: dto.bankAccountId },
+      });
+    }
+
+    const updated = await this.prisma.transaction.update({
       where: { id },
-      data: {
-        status: 'PAID',
-        paymentDate: resolvedDate,
-      },
+      data: { status: 'PAID', paymentDate },
       include: transactionIncludes,
     });
+
+    // Recalcula saldo das contas vinculadas
+    const accountTxns = await this.prisma.accountTransaction.findMany({
+      where: { transactionId: id },
+      select: { accountId: true },
+    });
+    for (const at of accountTxns) {
+      await this.bankAccountsService.recalculateBalance(companyId, at.accountId);
+    }
+
+    return updated;
   }
 
   async cancel(companyId: string, id: string) {
@@ -277,11 +308,22 @@ export class TransactionsService {
       );
     }
 
-    return this.prisma.transaction.update({
+    const updated = await this.prisma.transaction.update({
       where: { id },
       data: { status: 'CANCELLED' },
       include: transactionIncludes,
     });
+
+    // Recalcula saldo das contas vinculadas (transação não é mais PAID)
+    const accountTxns = await this.prisma.accountTransaction.findMany({
+      where: { transactionId: id },
+      select: { accountId: true },
+    });
+    for (const at of accountTxns) {
+      await this.bankAccountsService.recalculateBalance(companyId, at.accountId);
+    }
+
+    return updated;
   }
 
   /** Valida que os IDs referenciados pertencem à mesma empresa */
@@ -298,45 +340,35 @@ export class TransactionsService {
       const category = await this.prisma.category.findFirst({
         where: { id: dto.categoryId, companyId },
       });
-      if (!category) {
-        throw new BadRequestException('Categoria não encontrada');
-      }
+      if (!category) throw new BadRequestException('Categoria não encontrada');
     }
 
     if (dto.clientId) {
       const client = await this.prisma.client.findFirst({
         where: { id: dto.clientId, companyId },
       });
-      if (!client) {
-        throw new BadRequestException('Cliente não encontrado');
-      }
+      if (!client) throw new BadRequestException('Cliente não encontrado');
     }
 
     if (dto.supplierId) {
       const supplier = await this.prisma.supplier.findFirst({
         where: { id: dto.supplierId, companyId },
       });
-      if (!supplier) {
-        throw new BadRequestException('Fornecedor não encontrado');
-      }
+      if (!supplier) throw new BadRequestException('Fornecedor não encontrado');
     }
 
     if (dto.segmentId) {
       const segment = await this.prisma.segment.findFirst({
         where: { id: dto.segmentId, companyId },
       });
-      if (!segment) {
-        throw new BadRequestException('Segmento não encontrado');
-      }
+      if (!segment) throw new BadRequestException('Segmento não encontrado');
     }
 
     if (dto.bankAccountId) {
       const account = await this.prisma.bankAccount.findFirst({
         where: { id: dto.bankAccountId, companyId },
       });
-      if (!account) {
-        throw new BadRequestException('Conta bancária não encontrada');
-      }
+      if (!account) throw new BadRequestException('Conta bancária não encontrada');
     }
   }
 }

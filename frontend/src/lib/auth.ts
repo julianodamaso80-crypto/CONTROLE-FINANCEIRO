@@ -1,7 +1,7 @@
 import type { User } from '@/types/models';
 
-const TOKEN_KEY = 'finnix_token';
-const USER_KEY = 'finnix_user';
+const TOKEN_KEY = 'meucaixa_token';
+const USER_KEY = 'meucaixa_user';
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';

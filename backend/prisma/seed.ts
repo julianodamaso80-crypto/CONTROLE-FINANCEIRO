@@ -10,7 +10,7 @@ async function main() {
   const company = await prisma.company.create({
     data: {
       name: 'Studio Teste LTDA',
-      email: 'teste@finnix.com',
+      email: 'teste@meucaixa.store',
       document: '12.345.678/0001-90',
       phone: '(11) 99999-0000',
     },

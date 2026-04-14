@@ -49,13 +49,15 @@ export class UsersService {
   }
 
   async create(companyId: string, dto: CreateUserDto) {
-    // Verifica se o email já está em uso
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+    // Verifica se o email já está em uso DENTRO dessa empresa
+    const existing = await this.prisma.user.findFirst({
+      where: { companyId, email: dto.email },
     });
 
     if (existing) {
-      throw new ConflictException('Este email já está cadastrado');
+      throw new ConflictException(
+        'Este email já está cadastrado nesta empresa',
+      );
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -78,11 +80,14 @@ export class UsersService {
     await this.findOne(companyId, id);
 
     if (dto.email) {
+      // Verifica duplicidade do email dentro da mesma empresa
       const existing = await this.prisma.user.findFirst({
-        where: { email: dto.email, id: { not: id } },
+        where: { companyId, email: dto.email, id: { not: id } },
       });
       if (existing) {
-        throw new ConflictException('Este email já está cadastrado');
+        throw new ConflictException(
+          'Este email já está cadastrado nesta empresa',
+        );
       }
     }
 

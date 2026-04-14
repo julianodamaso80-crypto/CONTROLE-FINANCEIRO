@@ -57,7 +57,7 @@ export default function LoginPage() {
 
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">Entrar no Finnix</CardTitle>
+            <CardTitle className="text-xl">Entrar no Meu Caixa</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

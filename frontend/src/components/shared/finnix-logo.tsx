@@ -22,10 +22,10 @@ export function FinnixLogo({ size = 'md', className }: FinnixLogoProps) {
           s.box,
         )}
       >
-        F
+        M
       </div>
       <span className={cn('font-display font-semibold', s.text)}>
-        Finnix
+        Meu Caixa
       </span>
     </div>
   );

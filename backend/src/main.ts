@@ -9,8 +9,20 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  // CORS liberado em desenvolvimento
-  app.enableCors();
+  // CORS restrito por lista de origens configurável via env var
+  const corsOrigins = process.env['CORS_ORIGINS']
+    ?.split(',')
+    .map((s) => s.trim()) ?? [
+    'http://localhost:3001',
+    'http://localhost:3000',
+  ];
+
+  app.enableCors({
+    origin: corsOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
 
   // Validação global com class-validator
   app.useGlobalPipes(

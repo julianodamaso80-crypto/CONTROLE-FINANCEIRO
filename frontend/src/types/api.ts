@@ -30,6 +30,21 @@ export interface RegisterData {
   phone?: string;
 }
 
+export interface WhatsAppStatus {
+  status:
+    | 'NOT_CONNECTED'
+    | 'PENDING_QR'
+    | 'CONNECTING'
+    | 'CONNECTED'
+    | 'DISCONNECTED'
+    | 'FAILED';
+  qrCode: string | null;
+  phoneNumber: string | null;
+  profileName: string | null;
+  profilePicUrl: string | null;
+  lastConnectedAt: string | null;
+}
+
 export interface DashboardResponse {
   period: { from: string; to: string };
   kpis: {

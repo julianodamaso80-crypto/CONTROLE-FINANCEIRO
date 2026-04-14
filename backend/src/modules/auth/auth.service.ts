@@ -17,12 +17,12 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    // Verifica se o email já está em uso
-    const existingUser = await this.prisma.user.findUnique({
+    // Verifica se já existe empresa com esse email (empresa.email é unique global)
+    const existingCompany = await this.prisma.company.findUnique({
       where: { email: dto.email },
     });
 
-    if (existingUser) {
+    if (existingCompany) {
       throw new ConflictException('Este email já está cadastrado');
     }
 
@@ -77,9 +77,12 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    // Busca usuário pelo email
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+    // Com email único por empresa (multi-tenant), usa findFirst.
+    // Pega o primeiro usuário ativo com esse email — se uma pessoa tiver
+    // conta em múltiplas empresas, precisaremos de um seletor de empresa
+    // em etapa futura
+    const user = await this.prisma.user.findFirst({
+      where: { email: dto.email, isActive: true },
       include: { company: true },
     });
 

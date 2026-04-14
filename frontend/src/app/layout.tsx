@@ -18,7 +18,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: 'Finnix — Controle Financeiro Inteligente',
+  title: 'Meu Caixa — Controle Financeiro Inteligente',
   description:
     'SaaS de controle financeiro empresarial com bot WhatsApp e IA',
 };

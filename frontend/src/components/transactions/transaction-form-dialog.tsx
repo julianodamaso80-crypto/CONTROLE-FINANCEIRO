@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { todayLocalISO } from '@/lib/date-utils';
 import { useCategories } from '@/hooks/use-categories';
 import { useSegments } from '@/hooks/use-segments';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
@@ -86,7 +87,7 @@ export function TransactionFormDialog({
     defaultValues: {
       type: 'EXPENSE',
       status: 'PENDING',
-      date: new Date().toISOString().slice(0, 10),
+      date: todayLocalISO(),
     },
   });
 
@@ -113,7 +114,7 @@ export function TransactionFormDialog({
       reset({
         type: 'EXPENSE',
         status: 'PENDING',
-        date: new Date().toISOString().slice(0, 10),
+        date: todayLocalISO(),
         amount: undefined,
         description: '',
         dueDate: '',

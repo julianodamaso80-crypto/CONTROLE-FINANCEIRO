@@ -15,7 +15,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 
-const ONBOARDED_KEY = 'finnix_onboarded';
+const ONBOARDED_KEY = 'meucaixa_onboarded';
 
 const suggestedSegments = [
   'Loja Física',
@@ -35,6 +35,7 @@ export function OnboardingDialog() {
   const [segmentNames, setSegmentNames] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [failedNames, setFailedNames] = useState<string[]>([]);
   const createSegment = useCreateSegment();
   const router = useRouter();
 
@@ -46,6 +47,11 @@ export function OnboardingDialog() {
       }
     }
   }, []);
+
+  const handleSkip = () => {
+    localStorage.setItem(ONBOARDED_KEY, 'true');
+    setOpen(false);
+  };
 
   const addSegment = (name: string) => {
     const trimmed = name.trim();
@@ -61,25 +67,37 @@ export function OnboardingDialog() {
 
   const handleSaveSegments = async () => {
     setIsSaving(true);
+    setFailedNames([]);
     let created = 0;
-    let skipped = 0;
+    const failed: string[] = [];
+
     for (const name of segmentNames) {
       try {
         await createSegment.mutateAsync({ name });
         created++;
       } catch {
-        // Segmento já existe (duplicado) — ignora e continua
-        skipped++;
+        failed.push(name);
       }
     }
+
     if (created > 0) {
-      toast.success(`${created} segmento${created > 1 ? 's' : ''} criado${created > 1 ? 's' : ''} com sucesso!`);
+      toast.success(
+        `${created} segmento${created > 1 ? 's' : ''} criado${created > 1 ? 's' : ''} com sucesso!`,
+      );
     }
-    if (skipped > 0) {
-      toast.info(`${skipped} segmento${skipped > 1 ? 's' : ''} já existia${skipped > 1 ? 'm' : ''} e foi${skipped > 1 ? 'ram' : ''} ignorado${skipped > 1 ? 's' : ''}.`);
+
+    if (failed.length > 0) {
+      setFailedNames(failed);
+      toast.error(
+        `${failed.length} segmento${failed.length > 1 ? 's' : ''} falhou. Tente novamente ou pule.`,
+      );
+      // Mantém na tela pra tentar de novo — remove os que deram certo
+      setSegmentNames(failed);
+    } else {
+      setStep('done');
     }
+
     setIsSaving(false);
-    setStep('done');
   };
 
   const finish = () => {
@@ -89,25 +107,27 @@ export function OnboardingDialog() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent
-        className="sm:max-w-[500px]"
-        onPointerDownOutside={(e) => e.preventDefault()}
-      >
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="sm:max-w-[500px]">
         {step === 'welcome' && (
           <>
             <DialogHeader>
               <DialogTitle className="font-display text-2xl">
-                Bem-vindo ao Finnix!
+                Bem-vindo ao Meu Caixa!
               </DialogTitle>
               <DialogDescription className="text-base">
                 Antes de começar, queremos entender como seu negócio
                 funciona pra configurar do jeito certo pra você.
               </DialogDescription>
             </DialogHeader>
-            <Button className="mt-4" onClick={() => setStep('ask-segments')}>
-              Começar
-            </Button>
+            <div className="mt-4 flex gap-3">
+              <Button className="flex-1" onClick={() => setStep('ask-segments')}>
+                Começar
+              </Button>
+              <Button variant="ghost" className="text-muted-foreground" onClick={handleSkip}>
+                Pular por enquanto
+              </Button>
+            </div>
           </>
         )}
 
@@ -123,19 +143,28 @@ export function OnboardingDialog() {
                 Livre, ou um negócio único sem divisões.
               </DialogDescription>
             </DialogHeader>
-            <div className="mt-4 flex gap-3">
+            <div className="mt-4 space-y-3">
+              <div className="flex gap-3">
+                <Button
+                  className="flex-1"
+                  onClick={() => setStep('create-segments')}
+                >
+                  Sim, tenho mais de um
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setStep('no-segments')}
+                >
+                  Não, é tudo junto
+                </Button>
+              </div>
               <Button
-                className="flex-1"
-                onClick={() => setStep('create-segments')}
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={handleSkip}
               >
-                Sim, tenho mais de um
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setStep('no-segments')}
-              >
-                Não, é tudo junto
+                Pular por enquanto
               </Button>
             </div>
           </>
@@ -197,9 +226,18 @@ export function OnboardingDialog() {
                   {segmentNames.map((name) => (
                     <div
                       key={name}
-                      className="flex items-center justify-between rounded-md border px-3 py-2"
+                      className={`flex items-center justify-between rounded-md border px-3 py-2 ${
+                        failedNames.includes(name) ? 'border-destructive' : ''
+                      }`}
                     >
-                      <span className="text-sm">{name}</span>
+                      <span className="text-sm">
+                        {name}
+                        {failedNames.includes(name) && (
+                          <span className="ml-2 text-xs text-destructive">
+                            (falhou)
+                          </span>
+                        )}
+                      </span>
                       <button
                         type="button"
                         onClick={() => removeSegment(name)}
@@ -219,7 +257,17 @@ export function OnboardingDialog() {
               >
                 {isSaving
                   ? 'Salvando...'
-                  : `Salvar ${segmentNames.length} segmento${segmentNames.length > 1 ? 's' : ''} e continuar`}
+                  : failedNames.length > 0
+                    ? 'Tentar novamente'
+                    : `Salvar ${segmentNames.length} segmento${segmentNames.length > 1 ? 's' : ''} e continuar`}
+              </Button>
+
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={handleSkip}
+              >
+                Pular por enquanto
               </Button>
             </div>
           </>
@@ -247,7 +295,7 @@ export function OnboardingDialog() {
                 Tudo pronto!
               </DialogTitle>
               <DialogDescription className="text-base">
-                Explore o Finnix. Sugestão do que fazer a seguir:
+                Explore o Meu Caixa. Sugestão do que fazer a seguir:
               </DialogDescription>
             </DialogHeader>
             <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-muted-foreground">

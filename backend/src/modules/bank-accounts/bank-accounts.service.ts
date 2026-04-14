@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Decimal } from 'decimal.js';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateBankAccountDto } from './dto/create-bank-account.dto';
 import { UpdateBankAccountDto } from './dto/update-bank-account.dto';
@@ -82,6 +83,44 @@ export class BankAccountsService {
 
     return this.prisma.bankAccount.delete({
       where: { id },
+    });
+  }
+
+  /**
+   * Recalcula o currentBalance de uma conta bancária com base
+   * em todas as transações PAID vinculadas a ela.
+   */
+  async recalculateBalance(
+    companyId: string,
+    bankAccountId: string,
+  ): Promise<void> {
+    const account = await this.prisma.bankAccount.findFirst({
+      where: { id: bankAccountId, companyId },
+    });
+    if (!account) return;
+
+    // Busca todas as transações pagas vinculadas à conta
+    const paidTransactions = await this.prisma.accountTransaction.findMany({
+      where: {
+        accountId: bankAccountId,
+        transaction: { status: 'PAID', companyId },
+      },
+      include: { transaction: { select: { amount: true, type: true } } },
+    });
+
+    const initialBalance = new Decimal(account.initialBalance.toString());
+    const delta = paidTransactions.reduce((acc, at) => {
+      const amount = new Decimal(at.transaction.amount.toString());
+      return at.transaction.type === 'INCOME'
+        ? acc.plus(amount)
+        : acc.minus(amount);
+    }, new Decimal(0));
+
+    const newBalance = initialBalance.plus(delta);
+
+    await this.prisma.bankAccount.update({
+      where: { id: bankAccountId },
+      data: { currentBalance: Number(newBalance.toFixed(2)) },
     });
   }
 }
