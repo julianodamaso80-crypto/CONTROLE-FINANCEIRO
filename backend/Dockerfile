@@ -7,6 +7,9 @@ COPY package*.json ./
 COPY prisma ./prisma
 RUN npm ci
 
+ARG GIT_SHA=dev
+RUN echo "Building $GIT_SHA"
+
 COPY . .
 RUN npx prisma generate
 RUN npm run build
