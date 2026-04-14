@@ -9,16 +9,24 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  // CORS restrito por lista de origens configurável via env var
-  const corsOrigins = process.env['CORS_ORIGINS']
+  // CORS: aceita localhost em dev, qualquer subdomínio de meucaixa.store e vercel.app em prod,
+  // além de origens extras via env var CORS_ORIGINS
+  const extraOrigins = process.env['CORS_ORIGINS']
     ?.split(',')
-    .map((s) => s.trim()) ?? [
-    'http://localhost:3001',
-    'http://localhost:3000',
-  ];
+    .map((s) => s.trim())
+    .filter(Boolean) ?? [];
 
   app.enableCors({
-    origin: corsOrigins,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const allowed =
+        /^http:\/\/localhost(:\d+)?$/.test(origin) ||
+        /\.meucaixa\.store$/.test(origin) ||
+        origin === 'https://meucaixa.store' ||
+        /\.vercel\.app$/.test(origin) ||
+        extraOrigins.includes(origin);
+      callback(allowed ? null : new Error('Not allowed by CORS'), allowed);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
