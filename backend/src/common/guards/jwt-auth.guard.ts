@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { PrismaService } from '../prisma/prisma.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { RequestUser } from '../types/request-user.type';
 
@@ -15,6 +16,7 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
+    private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -35,25 +37,39 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Token de autenticação ausente');
     }
 
+    let payload: {
+      sub: string;
+      companyId: string;
+      role: string;
+      email: string;
+    };
+
     try {
-      const payload = await this.jwtService.verifyAsync<{
-        sub: string;
-        companyId: string;
-        role: string;
-        email: string;
-      }>(token);
-
-      const user: RequestUser = {
-        userId: payload.sub,
-        companyId: payload.companyId,
-        role: payload.role as RequestUser['role'],
-        email: payload.email,
-      };
-
-      request.user = user;
+      payload = await this.jwtService.verifyAsync(token);
     } catch {
       throw new UnauthorizedException('Token inválido ou expirado');
     }
+
+    // Valida que o usuário ainda existe e está ativo no banco.
+    // Sem essa checagem, um JWT válido pode referenciar um user/company
+    // que foi apagado (ex: após TRUNCATE), causando FK violations em inserts.
+    const dbUser = await this.prisma.user.findFirst({
+      where: { id: payload.sub, isActive: true },
+      select: { id: true, companyId: true, role: true, email: true },
+    });
+
+    if (!dbUser) {
+      throw new UnauthorizedException('Usuário não encontrado ou desativado');
+    }
+
+    const user: RequestUser = {
+      userId: dbUser.id,
+      companyId: dbUser.companyId,
+      role: dbUser.role as RequestUser['role'],
+      email: dbUser.email,
+    };
+
+    request.user = user;
 
     return true;
   }

@@ -30,11 +30,15 @@ interface MessageKey {
 interface MessageContent {
   conversation?: string;
   extendedTextMessage?: { text?: string };
+  imageMessage?: { caption?: string; mimetype?: string };
+  audioMessage?: { mimetype?: string; ptt?: boolean; seconds?: number };
+  documentMessage?: { fileName?: string; mimetype?: string };
 }
 
 interface MessageData {
   key?: MessageKey;
   message?: MessageContent;
+  messageType?: string;
 }
 
 interface HandlerResult {
@@ -376,9 +380,19 @@ export class WhatsAppService {
     const senderNumber = data.key?.remoteJid?.split('@')[0];
     if (!senderNumber) return;
 
-    const messageText =
+    const plainText =
       data.message?.conversation ??
       data.message?.extendedTextMessage?.text;
+
+    const hasImage = !!data.message?.imageMessage;
+    const hasAudio = !!data.message?.audioMessage;
+    const imageCaption = data.message?.imageMessage?.caption ?? null;
+
+    // Precisa ter algum conteúdo processável
+    const messageText =
+      plainText ??
+      (hasImage ? imageCaption ?? '[imagem enviada]' : null) ??
+      (hasAudio ? '[áudio enviado]' : null);
     if (!messageText) return;
 
     const externalMessageId = data.key?.id;
@@ -439,6 +453,26 @@ export class WhatsAppService {
       return;
     }
 
+    // Áudio: fallback educado (gpt-4o-mini não transcreve)
+    if (hasAudio) {
+      const reply =
+        '🎤 Recebi seu áudio, mas ainda não consigo escutar — me envie a mesma informação em texto, por favor. Exemplo: "gastei 50 no uber".';
+      await this.evolution
+        .sendTextMessage(instanceName, senderNumber, reply)
+        .catch(() => {});
+      await this.prisma.whatsAppMessage.create({
+        data: {
+          companyId,
+          userId: sender.id,
+          phoneNumber: senderNumber,
+          direction: 'OUTBOUND',
+          messageText: reply,
+          actionTaken: 'audio_not_supported',
+        },
+      });
+      return;
+    }
+
     const [segmentsList, categoriesList] = await Promise.all([
       this.segments.findAll(companyId),
       this.categories.findAll(companyId),
@@ -449,10 +483,41 @@ export class WhatsAppService {
       categories: categoriesList.map((c) => c.name),
     };
 
-    const interpretation = await this.ai.interpretMessage(
-      messageText,
-      context,
-    );
+    let interpretation;
+    if (hasImage) {
+      // Baixa a imagem da Evolution e manda pro gpt-4o-mini vision
+      const media = await this.evolution.getMediaBase64(instanceName, {
+        id: data.key?.id,
+        remoteJid: data.key?.remoteJid,
+        fromMe: data.key?.fromMe,
+      });
+      if (!media) {
+        const reply =
+          '❌ Não consegui baixar a imagem. Tente enviar de novo ou descrever em texto.';
+        await this.evolution
+          .sendTextMessage(instanceName, senderNumber, reply)
+          .catch(() => {});
+        await this.prisma.whatsAppMessage.create({
+          data: {
+            companyId,
+            userId: sender.id,
+            phoneNumber: senderNumber,
+            direction: 'OUTBOUND',
+            messageText: reply,
+            actionTaken: 'image_fetch_failed',
+          },
+        });
+        return;
+      }
+      interpretation = await this.ai.interpretImage(
+        media.base64,
+        media.mimetype,
+        imageCaption,
+        context,
+      );
+    } else {
+      interpretation = await this.ai.interpretMessage(messageText, context);
+    }
 
     const result = await this.executeIntent(companyId, interpretation);
 

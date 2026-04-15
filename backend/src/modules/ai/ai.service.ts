@@ -39,6 +39,125 @@ export class AiService {
 
   constructor(private readonly appConfig: AppConfigService) {}
 
+  /**
+   * Interpreta uma imagem (extrato, cupom, recibo, nota fiscal) usando
+   * gpt-4o-mini vision. Retorna uma BotInterpretation no mesmo formato
+   * que interpretMessage, permitindo reaproveitar o fluxo de execução.
+   */
+  async interpretImage(
+    base64: string,
+    mimetype: string,
+    caption: string | null,
+    context: { segments: string[]; categories: string[] },
+  ): Promise<BotInterpretation> {
+    const systemPrompt = this.buildImagePrompt(context, caption);
+
+    try {
+      const { data } = await axios.post<ChatCompletionResponse>(
+        `${this.appConfig.getOpenRouterBaseUrl()}/chat/completions`,
+        {
+          model: this.appConfig.getOpenRouterModel(),
+          messages: [
+            { role: 'system', content: systemPrompt },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text:
+                    caption ??
+                    'Analise essa imagem e extraia a transação financeira.',
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:${mimetype};base64,${base64}`,
+                  },
+                },
+              ],
+            },
+          ],
+          temperature: 0.2,
+          max_tokens: 600,
+          response_format: { type: 'json_object' },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.appConfig.getOpenRouterApiKey()}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://meucaixa.store',
+            'X-Title': 'Meu Caixa',
+          },
+          timeout: 45_000,
+        },
+      );
+
+      const content = data.choices[0]?.message.content;
+      if (!content) return this.fallbackInterpretation('Visão: resposta vazia');
+      const parsed: unknown = JSON.parse(content);
+      return this.validateInterpretation(parsed);
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return this.fallbackInterpretation('Visão: JSON inválido');
+      }
+      if (axios.isAxiosError(error)) {
+        this.logger.error(
+          `interpretImage HTTP ${error.response?.status ?? 'TIMEOUT'}`,
+        );
+      } else if (error instanceof Error) {
+        this.logger.error(`interpretImage: ${error.message}`);
+      }
+      return this.fallbackInterpretation('Erro ao analisar imagem');
+    }
+  }
+
+  private buildImagePrompt(
+    context: { segments: string[]; categories: string[] },
+    caption: string | null,
+  ): string {
+    const segmentos =
+      context.segments.length > 0
+        ? context.segments.join(', ')
+        : 'nenhum cadastrado';
+    const categorias =
+      context.categories.length > 0
+        ? context.categories.join(', ')
+        : 'nenhuma cadastrada';
+
+    return `Você é o analisador de imagens financeiras do Meu Caixa. O cliente enviou uma foto que pode ser: cupom fiscal, nota fiscal, comprovante de pagamento, print de extrato bancário, recibo, ou similar.
+
+Sua tarefa: extrair a transação da imagem e retornar JSON no formato usado pelo classificador de texto.
+
+${caption ? `Legenda enviada pelo cliente: "${caption}"` : ''}
+
+Regras de extração:
+- Identifique se é DESPESA (paga, saída) ou RECEITA (entrada, crédito)
+- amount: valor TOTAL em número decimal (sem R$, sem formatação). Ex: 45.90
+- description: descrição curta identificando o que é (ex: "Supermercado Pão de Açúcar", "Transferência recebida", "Nota fiscal Uber")
+- date: data ISO YYYY-MM-DD se visível na imagem. Null se não identificar
+- category: match com uma das categorias cadastradas abaixo, senão null
+- segment: match com um dos segmentos cadastrados abaixo, senão null
+- Se a imagem NÃO for de transação financeira (ex: foto aleatória, meme, selfie), retorne intent "unknown"
+- Se a imagem tiver MÚLTIPLAS transações (um extrato cheio), retorne só a MAIS RECENTE e mencione isso no reasoning
+
+Categorias cadastradas: ${categorias}
+Segmentos cadastrados: ${segmentos}
+
+FORMATO DE SAÍDA — APENAS JSON válido:
+{
+  "intent": "register_expense" | "register_income" | "unknown",
+  "confidence": number (0 a 1),
+  "data": {
+    "amount": number|null,
+    "description": string|null,
+    "category": string|null,
+    "segment": string|null,
+    "date": string|null
+  },
+  "reasoning": string (explique brevemente o que você viu na imagem)
+}`;
+  }
+
   /** Interpreta mensagem do usuário e retorna intent + dados estruturados */
   async interpretMessage(
     text: string,

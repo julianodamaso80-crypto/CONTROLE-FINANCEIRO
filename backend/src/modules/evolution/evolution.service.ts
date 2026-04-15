@@ -172,6 +172,33 @@ export class EvolutionService {
     }
   }
 
+  /**
+   * Baixa a mídia de uma mensagem recebida como base64.
+   * Usado pra extrair imagens/áudios de webhooks messages.upsert.
+   */
+  async getMediaBase64(
+    instanceName: string,
+    messageKey: { id?: string; remoteJid?: string; fromMe?: boolean },
+  ): Promise<{ base64: string; mimetype: string } | null> {
+    try {
+      const { data } = await this.http.post<{
+        base64?: string;
+        mimetype?: string;
+      }>(`/chat/getBase64FromMediaMessage/${instanceName}`, {
+        message: { key: messageKey },
+        convertToMp4: false,
+      });
+      if (!data.base64) return null;
+      return {
+        base64: data.base64,
+        mimetype: data.mimetype ?? 'application/octet-stream',
+      };
+    } catch (error) {
+      this.logError('getMediaBase64', error);
+      return null;
+    }
+  }
+
   async sendTextMessage(
     instanceName: string,
     number: string,
