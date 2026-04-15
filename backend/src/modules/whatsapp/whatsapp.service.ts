@@ -25,6 +25,9 @@ interface MessageKey {
   id?: string;
   fromMe?: boolean;
   remoteJid?: string;
+  remoteJidAlt?: string;
+  participant?: string;
+  addressingMode?: string;
 }
 
 interface MessageContent {
@@ -377,7 +380,13 @@ export class WhatsAppService {
     if (data.key?.fromMe === true) return;
     if (data.key?.remoteJid?.endsWith('@g.us')) return;
 
-    const senderNumber = data.key?.remoteJid?.split('@')[0];
+    // WhatsApp usa "LID addressing": remoteJid pode vir como
+    // `123456789@lid` (identificador de privacidade). Nesse caso o
+    // número real fica em remoteJidAlt. Sempre preferimos o Alt quando
+    // presente. Se a JID final ainda for @lid, não é telefone válido.
+    const jid = data.key?.remoteJidAlt ?? data.key?.remoteJid;
+    if (!jid || jid.endsWith('@lid')) return;
+    const senderNumber = jid.split('@')[0];
     if (!senderNumber) return;
 
     const plainText =
