@@ -452,14 +452,15 @@ export class WhatsAppService {
     }
 
     const adminUser = await this.prisma.user.findFirst({
-      where: { companyId, role: 'ADMIN', isActive: true },
+      where: { companyId, isActive: true },
+      orderBy: [{ role: 'desc' }, { createdAt: 'asc' }],
     });
 
     if (!adminUser) {
       return {
         responseText:
-          '❌ Erro interno: nenhum administrador encontrado.',
-        actionTaken: 'error_no_admin',
+          '❌ Erro interno: nenhum usuário ativo encontrado para esta empresa.',
+        actionTaken: 'error_no_user',
         relatedTransactionId: null,
       };
     }
