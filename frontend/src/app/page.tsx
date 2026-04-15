@@ -14,6 +14,13 @@ import {
   Instagram,
   Linkedin,
   Github,
+  Mic,
+  Image as ImageIcon,
+  Type,
+  Sparkles,
+  FileText,
+  BarChart3,
+  Bot,
 } from 'lucide-react';
 
 export const metadata = {
@@ -22,15 +29,16 @@ export const metadata = {
     'Lance receitas, despesas e categorias falando no WhatsApp. IA classifica tudo, dashboards em tempo real e zero planilha.',
 };
 
-const brands = [
-  'ACME',
-  'GLOBEX',
-  'INITECH',
-  'UMBRELLA',
-  'STARK',
-  'WAYNE',
-  'HOOLI',
-  'PIED PIPER',
+const capabilities = [
+  { icon: Mic, label: 'ÁUDIO NO WHATSAPP' },
+  { icon: ImageIcon, label: 'FOTO DA NOTA' },
+  { icon: Type, label: 'TEXTO LIVRE' },
+  { icon: Brain, label: 'IA CLASSIFICADORA' },
+  { icon: Receipt, label: 'LANÇAMENTO AUTOMÁTICO' },
+  { icon: BarChart3, label: 'DASHBOARD EM TEMPO REAL' },
+  { icon: FileText, label: 'RELATÓRIO PRONTO' },
+  { icon: Bot, label: 'BOT 24/7' },
+  { icon: Sparkles, label: 'ZERO PLANILHA' },
 ];
 
 const features = [
@@ -247,16 +255,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ============ MARQUEE ============ */}
+      {/* ============ CAPABILITIES MARQUEE ============ */}
       <section className="overflow-hidden border-b-2 border-black bg-[#171e19] py-8">
-        <div className="flex w-max animate-marquee gap-20 whitespace-nowrap">
-          {[...brands, ...brands].map((b, i) => (
-            <span
-              key={i}
-              className="font-cabinet text-3xl font-extrabold tracking-tight text-[#b7c6c2]/50"
-            >
-              {b}
-            </span>
+        <div className="flex w-max animate-marquee items-center gap-16 whitespace-nowrap">
+          {[...capabilities, ...capabilities].map((c, i) => (
+            <div key={i} className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-[#90ff6b] bg-[#171e19]">
+                <c.icon className="h-5 w-5 text-[#90ff6b]" strokeWidth={2.5} />
+              </div>
+              <span className="font-cabinet text-2xl font-extrabold tracking-tight text-[#b7c6c2]">
+                {c.label}
+              </span>
+              <span className="text-3xl font-extrabold text-[#90ff6b]">•</span>
+            </div>
           ))}
         </div>
       </section>
