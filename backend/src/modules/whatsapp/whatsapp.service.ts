@@ -462,24 +462,55 @@ export class WhatsAppService {
       return;
     }
 
-    // Áudio: fallback educado (gpt-4o-mini não transcreve)
+    // Áudio: baixa da Evolution, transcreve via gemini-2.5-flash,
+    // depois deixa o pipeline de texto processar normalmente.
+    let transcribedText: string | null = null;
     if (hasAudio) {
-      const reply =
-        '🎤 Recebi seu áudio, mas ainda não consigo escutar — me envie a mesma informação em texto, por favor. Exemplo: "gastei 50 no uber".';
-      await this.evolution
-        .sendTextMessage(instanceName, senderNumber, reply)
-        .catch(() => {});
-      await this.prisma.whatsAppMessage.create({
-        data: {
-          companyId,
-          userId: sender.id,
-          phoneNumber: senderNumber,
-          direction: 'OUTBOUND',
-          messageText: reply,
-          actionTaken: 'audio_not_supported',
-        },
+      const audioMedia = await this.evolution.getMediaBase64(instanceName, {
+        id: data.key?.id,
+        remoteJid: data.key?.remoteJid,
+        fromMe: data.key?.fromMe,
       });
-      return;
+      if (!audioMedia) {
+        const reply =
+          '❌ Não consegui baixar seu áudio. Tente enviar de novo ou escreva em texto.';
+        await this.evolution
+          .sendTextMessage(instanceName, senderNumber, reply)
+          .catch(() => {});
+        await this.prisma.whatsAppMessage.create({
+          data: {
+            companyId,
+            userId: sender.id,
+            phoneNumber: senderNumber,
+            direction: 'OUTBOUND',
+            messageText: reply,
+            actionTaken: 'audio_fetch_failed',
+          },
+        });
+        return;
+      }
+      transcribedText = await this.ai.transcribeAudio(
+        audioMedia.base64,
+        audioMedia.mimetype,
+      );
+      if (!transcribedText) {
+        const reply =
+          '❌ Não consegui entender o áudio. Fale um pouco mais claro ou envie em texto, por favor.';
+        await this.evolution
+          .sendTextMessage(instanceName, senderNumber, reply)
+          .catch(() => {});
+        await this.prisma.whatsAppMessage.create({
+          data: {
+            companyId,
+            userId: sender.id,
+            phoneNumber: senderNumber,
+            direction: 'OUTBOUND',
+            messageText: reply,
+            actionTaken: 'audio_transcribe_failed',
+          },
+        });
+        return;
+      }
     }
 
     const [segmentsList, categoriesList] = await Promise.all([
@@ -525,7 +556,9 @@ export class WhatsAppService {
         context,
       );
     } else {
-      interpretation = await this.ai.interpretMessage(messageText, context);
+      // Texto normal OU áudio já transcrito
+      const inputText = transcribedText ?? messageText;
+      interpretation = await this.ai.interpretMessage(inputText, context);
     }
 
     const result = await this.executeIntent(companyId, interpretation);

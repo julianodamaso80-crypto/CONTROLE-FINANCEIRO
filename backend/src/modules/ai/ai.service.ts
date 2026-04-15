@@ -40,6 +40,75 @@ export class AiService {
   constructor(private readonly appConfig: AppConfigService) {}
 
   /**
+   * Transcreve um áudio (voice note do WhatsApp em OGG/Opus) usando
+   * google/gemini-2.5-flash via OpenRouter. Retorna o texto transcrito
+   * em português, que é então processado pelo fluxo normal de
+   * interpretMessage. gpt-4o-mini não suporta input_audio nativamente.
+   */
+  async transcribeAudio(
+    base64: string,
+    mimetype: string,
+  ): Promise<string | null> {
+    // Inferir formato pelo mimetype
+    let format = 'mp3';
+    if (mimetype.includes('ogg')) format = 'ogg';
+    else if (mimetype.includes('mp4')) format = 'mp4';
+    else if (mimetype.includes('wav')) format = 'wav';
+    else if (mimetype.includes('webm')) format = 'webm';
+    else if (mimetype.includes('mpeg')) format = 'mp3';
+
+    try {
+      const { data } = await axios.post<ChatCompletionResponse>(
+        `${this.appConfig.getOpenRouterBaseUrl()}/chat/completions`,
+        {
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Você transcreve áudios em português do Brasil. Retorne APENAS o texto falado, sem aspas, sem formatação, sem comentários, sem pontuação adicional. Se não for possível transcrever, retorne uma string vazia.',
+            },
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: 'Transcreva esse áudio.' },
+                {
+                  type: 'input_audio',
+                  input_audio: { data: base64, format },
+                },
+              ],
+            },
+          ],
+          temperature: 0.1,
+          max_tokens: 500,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.appConfig.getOpenRouterApiKey()}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://meucaixa.store',
+            'X-Title': 'Meu Caixa',
+          },
+          timeout: 45_000,
+        },
+      );
+
+      const text = data.choices[0]?.message.content?.trim();
+      if (!text) return null;
+      return text;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        this.logger.error(
+          `transcribeAudio HTTP ${error.response?.status ?? 'TIMEOUT'}: ${String(error.response?.data?.error?.message ?? error.message)}`,
+        );
+      } else if (error instanceof Error) {
+        this.logger.error(`transcribeAudio: ${error.message}`);
+      }
+      return null;
+    }
+  }
+
+  /**
    * Interpreta uma imagem (extrato, cupom, recibo, nota fiscal) usando
    * gpt-4o-mini vision. Retorna uma BotInterpretation no mesmo formato
    * que interpretMessage, permitindo reaproveitar o fluxo de execução.
