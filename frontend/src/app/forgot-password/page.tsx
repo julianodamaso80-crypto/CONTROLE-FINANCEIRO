@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex justify-center">
-          <FinnixLogo size="lg" />
+          <FinnixLogo size="lg" variant="auth" />
         </div>
 
         <Card>
