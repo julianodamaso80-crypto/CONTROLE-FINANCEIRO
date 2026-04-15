@@ -135,7 +135,7 @@ model User {
   name         String
   email        String
   passwordHash String   @map("password_hash")
-  phone        String?
+  phone        String   @unique
   role         UserRole @default(USER)
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
@@ -144,10 +144,9 @@ model User {
   company      Company       @relation(fields: [companyId], references: [id])
   transactions Transaction[]
 
-  // Email único por empresa (multi-tenant): duas empresas podem
-  // ter o mesmo email, mas não dentro da mesma empresa
   @@unique([companyId, email])
   @@index([companyId])
+  @@index([phone])
   @@map("users")
 }
 

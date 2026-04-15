@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -6,6 +7,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { normalizePhone } from '../../common/utils/phone.util';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -49,15 +51,27 @@ export class UsersService {
   }
 
   async create(companyId: string, dto: CreateUserDto) {
-    // Verifica se o email já está em uso DENTRO dessa empresa
-    const existing = await this.prisma.user.findFirst({
+    const normalizedPhone = normalizePhone(dto.phone);
+    if (!normalizedPhone) {
+      throw new BadRequestException(
+        'WhatsApp inválido. Use DDD + número, ex: 21 98021-4882',
+      );
+    }
+
+    const existingEmail = await this.prisma.user.findFirst({
       where: { companyId, email: dto.email },
     });
-
-    if (existing) {
+    if (existingEmail) {
       throw new ConflictException(
         'Este email já está cadastrado nesta empresa',
       );
+    }
+
+    const existingPhone = await this.prisma.user.findUnique({
+      where: { phone: normalizedPhone },
+    });
+    if (existingPhone) {
+      throw new ConflictException('Este WhatsApp já está cadastrado');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -68,7 +82,7 @@ export class UsersService {
         name: dto.name,
         email: dto.email,
         passwordHash,
-        phone: dto.phone,
+        phone: normalizedPhone,
         role: dto.role,
       },
       select: userSelect,
@@ -80,7 +94,6 @@ export class UsersService {
     await this.findOne(companyId, id);
 
     if (dto.email) {
-      // Verifica duplicidade do email dentro da mesma empresa
       const existing = await this.prisma.user.findFirst({
         where: { companyId, email: dto.email, id: { not: id } },
       });
@@ -91,9 +104,26 @@ export class UsersService {
       }
     }
 
+    let normalizedPhone: string | undefined;
+    if (dto.phone !== undefined) {
+      const normalized = normalizePhone(dto.phone);
+      if (!normalized) {
+        throw new BadRequestException(
+          'WhatsApp inválido. Use DDD + número, ex: 21 98021-4882',
+        );
+      }
+      const existingPhone = await this.prisma.user.findFirst({
+        where: { phone: normalized, id: { not: id } },
+      });
+      if (existingPhone) {
+        throw new ConflictException('Este WhatsApp já está cadastrado');
+      }
+      normalizedPhone = normalized;
+    }
+
     return this.prisma.user.update({
       where: { id },
-      data: dto,
+      data: { ...dto, ...(normalizedPhone && { phone: normalizedPhone }) },
       select: userSelect,
     });
   }

@@ -1,34 +1,52 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { normalizePhone } from '../../common/utils/phone.util';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly whatsapp: WhatsAppService,
   ) {}
 
   async register(dto: RegisterDto) {
-    // Verifica se já existe empresa com esse email (empresa.email é unique global)
+    const normalizedPhone = normalizePhone(dto.phone);
+    if (!normalizedPhone) {
+      throw new BadRequestException(
+        'WhatsApp inválido. Use DDD + número, ex: 21 98021-4882',
+      );
+    }
+
     const existingCompany = await this.prisma.company.findUnique({
       where: { email: dto.email },
     });
-
     if (existingCompany) {
       throw new ConflictException('Este email já está cadastrado');
     }
 
+    const existingPhone = await this.prisma.user.findUnique({
+      where: { phone: normalizedPhone },
+    });
+    if (existingPhone) {
+      throw new ConflictException('Este WhatsApp já está cadastrado');
+    }
+
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    // Cria empresa e usuário admin na mesma transação
     const result = await this.prisma.$transaction(async (tx) => {
       const company = await tx.company.create({
         data: {
@@ -44,7 +62,7 @@ export class AuthService {
           name: dto.name,
           email: dto.email,
           passwordHash,
-          phone: dto.phone,
+          phone: normalizedPhone,
           role: 'ADMIN',
           isActive: true,
         },
@@ -52,6 +70,16 @@ export class AuthService {
 
       return { company, user };
     });
+
+    this.whatsapp
+      .sendWelcomeMessage(normalizedPhone, result.user.name)
+      .catch((err) =>
+        this.logger.warn(
+          `Falha ao enviar boas-vindas para ${normalizedPhone}: ${
+            err instanceof Error ? err.message : 'erro desconhecido'
+          }`,
+        ),
+      );
 
     const accessToken = this.generateToken({
       sub: result.user.id,

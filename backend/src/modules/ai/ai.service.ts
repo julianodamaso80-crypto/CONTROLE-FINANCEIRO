@@ -1,7 +1,30 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { AppConfigService } from '../../common/config/app.config';
-import type { BotInterpretation } from './ai.types';
+import type { BotInterpretation, ReportPeriod, ReportType } from './ai.types';
+
+const VALID_PERIODS: ReportPeriod[] = [
+  'today',
+  'yesterday',
+  'this_week',
+  'last_week',
+  'this_month',
+  'last_month',
+  'specific_month',
+  'last_n_months',
+  'last_n_days',
+  'this_year',
+  'custom',
+];
+
+const VALID_REPORT_TYPES: ReportType[] = [
+  'income',
+  'expense',
+  'profit',
+  'all',
+];
+
+const VALID_GROUP_BY = ['category', 'segment', 'none'] as const;
 
 // Tipagem da resposta OpenRouter/OpenAI
 interface ChatCompletionResponse {
@@ -106,7 +129,24 @@ FORMATO DE SAÍDA — APENAS JSON válido, sem markdown, sem backticks, sem expl
 {
   "intent": string,
   "confidence": number (0 a 1),
-  "data": { "amount": number|null, "description": string|null, "category": string|null, "segment": string|null, "supplier": string|null, "client": string|null, "date": string|null, "newAmount": number|null },
+  "data": {
+    "amount": number|null,
+    "description": string|null,
+    "category": string|null,
+    "segment": string|null,
+    "supplier": string|null,
+    "client": string|null,
+    "date": string|null,
+    "newAmount": number|null,
+    "period": string|null,
+    "reportType": string|null,
+    "monthNumber": number|null,
+    "year": number|null,
+    "n": number|null,
+    "startDate": string|null,
+    "endDate": string|null,
+    "groupBy": string|null
+  },
   "reasoning": string
 }
 
@@ -114,8 +154,15 @@ INTENTS VÁLIDAS (qualquer outra coisa = "unknown"):
 - "register_expense": registrar despesa (gatilhos: paguei, gastei, comprei, saiu, saída, pagar, despesa, débito)
 - "register_income": registrar receita (gatilhos: recebi, entrada, ganhei, vendeu, venda, faturei, crédito)
 - "query_balance": consultar saldo atual
-- "query_expenses_month": ver despesas do mês
-- "query_upcoming": ver vencimentos próximos
+- "query_expenses_month": ver despesas do mês corrente (atalho)
+- "query_upcoming": ver vencimentos próximos (contas a pagar/receber)
+- "query_report": RELATÓRIO de um período. Use quando o cliente pedir resumo/levantamento/análise de qualquer período. Preencha os campos do "data":
+  * period: "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "last_month" | "specific_month" | "last_n_months" | "last_n_days" | "this_year" | "custom"
+  * reportType: "income" (só receitas) | "expense" (só despesas) | "profit" (lucro = receita - despesa) | "all" (padrão, mostra tudo)
+  * monthNumber (1-12) e year (YYYY) quando period="specific_month"
+  * n quando period="last_n_months" ou "last_n_days"
+  * startDate e endDate (ISO YYYY-MM-DD) quando period="custom"
+  * groupBy: "category" | "segment" | "none" (padrão "category")
 - "delete_last": apagar último lançamento
 - "update_last": atualizar último lançamento
 - "help": pediu ajuda sobre comandos do Meu Caixa
@@ -143,10 +190,18 @@ EXEMPLOS:
 5. "entrada 500 venda loja" → {"intent":"register_income","confidence":0.9,"data":{"amount":500,"description":"Venda loja"}}
 6. "apaga o último" → {"intent":"delete_last","confidence":0.95,"data":{}}
 7. "muda o último pra 80" → {"intent":"update_last","confidence":0.9,"data":{"newAmount":80}}
-8. "oi tudo bem?" → {"intent":"unknown","confidence":1,"data":{}}
-9. "qual a capital da França?" → {"intent":"unknown","confidence":1,"data":{}}
-10. "me dá uma dica de investimento" → {"intent":"unknown","confidence":1,"data":{}}
-11. "escreve um e-mail pra mim" → {"intent":"unknown","confidence":1,"data":{}}`;
+8. "quanto ganhei essa semana" → {"intent":"query_report","confidence":0.95,"data":{"period":"this_week","reportType":"income","groupBy":"category"}}
+9. "relatório do mês" → {"intent":"query_report","confidence":0.95,"data":{"period":"this_month","reportType":"all","groupBy":"category"}}
+10. "quanto gastei em janeiro" → {"intent":"query_report","confidence":0.95,"data":{"period":"specific_month","monthNumber":1,"year":2026,"reportType":"expense","groupBy":"category"}}
+11. "lucro dos últimos 3 meses" → {"intent":"query_report","confidence":0.95,"data":{"period":"last_n_months","n":3,"reportType":"profit","groupBy":"none"}}
+12. "levantamento de janeiro a março" → {"intent":"query_report","confidence":0.9,"data":{"period":"custom","startDate":"2026-01-01","endDate":"2026-03-31","reportType":"all","groupBy":"category"}}
+13. "resumo de hoje" → {"intent":"query_report","confidence":0.95,"data":{"period":"today","reportType":"all","groupBy":"category"}}
+14. "quanto ganhei semana passada" → {"intent":"query_report","confidence":0.95,"data":{"period":"last_week","reportType":"income","groupBy":"category"}}
+15. "faturamento esse ano" → {"intent":"query_report","confidence":0.9,"data":{"period":"this_year","reportType":"income","groupBy":"none"}}
+16. "oi tudo bem?" → {"intent":"unknown","confidence":1,"data":{}}
+17. "qual a capital da França?" → {"intent":"unknown","confidence":1,"data":{}}
+18. "me dá uma dica de investimento" → {"intent":"unknown","confidence":1,"data":{}}
+19. "escreve um e-mail pra mim" → {"intent":"unknown","confidence":1,"data":{}}`;
   }
 
   /** Valida e normaliza a resposta da IA */
@@ -157,19 +212,22 @@ EXEMPLOS:
 
     const obj = parsed as Record<string, unknown>;
 
-    const validIntents = [
+    const validIntents: BotInterpretation['intent'][] = [
       'register_expense',
       'register_income',
       'query_balance',
       'query_expenses_month',
       'query_upcoming',
+      'query_report',
       'delete_last',
       'update_last',
       'help',
       'unknown',
     ];
 
-    const intent = validIntents.includes(obj['intent'] as string)
+    const intent = validIntents.includes(
+      obj['intent'] as BotInterpretation['intent'],
+    )
       ? (obj['intent'] as BotInterpretation['intent'])
       : 'unknown';
 
@@ -215,6 +273,34 @@ EXEMPLOS:
           typeof rawData['newAmount'] === 'number'
             ? rawData['newAmount']
             : undefined,
+        period: VALID_PERIODS.includes(rawData['period'] as ReportPeriod)
+          ? (rawData['period'] as ReportPeriod)
+          : undefined,
+        reportType: VALID_REPORT_TYPES.includes(
+          rawData['reportType'] as ReportType,
+        )
+          ? (rawData['reportType'] as ReportType)
+          : undefined,
+        monthNumber:
+          typeof rawData['monthNumber'] === 'number'
+            ? rawData['monthNumber']
+            : undefined,
+        year:
+          typeof rawData['year'] === 'number' ? rawData['year'] : undefined,
+        n: typeof rawData['n'] === 'number' ? rawData['n'] : undefined,
+        startDate:
+          typeof rawData['startDate'] === 'string'
+            ? rawData['startDate']
+            : undefined,
+        endDate:
+          typeof rawData['endDate'] === 'string'
+            ? rawData['endDate']
+            : undefined,
+        groupBy: VALID_GROUP_BY.includes(
+          rawData['groupBy'] as (typeof VALID_GROUP_BY)[number],
+        )
+          ? (rawData['groupBy'] as 'category' | 'segment' | 'none')
+          : undefined,
       },
       reasoning:
         typeof obj['reasoning'] === 'string' ? obj['reasoning'] : undefined,

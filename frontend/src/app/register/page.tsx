@@ -22,7 +22,16 @@ const registerSchema = z.object({
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
   email: z.string().email('Email inválido'),
   password: z.string().min(8, 'A senha deve ter no mínimo 8 caracteres'),
-  phone: z.string().optional(),
+  phone: z
+    .string()
+    .min(1, 'WhatsApp é obrigatório')
+    .refine(
+      (v) => {
+        const digits = v.replace(/\D/g, '');
+        return digits.length === 10 || digits.length === 11 || (digits.startsWith('55') && (digits.length === 12 || digits.length === 13));
+      },
+      'Informe um WhatsApp válido com DDD',
+    ),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -127,12 +136,21 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Telefone (opcional)</Label>
+                <Label htmlFor="phone">WhatsApp</Label>
                 <Input
                   id="phone"
-                  placeholder="(11) 99999-0000"
+                  placeholder="(21) 99999-0000"
                   {...register('phone')}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Você receberá uma mensagem de boas-vindas nesse número e poderá
+                  registrar despesas/receitas pelo WhatsApp.
+                </p>
+                {errors.phone && (
+                  <p className="text-sm text-destructive">
+                    {errors.phone.message}
+                  </p>
+                )}
               </div>
 
               <Button

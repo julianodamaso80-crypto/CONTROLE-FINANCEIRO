@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsString, MaxLength, MinLength } from 'class-validator';
 import { UserRole } from '@prisma/client';
 
 export class CreateUserDto {
@@ -13,9 +13,10 @@ export class CreateUserDto {
   @MinLength(8, { message: 'A senha deve ter no mínimo 8 caracteres' })
   password!: string;
 
-  @IsOptional()
-  @IsString()
-  phone?: string;
+  @IsString({ message: 'WhatsApp é obrigatório' })
+  @MinLength(10, { message: 'WhatsApp deve ter DDD + número' })
+  @MaxLength(20)
+  phone!: string;
 
   @IsEnum(UserRole, { message: 'Perfil inválido. Use: ADMIN, USER ou FINANCE' })
   role!: UserRole;

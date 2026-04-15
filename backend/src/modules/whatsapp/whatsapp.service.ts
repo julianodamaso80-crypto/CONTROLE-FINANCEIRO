@@ -191,6 +191,42 @@ export class WhatsAppService {
     return { message: 'WhatsApp desconectado com sucesso' };
   }
 
+  /**
+   * Envia mensagem de boas-vindas para um novo cliente recém-cadastrado.
+   * Usa a primeira instância CONNECTED (o bot global do Meu Caixa).
+   */
+  async sendWelcomeMessage(phone: string, name: string): Promise<void> {
+    if (!this.appConfig.isEvolutionConfigured()) return;
+
+    const instance = await this.prisma.whatsAppInstance.findFirst({
+      where: { status: 'CONNECTED' },
+    });
+    if (!instance) {
+      this.logger.warn(
+        'Nenhuma instância WhatsApp conectada — boas-vindas não enviadas',
+      );
+      return;
+    }
+
+    const firstName = name.split(' ')[0] ?? name;
+    const message =
+      `👋 Olá, ${firstName}! Seja bem-vindo ao *Meu Caixa*.\n\n` +
+      `Sou seu assistente financeiro pelo WhatsApp. Você já pode:\n\n` +
+      `💸 Registrar despesas: _"gastei 50 no uber"_\n` +
+      `💰 Registrar receitas: _"recebi 2k do cliente"_\n` +
+      `📊 Pedir relatórios: _"quanto ganhei essa semana"_\n` +
+      `💼 Consultar saldo: _"qual meu saldo"_\n\n` +
+      `Envie *ajuda* a qualquer momento pra ver os comandos.`;
+
+    await this.evolution
+      .sendTextMessage(instance.instanceName, phone, message)
+      .catch((err) => {
+        this.logger.warn(
+          `sendWelcomeMessage falhou: ${err instanceof Error ? err.message : 'erro'}`,
+        );
+      });
+  }
+
   async processWebhook(payload: WebhookPayload): Promise<void> {
     if (!this.appConfig.isEvolutionConfigured()) {
       this.logger.warn(
@@ -324,15 +360,44 @@ export class WhatsAppService {
       if (existing) return;
     }
 
+    // Roteamento: identifica o cliente pelo número do remetente.
+    // Cada usuário do Meu Caixa tem um phone único → usamos isso como chave.
+    const sender = await this.prisma.user.findUnique({
+      where: { phone: senderNumber },
+      select: { id: true, name: true, companyId: true, isActive: true },
+    });
+
     await this.prisma.whatsAppMessage.create({
       data: {
-        companyId: instance.companyId,
+        companyId: sender?.companyId ?? null,
+        userId: sender?.id ?? null,
         phoneNumber: senderNumber,
         direction: 'INBOUND',
         messageText,
         externalMessageId,
       },
     });
+
+    if (!sender || !sender.isActive) {
+      const reply =
+        '👋 Olá! Esse número ainda não está cadastrado no Meu Caixa.\n\n' +
+        'Crie sua conta em https://meucaixa.store e cadastre este mesmo WhatsApp para começar a usar.';
+      await this.evolution
+        .sendTextMessage(instance.instanceName, senderNumber, reply)
+        .catch(() => {});
+      await this.prisma.whatsAppMessage.create({
+        data: {
+          companyId: null,
+          phoneNumber: senderNumber,
+          direction: 'OUTBOUND',
+          messageText: reply,
+          actionTaken: 'not_registered',
+        },
+      });
+      return;
+    }
+
+    const companyId = sender.companyId;
 
     if (!this.appConfig.isAiConfigured()) {
       await this.evolution
@@ -346,8 +411,8 @@ export class WhatsAppService {
     }
 
     const [segmentsList, categoriesList] = await Promise.all([
-      this.segments.findAll(instance.companyId),
-      this.categories.findAll(instance.companyId),
+      this.segments.findAll(companyId),
+      this.categories.findAll(companyId),
     ]);
 
     const context = {
@@ -360,10 +425,7 @@ export class WhatsAppService {
       context,
     );
 
-    const result = await this.executeIntent(
-      instance.companyId,
-      interpretation,
-    );
+    const result = await this.executeIntent(companyId, interpretation);
 
     try {
       await this.evolution.sendTextMessage(
@@ -379,7 +441,8 @@ export class WhatsAppService {
 
     await this.prisma.whatsAppMessage.create({
       data: {
-        companyId: instance.companyId,
+        companyId,
+        userId: sender.id,
         phoneNumber: senderNumber,
         direction: 'OUTBOUND',
         messageText: result.responseText,
@@ -414,6 +477,8 @@ export class WhatsAppService {
         return this.executeQueryExpensesMonth(companyId);
       case 'query_upcoming':
         return this.executeQueryUpcoming(companyId);
+      case 'query_report':
+        return this.executeQueryReport(companyId, interpretation);
       case 'delete_last':
         return this.executeDeleteLast(companyId);
       case 'update_last':
@@ -652,6 +717,271 @@ export class WhatsAppService {
       actionTaken: 'query_expenses_month',
       relatedTransactionId: null,
     };
+  }
+
+  private resolveReportRange(
+    data: BotInterpretation['data'],
+  ): { start: Date; end: Date; label: string } | null {
+    const now = new Date();
+    const startOfDay = (d: Date) =>
+      new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    const endOfDay = (d: Date) =>
+      new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+    const monthNames = [
+      'Janeiro',
+      'Fevereiro',
+      'Março',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro',
+    ];
+
+    switch (data.period) {
+      case 'today': {
+        return { start: startOfDay(now), end: endOfDay(now), label: 'Hoje' };
+      }
+      case 'yesterday': {
+        const y = new Date(now);
+        y.setDate(y.getDate() - 1);
+        return { start: startOfDay(y), end: endOfDay(y), label: 'Ontem' };
+      }
+      case 'this_week': {
+        const dow = now.getDay(); // 0 = domingo
+        const start = new Date(now);
+        start.setDate(now.getDate() - dow);
+        return {
+          start: startOfDay(start),
+          end: endOfDay(now),
+          label: 'Esta semana',
+        };
+      }
+      case 'last_week': {
+        const dow = now.getDay();
+        const thisWeekStart = new Date(now);
+        thisWeekStart.setDate(now.getDate() - dow);
+        const lastWeekStart = new Date(thisWeekStart);
+        lastWeekStart.setDate(thisWeekStart.getDate() - 7);
+        const lastWeekEnd = new Date(thisWeekStart);
+        lastWeekEnd.setDate(thisWeekStart.getDate() - 1);
+        return {
+          start: startOfDay(lastWeekStart),
+          end: endOfDay(lastWeekEnd),
+          label: 'Semana passada',
+        };
+      }
+      case 'this_month': {
+        const s = new Date(now.getFullYear(), now.getMonth(), 1);
+        const e = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        return {
+          start: startOfDay(s),
+          end: endOfDay(e),
+          label: `${monthNames[now.getMonth()]}/${now.getFullYear()}`,
+        };
+      }
+      case 'last_month': {
+        const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const e = new Date(now.getFullYear(), now.getMonth(), 0);
+        return {
+          start: startOfDay(s),
+          end: endOfDay(e),
+          label: `${monthNames[s.getMonth()]}/${s.getFullYear()}`,
+        };
+      }
+      case 'specific_month': {
+        const m = data.monthNumber;
+        const y = data.year ?? now.getFullYear();
+        if (!m || m < 1 || m > 12) return null;
+        const s = new Date(y, m - 1, 1);
+        const e = new Date(y, m, 0);
+        return {
+          start: startOfDay(s),
+          end: endOfDay(e),
+          label: `${monthNames[m - 1]}/${y}`,
+        };
+      }
+      case 'last_n_months': {
+        const n = data.n ?? 3;
+        const s = new Date(now.getFullYear(), now.getMonth() - (n - 1), 1);
+        const e = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        return {
+          start: startOfDay(s),
+          end: endOfDay(e),
+          label: `Últimos ${n} meses`,
+        };
+      }
+      case 'last_n_days': {
+        const n = data.n ?? 7;
+        const s = new Date(now);
+        s.setDate(now.getDate() - (n - 1));
+        return {
+          start: startOfDay(s),
+          end: endOfDay(now),
+          label: `Últimos ${n} dias`,
+        };
+      }
+      case 'this_year': {
+        const s = new Date(now.getFullYear(), 0, 1);
+        const e = new Date(now.getFullYear(), 11, 31);
+        return {
+          start: startOfDay(s),
+          end: endOfDay(e),
+          label: `${now.getFullYear()}`,
+        };
+      }
+      case 'custom': {
+        if (!data.startDate || !data.endDate) return null;
+        const s = new Date(data.startDate);
+        const e = new Date(data.endDate);
+        if (isNaN(s.getTime()) || isNaN(e.getTime())) return null;
+        const fmt = (d: Date) =>
+          d.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          });
+        return {
+          start: startOfDay(s),
+          end: endOfDay(e),
+          label: `${fmt(s)} → ${fmt(e)}`,
+        };
+      }
+      default:
+        return null;
+    }
+  }
+
+  private async executeQueryReport(
+    companyId: string,
+    interpretation: BotInterpretation,
+  ): Promise<HandlerResult> {
+    const range = this.resolveReportRange(interpretation.data);
+    if (!range) {
+      return {
+        responseText:
+          '❓ Não consegui entender o período. Tente algo como: "relatório do mês", "quanto ganhei essa semana", "gastei quanto em janeiro".',
+        actionTaken: 'report_invalid_period',
+        relatedTransactionId: null,
+      };
+    }
+
+    const reportType = interpretation.data.reportType ?? 'all';
+    const groupBy = interpretation.data.groupBy ?? 'category';
+    const showIncome = reportType === 'income' || reportType === 'all' || reportType === 'profit';
+    const showExpense = reportType === 'expense' || reportType === 'all' || reportType === 'profit';
+
+    const baseWhere = {
+      companyId,
+      status: 'PAID' as const,
+      date: { gte: range.start, lte: range.end },
+    };
+
+    const [incomeAgg, expenseAgg] = await Promise.all([
+      showIncome
+        ? this.prisma.transaction.aggregate({
+            where: { ...baseWhere, type: 'INCOME' },
+            _sum: { amount: true },
+            _count: true,
+          })
+        : Promise.resolve(null),
+      showExpense
+        ? this.prisma.transaction.aggregate({
+            where: { ...baseWhere, type: 'EXPENSE' },
+            _sum: { amount: true },
+            _count: true,
+          })
+        : Promise.resolve(null),
+    ]);
+
+    const incomeTotal = Number(incomeAgg?._sum.amount ?? 0);
+    const expenseTotal = Number(expenseAgg?._sum.amount ?? 0);
+    const incomeCount = incomeAgg?._count ?? 0;
+    const expenseCount = expenseAgg?._count ?? 0;
+
+    if (incomeCount === 0 && expenseCount === 0) {
+      return {
+        responseText: `📊 *${range.label}*\n\nNenhum lançamento encontrado nesse período.`,
+        actionTaken: 'report_empty',
+        relatedTransactionId: null,
+      };
+    }
+
+    const fmt = (n: number) =>
+      n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    const groupField: 'categoryId' | 'segmentId' =
+      groupBy === 'segment' ? 'segmentId' : 'categoryId';
+    const shouldGroup = groupBy !== 'none';
+
+    let response = `📊 *Relatório — ${range.label}*\n`;
+
+    if (showIncome && incomeCount > 0) {
+      response += `\n💰 *Receitas:* ${fmt(incomeTotal)} (${incomeCount})`;
+      if (shouldGroup) {
+        const incomeByGroup = await this.prisma.transaction.groupBy({
+          by: [groupField],
+          where: { ...baseWhere, type: 'INCOME' },
+          _sum: { amount: true },
+          orderBy: { _sum: { amount: 'desc' } },
+        });
+        for (const item of incomeByGroup) {
+          const amount = Number(item._sum.amount ?? 0);
+          const id = item[groupField];
+          const name = id ? await this.resolveGroupName(groupBy, id) : 'Sem categoria';
+          response += `\n  • ${name}: ${fmt(amount)}`;
+        }
+      }
+      response += '\n';
+    }
+
+    if (showExpense && expenseCount > 0) {
+      response += `\n💸 *Despesas:* ${fmt(expenseTotal)} (${expenseCount})`;
+      if (shouldGroup) {
+        const expenseByGroup = await this.prisma.transaction.groupBy({
+          by: [groupField],
+          where: { ...baseWhere, type: 'EXPENSE' },
+          _sum: { amount: true },
+          orderBy: { _sum: { amount: 'desc' } },
+        });
+        for (const item of expenseByGroup) {
+          const amount = Number(item._sum.amount ?? 0);
+          const id = item[groupField];
+          const name = id ? await this.resolveGroupName(groupBy, id) : 'Sem categoria';
+          response += `\n  • ${name}: ${fmt(amount)}`;
+        }
+      }
+      response += '\n';
+    }
+
+    if (reportType === 'all' || reportType === 'profit') {
+      const profit = incomeTotal - expenseTotal;
+      const icon = profit >= 0 ? '✅' : '⚠️';
+      response += `\n${icon} *${profit >= 0 ? 'Lucro' : 'Prejuízo'}:* ${fmt(profit)}`;
+    }
+
+    return {
+      responseText: response.trim(),
+      actionTaken: 'query_report',
+      relatedTransactionId: null,
+    };
+  }
+
+  private async resolveGroupName(
+    groupBy: 'category' | 'segment' | 'none',
+    id: string,
+  ): Promise<string> {
+    if (groupBy === 'segment') {
+      const s = await this.prisma.segment.findUnique({ where: { id } });
+      return s?.name ?? 'Sem segmento';
+    }
+    const c = await this.prisma.category.findUnique({ where: { id } });
+    return c?.name ?? 'Sem categoria';
   }
 
   private async executeQueryUpcoming(
