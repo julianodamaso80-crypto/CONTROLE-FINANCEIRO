@@ -17,6 +17,7 @@ import { ChartBar } from '@/components/dashboard/chart-bar';
 import { ChartPie } from '@/components/dashboard/chart-pie';
 import { ChartSegment } from '@/components/dashboard/chart-segment';
 import { UpcomingList } from '@/components/dashboard/upcoming-list';
+import { PageHeader } from '@/components/shared/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
@@ -70,48 +71,70 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Visão geral do seu negócio
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Select
-            value={period}
-            onValueChange={(v) => setPeriod(v as PeriodOption)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="this-month">Este mês</SelectItem>
-              <SelectItem value="last-month">Mês passado</SelectItem>
-              <SelectItem value="last-30">Últimos 30 dias</SelectItem>
-              <SelectItem value="this-year">Este ano</SelectItem>
-            </SelectContent>
-          </Select>
+      <PageHeader
+        title="Dashboard"
+        subtitle="Visão geral do seu negócio em um só lugar"
+        helpTitle="O que você vê aqui?"
+        helpBody={
+          <>
+            <p>
+              O dashboard traz os <strong>números do seu negócio em tempo real</strong>.
+              Tudo que você registra (pelo painel ou pelo WhatsApp) aparece
+              aqui automaticamente.
+            </p>
+            <p className="pt-1">
+              <strong>Indicadores principais:</strong>
+            </p>
+            <ul className="ml-4 list-disc space-y-0.5">
+              <li><strong>Receitas</strong> — quanto entrou no período</li>
+              <li><strong>Despesas</strong> — quanto saiu</li>
+              <li><strong>Saldo</strong> — o lucro ou prejuízo do período</li>
+              <li><strong>Vencimentos</strong> — contas próximas e atrasadas</li>
+              <li><strong>Gráficos</strong> — despesas por categoria, receitas por segmento, tendência do mês</li>
+            </ul>
+            <p className="pt-1">
+              <strong>Dica</strong>: use os filtros no canto superior direito
+              pra trocar o período (este mês, mês passado, últimos 30 dias, ano)
+              ou filtrar por segmento (ex: só Shopee, só Loja Física).
+            </p>
+          </>
+        }
+        actions={
+          <div className="flex gap-2">
+            <Select
+              value={period}
+              onValueChange={(v) => setPeriod(v as PeriodOption)}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="this-month">Este mês</SelectItem>
+                <SelectItem value="last-month">Mês passado</SelectItem>
+                <SelectItem value="last-30">Últimos 30 dias</SelectItem>
+                <SelectItem value="this-year">Este ano</SelectItem>
+              </SelectContent>
+            </Select>
 
-          <Select
-            value={segmentId || '__all__'}
-            onValueChange={(v) => setSegmentId(v === '__all__' ? '' : v)}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Todos os segmentos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos os segmentos</SelectItem>
-              {segments?.map((seg) => (
-                <SelectItem key={seg.id} value={seg.id}>
-                  {seg.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+            <Select
+              value={segmentId || '__all__'}
+              onValueChange={(v) => setSegmentId(v === '__all__' ? '' : v)}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Todos os segmentos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todos os segmentos</SelectItem>
+                {segments?.map((seg) => (
+                  <SelectItem key={seg.id} value={seg.id}>
+                    {seg.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      />
 
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

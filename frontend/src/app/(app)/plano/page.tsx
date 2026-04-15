@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { PageHeader } from '@/components/shared/page-header';
 
 function fmtBRL(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -113,12 +114,48 @@ export default function PlanoPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <div>
-        <h1 className="font-display text-3xl font-semibold">Meu plano</h1>
-        <p className="text-muted-foreground">
-          Gerencie sua assinatura do Meu Caixa
-        </p>
-      </div>
+      <PageHeader
+        title="Meu Plano"
+        subtitle="Gerencie sua assinatura do Meu Caixa"
+        helpTitle="Como funciona a assinatura?"
+        helpBody={
+          <>
+            <p>
+              O Meu Caixa trabalha com <strong>assinatura recorrente</strong>.
+              Você tem 1 dia grátis pra testar, e depois continua com o
+              plano Mensal (R$ 19,90/mês) ou Anual (R$ 199,90/ano — economiza
+              ~16%).
+            </p>
+            <p className="pt-1">
+              <strong>Como pagar</strong>: clique em{' '}
+              <em>Pagar agora</em> — você é levado pro checkout seguro do
+              Asaas onde pode pagar com cartão de crédito ou Pix. O
+              pagamento cai na hora e libera seu acesso automaticamente.
+            </p>
+            <p>
+              <strong>Cobrança recorrente</strong>: depois do primeiro
+              pagamento, as próximas cobranças são feitas automaticamente
+              no mesmo dia de cada mês (ou ano). Você recebe notificação
+              antes.
+            </p>
+            <p>
+              <strong>Trocar de plano</strong>: dá pra mudar de mensal pra
+              anual (ou o contrário) a qualquer momento nos cards abaixo.
+              A diferença entra na próxima cobrança.
+            </p>
+            <p>
+              <strong>Cancelar</strong>: você pode cancelar quando quiser —
+              mantém o acesso até o fim do período que já pagou, depois
+              para.
+            </p>
+            <p className="pt-1">
+              ⚠️ <strong>Atenção</strong>: se o pagamento falhar ou atrasar,
+              seu acesso ao painel e ao bot do WhatsApp é{' '}
+              <strong>bloqueado automaticamente</strong> até regularizar.
+            </p>
+          </>
+        }
+      />
 
       {/* Status card */}
       <Card>

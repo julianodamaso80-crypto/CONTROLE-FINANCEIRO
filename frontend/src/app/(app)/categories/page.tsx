@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CategoryFormDialog } from '@/components/categories/category-form-dialog';
+import { PageHeader } from '@/components/shared/page-header';
 
 const typeLabels: Record<string, string> = {
   INCOME: 'Receita',
@@ -54,18 +55,43 @@ export default function CategoriesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Categorias</h1>
-          <p className="text-sm text-muted-foreground">
-            Organize receitas e despesas em categorias
-          </p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Categoria
-        </Button>
-      </div>
+      <PageHeader
+        title="Categorias"
+        subtitle="Organize receitas e despesas em categorias"
+        helpTitle="Pra que servem as categorias?"
+        helpBody={
+          <>
+            <p>
+              Categorias classificam cada lançamento pra você entender pra
+              onde o dinheiro está indo. No relatório do mês, você vê
+              quanto foi pra <strong>Alimentação</strong>, quanto pra{' '}
+              <strong>Transporte</strong>, etc.
+            </p>
+            <p className="pt-1">
+              <strong>Exemplos de categorias de despesa:</strong> Alimentação,
+              Transporte, Internet, Aluguel, Energia, Marketing, Software,
+              Funcionários, Fornecedores, Impostos.
+            </p>
+            <p>
+              <strong>Exemplos de categorias de receita:</strong> Vendas,
+              Serviços, Comissões, Assinaturas, Outros.
+            </p>
+            <p className="pt-1">
+              Quando você registrar uma despesa pelo WhatsApp (ex:{' '}
+              <em>&quot;gastei 50 no uber&quot;</em>), o bot tenta casar com
+              a categoria mais próxima que você tem cadastrada aqui. Por
+              isso vale a pena criar 5-10 categorias que fazem sentido pro
+              seu negócio.
+            </p>
+          </>
+        }
+        actions={
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Categoria
+          </Button>
+        }
+      />
 
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

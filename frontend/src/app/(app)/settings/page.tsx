@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageHeader } from '@/components/shared/page-header';
 import type { ApiResponse } from '@/types/api';
 import type { Company, User } from '@/types/models';
 
@@ -116,12 +117,34 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Configurações</h1>
-        <p className="text-sm text-muted-foreground">
-          Gerencie sua conta e integrações
-        </p>
-      </div>
+      <PageHeader
+        title="Configurações"
+        subtitle="Gerencie sua conta, empresa e senha"
+        helpTitle="O que dá pra configurar aqui?"
+        helpBody={
+          <>
+            <p>
+              <strong>Perfil</strong>: seu nome, email e WhatsApp. O WhatsApp
+              é o que identifica você no bot — mudando aqui, o bot passa a
+              reconhecer o novo número.
+            </p>
+            <p>
+              <strong>Empresa</strong>: nome, CNPJ, contato. Esses dados
+              aparecem nos relatórios e notas.
+            </p>
+            <p>
+              <strong>Alterar senha</strong>: troca sua senha de acesso ao
+              painel. Se esqueceu a senha, use{' '}
+              <em>&quot;Esqueci minha senha&quot;</em> na tela de login — você
+              recebe um código de 6 dígitos no WhatsApp pra recuperar.
+            </p>
+            <p className="pt-1">
+              <strong>Pra gerenciar assinatura e pagamentos</strong>: vai em{' '}
+              <em>Meu Plano</em> no menu lateral.
+            </p>
+          </>
+        }
+      />
 
       <Tabs defaultValue="profile" className="space-y-4">
         <TabsList>

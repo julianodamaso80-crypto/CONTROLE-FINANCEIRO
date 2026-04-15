@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SegmentCard } from '@/components/segments/segment-card';
 import { SegmentFormDialog } from '@/components/segments/segment-form-dialog';
+import { PageHeader } from '@/components/shared/page-header';
 
 export default function SegmentsPage() {
   const { data: segments, isLoading } = useSegments();
@@ -28,19 +29,50 @@ export default function SegmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Segmentos</h1>
-          <p className="text-sm text-muted-foreground">
-            Organize lançamentos por canal, filial, unidade ou como fizer
-            sentido pro seu negócio
-          </p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Segmento
-        </Button>
-      </div>
+      <PageHeader
+        title="Segmentos"
+        subtitle="Organize lançamentos por canal, filial ou unidade do seu negócio"
+        helpTitle="Pra que servem os segmentos?"
+        helpBody={
+          <>
+            <p>
+              Segmentos são a <strong>segunda dimensão</strong> da sua
+              contabilidade — enquanto categorias dizem <em>&quot;em quê&quot;</em>{' '}
+              (ex: Marketing), segmentos dizem <em>&quot;de onde&quot;</em> ou{' '}
+              <em>&quot;pra onde&quot;</em> (ex: Loja Física vs Shopee).
+            </p>
+            <p className="pt-1">
+              <strong>Exemplos comuns:</strong>
+            </p>
+            <ul className="ml-4 list-disc space-y-0.5">
+              <li>
+                <strong>Canais de venda</strong>: Loja Física, Shopee, Mercado
+                Livre, Instagram, WhatsApp, Site Próprio
+              </li>
+              <li>
+                <strong>Filiais</strong>: Matriz, Filial Centro, Filial Zona
+                Sul
+              </li>
+              <li>
+                <strong>Unidades de negócio</strong>: Consultoria, Cursos,
+                Produtos Físicos
+              </li>
+            </ul>
+            <p className="pt-1">
+              Com segmentos você consegue responder{' '}
+              <em>&quot;quanto faturei no Mercado Livre esse mês?&quot;</em> ou{' '}
+              <em>&quot;qual filial deu mais lucro?&quot;</em>. Se seu negócio
+              é só um canal/local, pode pular essa parte.
+            </p>
+          </>
+        }
+        actions={
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Segmento
+          </Button>
+        }
+      />
 
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
