@@ -192,6 +192,36 @@ export class WhatsAppService {
   }
 
   /**
+   * Envia código de recuperação de senha (6 dígitos) via WhatsApp.
+   */
+  async sendPasswordResetCode(phone: string, code: string): Promise<void> {
+    if (!this.appConfig.isEvolutionConfigured()) return;
+
+    const instance = await this.prisma.whatsAppInstance.findFirst({
+      where: { status: 'CONNECTED' },
+    });
+    if (!instance) {
+      this.logger.warn(
+        'Nenhuma instância WhatsApp conectada — código de reset não enviado',
+      );
+      return;
+    }
+
+    const message =
+      `🔐 *Recuperação de senha — Meu Caixa*\n\n` +
+      `Seu código é: *${code}*\n\n` +
+      `Ele expira em 10 minutos. Se você não pediu, ignore esta mensagem.`;
+
+    await this.evolution
+      .sendTextMessage(instance.instanceName, phone, message)
+      .catch((err) => {
+        this.logger.warn(
+          `sendPasswordResetCode falhou: ${err instanceof Error ? err.message : 'erro'}`,
+        );
+      });
+  }
+
+  /**
    * Envia mensagem de boas-vindas para um novo cliente recém-cadastrado.
    * Usa a primeira instância CONNECTED (o bot global do Meu Caixa).
    */

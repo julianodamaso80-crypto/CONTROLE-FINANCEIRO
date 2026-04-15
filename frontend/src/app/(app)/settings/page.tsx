@@ -15,6 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApiResponse } from '@/types/api';
@@ -187,9 +188,8 @@ export default function SettingsPage() {
               <form onSubmit={handleChangePassword} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="currentPassword">Senha atual</Label>
-                  <Input
+                  <PasswordInput
                     id="currentPassword"
-                    type="password"
                     value={passwords.currentPassword}
                     onChange={(e) =>
                       setPasswords({
@@ -202,9 +202,8 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="newPassword">Nova senha</Label>
-                  <Input
+                  <PasswordInput
                     id="newPassword"
-                    type="password"
                     value={passwords.newPassword}
                     onChange={(e) =>
                       setPasswords({

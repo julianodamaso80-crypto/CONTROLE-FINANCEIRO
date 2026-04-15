@@ -10,8 +10,10 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { normalizePhone } from '../../common/utils/phone.util';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -151,6 +153,96 @@ export class AuthService {
         name: user.company.name,
       },
     };
+  }
+
+  /**
+   * Gera um código de 6 dígitos e envia via WhatsApp para o número informado.
+   * Por segurança, sempre retorna sucesso (não revela se o número existe).
+   */
+  async requestPasswordReset(dto: ForgotPasswordDto) {
+    const normalizedPhone = normalizePhone(dto.phone);
+    if (!normalizedPhone) {
+      throw new BadRequestException(
+        'WhatsApp inválido. Use DDD + número, ex: 21 98021-4882',
+      );
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { phone: normalizedPhone },
+    });
+
+    if (user && user.isActive) {
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+      // Invalida códigos anteriores não usados
+      await this.prisma.passwordResetCode.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+
+      await this.prisma.passwordResetCode.create({
+        data: { userId: user.id, code, expiresAt },
+      });
+
+      this.whatsapp.sendPasswordResetCode(normalizedPhone, code).catch((err) =>
+        this.logger.warn(
+          `Falha ao enviar código de reset: ${err instanceof Error ? err.message : 'erro'}`,
+        ),
+      );
+    }
+
+    return {
+      message:
+        'Se este WhatsApp estiver cadastrado, você receberá um código em instantes.',
+    };
+  }
+
+  /**
+   * Valida código + atualiza senha. Marca o código como usado.
+   */
+  async resetPassword(dto: ResetPasswordDto) {
+    const normalizedPhone = normalizePhone(dto.phone);
+    if (!normalizedPhone) {
+      throw new BadRequestException('WhatsApp inválido');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { phone: normalizedPhone },
+    });
+
+    if (!user || !user.isActive) {
+      throw new BadRequestException('Código inválido ou expirado');
+    }
+
+    const resetCode = await this.prisma.passwordResetCode.findFirst({
+      where: {
+        userId: user.id,
+        code: dto.code,
+        usedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!resetCode) {
+      throw new BadRequestException('Código inválido ou expirado');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash },
+      }),
+      this.prisma.passwordResetCode.update({
+        where: { id: resetCode.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    return { message: 'Senha alterada com sucesso. Faça login com a nova senha.' };
   }
 
   private generateToken(payload: {
