@@ -59,9 +59,10 @@ export class WhatsAppService {
   ) {}
 
   async connectWhatsApp(companyId: string) {
-    if (!this.appConfig.isWhatsAppConfigured()) {
+    const missing = this.appConfig.getMissingEvolutionVars();
+    if (missing.length > 0) {
       throw new ServiceUnavailableException(
-        'Integração WhatsApp não configurada. Contate o administrador.',
+        `Integração WhatsApp não configurada. Variáveis ausentes no backend: ${missing.join(', ')}`,
       );
     }
 
@@ -114,7 +115,7 @@ export class WhatsAppService {
 
   async getStatus(companyId: string) {
     // Retorna "não configurado" de forma graciosa sem crashar
-    if (!this.appConfig.isWhatsAppConfigured()) {
+    if (!this.appConfig.isEvolutionConfigured()) {
       return {
         status: 'NOT_CONNECTED' as const,
         qrCode: null,
@@ -191,9 +192,9 @@ export class WhatsAppService {
   }
 
   async processWebhook(payload: WebhookPayload): Promise<void> {
-    if (!this.appConfig.isWhatsAppConfigured()) {
+    if (!this.appConfig.isEvolutionConfigured()) {
       this.logger.warn(
-        'Webhook recebido mas WhatsApp não está configurado — ignorando',
+        'Webhook recebido mas Evolution não está configurado — ignorando',
       );
       return;
     }
@@ -332,6 +333,17 @@ export class WhatsAppService {
         externalMessageId,
       },
     });
+
+    if (!this.appConfig.isAiConfigured()) {
+      await this.evolution
+        .sendTextMessage(
+          instance.instanceName,
+          senderNumber,
+          'Olá! O assistente de IA ainda não foi configurado. Entre em contato com o administrador.',
+        )
+        .catch(() => {});
+      return;
+    }
 
     const [segmentsList, categoriesList] = await Promise.all([
       this.segments.findAll(instance.companyId),

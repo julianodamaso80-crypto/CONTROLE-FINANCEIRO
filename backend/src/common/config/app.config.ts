@@ -51,16 +51,31 @@ export class AppConfigService {
   }
 
   /**
-   * Retorna true apenas quando TODAS as env vars obrigatórias
-   * do WhatsApp estão presentes. Permite ao backend iniciar normalmente
-   * e bloquear apenas os endpoints do WhatsApp quando não configurado.
+   * Vars necessárias para conectar/desconectar o WhatsApp (Evolution API).
+   * Não inclui OpenRouter — IA só é exigida para interpretar mensagens recebidas.
+   */
+  getMissingEvolutionVars(): string[] {
+    const required = [
+      'EVOLUTION_API_URL',
+      'EVOLUTION_API_KEY',
+      'PUBLIC_WEBHOOK_URL',
+    ];
+    return required.filter((key) => !this.config.get<string>(key));
+  }
+
+  isEvolutionConfigured(): boolean {
+    return this.getMissingEvolutionVars().length === 0;
+  }
+
+  isAiConfigured(): boolean {
+    return !!this.config.get<string>('OPENROUTER_API_KEY');
+  }
+
+  /**
+   * Mantido por compatibilidade: retorna true quando Evolution + IA estão configurados.
+   * Para o fluxo de conexão (QR Code), use isEvolutionConfigured().
    */
   isWhatsAppConfigured(): boolean {
-    return (
-      !!this.config.get<string>('EVOLUTION_API_URL') &&
-      !!this.config.get<string>('EVOLUTION_API_KEY') &&
-      !!this.config.get<string>('OPENROUTER_API_KEY') &&
-      !!this.config.get<string>('PUBLIC_WEBHOOK_URL')
-    );
+    return this.isEvolutionConfigured() && this.isAiConfigured();
   }
 }
