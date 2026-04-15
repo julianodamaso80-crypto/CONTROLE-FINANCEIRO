@@ -268,28 +268,31 @@ export class WhatsAppService {
     const instanceName = payload.instance;
     if (!instanceName) return;
 
-    const instance = await this.prisma.whatsAppInstance.findFirst({
-      where: { instanceName },
-    });
+    const event = payload.event?.toLowerCase();
 
-    if (!instance) {
-      this.logger.warn(
-        `Webhook para instância desconhecida: ${instanceName}`,
+    // Mensagens de entrada não dependem do registro DB:
+    // o roteamento agora é por phone do remetente (user.phone).
+    if (event === 'messages.upsert') {
+      await this.handleIncomingMessage(
+        instanceName,
+        payload.data as unknown as MessageData,
       );
       return;
     }
 
-    const event = payload.event?.toLowerCase();
+    // Eventos de QR/conexão precisam do registro DB. Se não existir, ignora
+    // silenciosamente (o admin pode reconectar pelo painel se quiser tracking).
+    const instance = await this.prisma.whatsAppInstance.findFirst({
+      where: { instanceName },
+    });
+    if (!instance) {
+      return;
+    }
 
     if (event === 'qrcode.updated') {
       await this.handleQrCodeUpdate(instance.id, payload.data);
     } else if (event === 'connection.update') {
       await this.handleConnectionUpdate(instance, payload.data);
-    } else if (event === 'messages.upsert') {
-      await this.handleIncomingMessage(
-        instance,
-        payload.data as unknown as MessageData,
-      );
     }
   }
 
@@ -364,11 +367,7 @@ export class WhatsAppService {
   }
 
   private async handleIncomingMessage(
-    instance: {
-      id: string;
-      instanceName: string;
-      companyId: string;
-    },
+    instanceName: string,
     data: MessageData,
   ): Promise<void> {
     if (data.key?.fromMe === true) return;
@@ -413,7 +412,7 @@ export class WhatsAppService {
         '👋 Olá! Esse número ainda não está cadastrado no Meu Caixa.\n\n' +
         'Crie sua conta em https://meucaixa.store e cadastre este mesmo WhatsApp para começar a usar.';
       await this.evolution
-        .sendTextMessage(instance.instanceName, senderNumber, reply)
+        .sendTextMessage(instanceName, senderNumber, reply)
         .catch(() => {});
       await this.prisma.whatsAppMessage.create({
         data: {
@@ -432,7 +431,7 @@ export class WhatsAppService {
     if (!this.appConfig.isAiConfigured()) {
       await this.evolution
         .sendTextMessage(
-          instance.instanceName,
+          instanceName,
           senderNumber,
           'Olá! O assistente de IA ainda não foi configurado. Entre em contato com o administrador.',
         )
@@ -459,7 +458,7 @@ export class WhatsAppService {
 
     try {
       await this.evolution.sendTextMessage(
-        instance.instanceName,
+        instanceName,
         senderNumber,
         result.responseText,
       );
