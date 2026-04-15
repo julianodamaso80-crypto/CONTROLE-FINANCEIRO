@@ -8,6 +8,7 @@ export type BotIntent =
   | 'delete_last'
   | 'update_last'
   | 'help'
+  | 'greeting'
   | 'unknown';
 
 export type ReportPeriod =

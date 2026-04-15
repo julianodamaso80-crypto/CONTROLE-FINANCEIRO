@@ -166,7 +166,8 @@ INTENTS VÁLIDAS (qualquer outra coisa = "unknown"):
 - "delete_last": apagar último lançamento
 - "update_last": atualizar último lançamento
 - "help": pediu ajuda sobre comandos do Meu Caixa
-- "unknown": qualquer mensagem fora do escopo
+- "greeting": saudação curta sem pedido específico (oi, ola, bom dia, boa tarde, boa noite, tudo bem, tudo certo, eai, blz, opa, salve)
+- "unknown": qualquer mensagem fora do escopo (perguntas gerais, conselhos, escrita, traduções, outros temas)
 
 CONTEXTO DA EMPRESA (use SOMENTE estes valores para matchear category/segment):
 - Segmentos cadastrados: ${segmentos}
@@ -198,10 +199,15 @@ EXEMPLOS:
 13. "resumo de hoje" → {"intent":"query_report","confidence":0.95,"data":{"period":"today","reportType":"all","groupBy":"category"}}
 14. "quanto ganhei semana passada" → {"intent":"query_report","confidence":0.95,"data":{"period":"last_week","reportType":"income","groupBy":"category"}}
 15. "faturamento esse ano" → {"intent":"query_report","confidence":0.9,"data":{"period":"this_year","reportType":"income","groupBy":"none"}}
-16. "oi tudo bem?" → {"intent":"unknown","confidence":1,"data":{}}
-17. "qual a capital da França?" → {"intent":"unknown","confidence":1,"data":{}}
-18. "me dá uma dica de investimento" → {"intent":"unknown","confidence":1,"data":{}}
-19. "escreve um e-mail pra mim" → {"intent":"unknown","confidence":1,"data":{}}`;
+16. "oi" → {"intent":"greeting","confidence":1,"data":{}}
+17. "oie" → {"intent":"greeting","confidence":1,"data":{}}
+18. "bom dia" → {"intent":"greeting","confidence":1,"data":{}}
+19. "tudo bem?" → {"intent":"greeting","confidence":1,"data":{}}
+20. "eai blz" → {"intent":"greeting","confidence":1,"data":{}}
+21. "qual a capital da França?" → {"intent":"unknown","confidence":1,"data":{}}
+22. "me dá uma dica de investimento" → {"intent":"unknown","confidence":1,"data":{}}
+23. "escreve um e-mail pra mim" → {"intent":"unknown","confidence":1,"data":{}}
+24. "qual a melhor ação pra comprar" → {"intent":"unknown","confidence":1,"data":{}}`;
   }
 
   /** Valida e normaliza a resposta da IA */
@@ -222,6 +228,7 @@ EXEMPLOS:
       'delete_last',
       'update_last',
       'help',
+      'greeting',
       'unknown',
     ];
 

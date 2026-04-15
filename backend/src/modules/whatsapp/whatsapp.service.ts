@@ -519,10 +519,23 @@ export class WhatsAppService {
           actionTaken: 'help',
           relatedTransactionId: null,
         };
+      case 'greeting':
+        return {
+          responseText:
+            '👋 Olá! Sou o assistente do *Meu Caixa*. Posso te ajudar a:\n\n' +
+            '💸 Registrar despesas: _"gastei 50 no uber"_\n' +
+            '💰 Registrar receitas: _"recebi 2k do cliente"_\n' +
+            '📊 Gerar relatórios: _"quanto ganhei essa semana"_\n' +
+            '💼 Consultar saldo: _"qual meu saldo"_\n\n' +
+            'Envie *ajuda* a qualquer momento para ver todos os comandos.',
+          actionTaken: 'greeting',
+          relatedTransactionId: null,
+        };
       default:
         return {
           responseText:
-            '🤔 Não entendi sua mensagem. Envie *ajuda* para ver os comandos disponíveis.',
+            '🤔 Sou o assistente do *Meu Caixa* — só consigo te ajudar com finanças (despesas, receitas, saldo e relatórios).\n\n' +
+            'Envie *ajuda* para ver os comandos disponíveis.',
           actionTaken: 'unknown',
           relatedTransactionId: null,
         };
