@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   ServiceUnavailableException,
@@ -13,6 +15,7 @@ import { TransactionsService } from '../transactions/transactions.service';
 import { SegmentsService } from '../segments/segments.service';
 import { CategoriesService } from '../categories/categories.service';
 import { BankAccountsService } from '../bank-accounts/bank-accounts.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import type { BotInterpretation } from '../ai/ai.types';
 
 interface WebhookPayload {
@@ -63,6 +66,8 @@ export class WhatsAppService {
     private readonly segments: SegmentsService,
     private readonly categories: CategoriesService,
     private readonly bankAccounts: BankAccountsService,
+    @Inject(forwardRef(() => SubscriptionsService))
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   async connectWhatsApp(companyId: string) {
@@ -450,6 +455,34 @@ export class WhatsAppService {
     }
 
     const companyId = sender.companyId;
+
+    // Bloqueio por assinatura: se trial expirou ou inadimplente,
+    // responde com link pra renovar e não processa.
+    const accessAllowed =
+      await this.subscriptions.isAccessAllowed(companyId);
+    if (!accessAllowed) {
+      const reply =
+        '🔒 Seu acesso ao *Meu Caixa* está suspenso.\n\n' +
+        'O período gratuito acabou ou sua assinatura está pendente.\n\n' +
+        'Renove agora em: https://meucaixa.store/plano\n\n' +
+        'Planos:\n' +
+        '• Mensal: R$ 19,90/mês\n' +
+        '• Anual: R$ 199,90/ano (economize ~16%)';
+      await this.evolution
+        .sendTextMessage(instanceName, senderNumber, reply)
+        .catch(() => {});
+      await this.prisma.whatsAppMessage.create({
+        data: {
+          companyId,
+          userId: sender.id,
+          phoneNumber: senderNumber,
+          direction: 'OUTBOUND',
+          messageText: reply,
+          actionTaken: 'subscription_expired',
+        },
+      });
+      return;
+    }
 
     if (!this.appConfig.isAiConfigured()) {
       await this.evolution

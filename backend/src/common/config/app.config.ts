@@ -50,6 +50,25 @@ export class AppConfigService {
     return this.getRequired('PUBLIC_WEBHOOK_URL');
   }
 
+  getAsaasApiKey(): string {
+    return this.getRequired('ASAAS_API_KEY');
+  }
+
+  getAsaasBaseUrl(): string {
+    return this.getOptional('ASAAS_BASE_URL', 'https://api.asaas.com/v3');
+  }
+
+  getAsaasWebhookToken(): string {
+    return this.getRequired('ASAAS_WEBHOOK_TOKEN');
+  }
+
+  isAsaasConfigured(): boolean {
+    return (
+      !!this.config.get<string>('ASAAS_API_KEY') &&
+      !!this.config.get<string>('ASAAS_WEBHOOK_TOKEN')
+    );
+  }
+
   /**
    * Vars necessárias para conectar/desconectar o WhatsApp (Evolution API).
    * Não inclui OpenRouter — IA só é exigida para interpretar mensagens recebidas.

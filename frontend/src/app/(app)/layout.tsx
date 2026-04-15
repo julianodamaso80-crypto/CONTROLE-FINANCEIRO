@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { Sidebar } from '@/components/layout/sidebar';
 import { OnboardingDialog } from '@/components/onboarding/onboarding-dialog';
+import { SubscriptionBanner } from '@/components/shared/subscription-banner';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -31,7 +32,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <main className="flex-1 overflow-auto p-6">{children}</main>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <SubscriptionBanner />
+        <main className="flex-1 overflow-auto p-6">{children}</main>
+      </div>
       <OnboardingDialog />
     </div>
   );

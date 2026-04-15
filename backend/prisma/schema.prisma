@@ -98,6 +98,19 @@ enum WhatsAppInstanceStatus {
   FAILED
 }
 
+enum SubscriptionPlan {
+  MONTHLY
+  ANNUAL
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
 // === Modelos ===
 
 model Company {
@@ -125,6 +138,7 @@ model Company {
   whatsappMessages WhatsAppMessage[]
   alerts           Alert[]
   whatsappInstance WhatsAppInstance?
+  subscription     Subscription?
 
   @@map("companies")
 }
@@ -437,4 +451,29 @@ model WhatsAppInstance {
   @@index([instanceName])
   @@index([phoneNumber])
   @@map("whatsapp_instances")
+}
+
+model Subscription {
+  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId             String             @unique @map("company_id") @db.Uuid
+  userId                String             @map("user_id") @db.Uuid
+  plan                  SubscriptionPlan   @default(MONTHLY)
+  status                SubscriptionStatus @default(TRIALING)
+  asaasCustomerId       String?            @map("asaas_customer_id")
+  asaasSubscriptionId   String?            @map("asaas_subscription_id")
+  asaasPaymentUrl       String?            @map("asaas_payment_url") @db.Text
+  trialEndsAt           DateTime           @map("trial_ends_at")
+  currentPeriodEnd      DateTime?          @map("current_period_end")
+  lastPaymentAt         DateTime?          @map("last_payment_at")
+  nextPaymentAt         DateTime?          @map("next_payment_at")
+  lastError             String?            @map("last_error") @db.Text
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([asaasCustomerId])
+  @@index([asaasSubscriptionId])
+  @@index([status])
+  @@map("subscriptions")
 }

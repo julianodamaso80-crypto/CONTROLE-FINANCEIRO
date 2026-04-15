@@ -8,6 +8,7 @@ import {
   Tags,
   FolderTree,
   Settings,
+  CreditCard,
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,7 @@ const navItems = [
   { href: '/transactions', label: 'Transações', icon: ArrowLeftRight },
   { href: '/segments', label: 'Segmentos', icon: Tags },
   { href: '/categories', label: 'Categorias', icon: FolderTree },
+  { href: '/plano', label: 'Meu Plano', icon: CreditCard },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 

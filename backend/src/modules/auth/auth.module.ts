@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -17,6 +18,7 @@ import { AuthService } from './auth.service';
       }),
     }),
     WhatsAppModule,
+    SubscriptionsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

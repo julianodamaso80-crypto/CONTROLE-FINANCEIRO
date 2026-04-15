@@ -5,6 +5,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { AppConfigModule } from './common/config/app-config.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { SubscriptionGuard } from './common/guards/subscription.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { CompaniesModule } from './modules/companies/companies.module';
 import { UsersModule } from './modules/users/users.module';
@@ -17,6 +18,8 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -41,10 +44,11 @@ import { AdminModule } from './modules/admin/admin.module';
     DashboardModule,
     WhatsAppModule,
     AdminModule,
+    SubscriptionsModule,
+    WebhooksModule,
   ],
   providers: [
-    // O ThrottlerGuard precisa vir ANTES do JwtAuthGuard pra limitar
-    // até tentativas de login não autenticadas
+    // Ordem importa: Throttler → JWT → Subscription
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
@@ -52,6 +56,10 @@ import { AdminModule } from './modules/admin/admin.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: SubscriptionGuard,
     },
   ],
 })

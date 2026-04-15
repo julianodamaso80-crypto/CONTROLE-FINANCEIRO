@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { normalizePhone } from '../../common/utils/phone.util';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -23,6 +24,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly whatsapp: WhatsAppService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -72,6 +74,21 @@ export class AuthService {
 
       return { company, user };
     });
+
+    // Cria subscription com trial de 1 dia (cria customer + subscription no Asaas)
+    await this.subscriptions
+      .createInitialSubscription({
+        companyId: result.company.id,
+        userId: result.user.id,
+        name: result.user.name,
+        email: result.user.email,
+        phone: normalizedPhone,
+      })
+      .catch((err) =>
+        this.logger.error(
+          `Falha ao criar subscription: ${err instanceof Error ? err.message : 'erro'}`,
+        ),
+      );
 
     this.whatsapp
       .sendWelcomeMessage(normalizedPhone, result.user.name)
