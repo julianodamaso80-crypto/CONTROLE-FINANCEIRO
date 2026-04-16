@@ -16,7 +16,19 @@ export class CategoriesService {
       where: { companyId },
       include: {
         parent: { select: { id: true, name: true } },
-        children: { select: { id: true, name: true, type: true, color: true, icon: true } },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            color: true,
+            icon: true,
+            parentCategoryId: true,
+            children: {
+              select: { id: true, name: true, type: true, color: true, icon: true, parentCategoryId: true },
+            },
+          },
+        },
       },
       orderBy: { name: 'asc' },
     });
@@ -27,7 +39,19 @@ export class CategoriesService {
       where: { id, companyId },
       include: {
         parent: { select: { id: true, name: true } },
-        children: { select: { id: true, name: true, type: true, color: true, icon: true } },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            color: true,
+            icon: true,
+            parentCategoryId: true,
+            children: {
+              select: { id: true, name: true, type: true, color: true, icon: true, parentCategoryId: true },
+            },
+          },
+        },
       },
     });
 

@@ -156,11 +156,29 @@ export function CategoryFormDialog({
   const isPending =
     createMutation.isPending || updateMutation.isPending;
 
-  // Filtra: só pais (sem parentCategoryId) + não a própria
-  const parentOptions =
-    categories?.filter(
-      (c) => c.id !== editingCategory?.id && !c.parentCategoryId,
-    ) ?? [];
+  // Mostra como possíveis pais: nível 0 (raiz) e nível 1 (sub).
+  // Nível 2 (sub da sub) NÃO pode ser pai — limite de 3 níveis.
+  const parentOptions: { id: string; label: string; type: string }[] = [];
+  for (const cat of categories ?? []) {
+    if (cat.id === editingCategory?.id) continue;
+    // Nível 0 (raiz)
+    if (!cat.parentCategoryId) {
+      parentOptions.push({ id: cat.id, label: cat.name, type: cat.type });
+      // Nível 1 (filhos diretos da raiz)
+      for (const child of cat.children ?? []) {
+        if (child.id === editingCategory?.id) continue;
+        // Só adiciona se não tem filhos (senão seria nível 2+)
+        const hasGrandchildren = (child.children ?? []).length > 0;
+        if (!hasGrandchildren) {
+          parentOptions.push({
+            id: child.id,
+            label: `${cat.name} > ${child.name}`,
+            type: child.type,
+          });
+        }
+      }
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -267,10 +285,10 @@ export function CategoryFormDialog({
                 <SelectValue placeholder="Nenhuma" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Nenhuma</SelectItem>
-                {parentOptions.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
+                <SelectItem value="__none__">Nenhuma (categoria raiz)</SelectItem>
+                {parentOptions.map((opt) => (
+                  <SelectItem key={opt.id} value={opt.id}>
+                    {opt.label}
                   </SelectItem>
                 ))}
               </SelectContent>

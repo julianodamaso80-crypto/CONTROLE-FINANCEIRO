@@ -42,22 +42,24 @@ const typeVariants: Record<string, 'success' | 'destructive' | 'secondary'> = {
 
 function CategoryRow({
   cat,
-  isChild,
+  depth,
   onEdit,
   onDelete,
   onAddChild,
 }: {
   cat: Category;
-  isChild?: boolean;
+  depth: number;
   onEdit: (c: Category) => void;
   onDelete: (id: string) => void;
   onAddChild?: (parentId: string) => void;
 }) {
+  const indent = depth > 0 ? `ml-${Math.min(depth * 6, 18)}` : '';
   return (
     <div
       className={`flex items-center justify-between rounded-md border px-4 py-3 ${
-        isChild ? 'ml-8 border-dashed' : ''
+        depth > 0 ? `${indent} border-dashed` : ''
       }`}
+      style={depth > 0 ? { marginLeft: `${depth * 1.5}rem` } : undefined}
     >
       <div className="flex items-center gap-3 min-w-0">
         <div
@@ -68,11 +70,6 @@ function CategoryRow({
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{cat.name}</p>
-          {isChild && cat.parent && (
-            <p className="truncate text-xs text-muted-foreground">
-              dentro de {cat.parent.name}
-            </p>
-          )}
         </div>
         <Badge
           variant={typeVariants[cat.type] ?? 'secondary'}
@@ -83,7 +80,8 @@ function CategoryRow({
       </div>
 
       <div className="flex items-center gap-1">
-        {!isChild && onAddChild && (
+        {/* Permite adicionar sub em nível 0 e 1 (max 3 níveis total) */}
+        {depth < 2 && onAddChild && (
           <Button
             variant="ghost"
             size="icon"
@@ -119,29 +117,31 @@ function CategoryRow({
   );
 }
 
-function CategoryGroup({
-  parent,
-  children,
+/** Renderiza uma categoria com seus filhos recursivamente (até 3 níveis). */
+function CategoryTree({
+  cat,
+  depth,
   onEdit,
   onDelete,
   onAddChild,
 }: {
-  parent: Category;
-  children: Category[];
+  cat: Category;
+  depth: number;
   onEdit: (c: Category) => void;
   onDelete: (id: string) => void;
   onAddChild: (parentId: string) => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(depth === 0);
+  const kids = cat.children ?? [];
 
   return (
     <div className="space-y-1">
       <button
         type="button"
         className="flex w-full items-center gap-1 text-left"
-        onClick={() => children.length > 0 && setExpanded((v) => !v)}
+        onClick={() => kids.length > 0 && setExpanded((v) => !v)}
       >
-        {children.length > 0 ? (
+        {kids.length > 0 ? (
           expanded ? (
             <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
           ) : (
@@ -152,7 +152,8 @@ function CategoryGroup({
         )}
         <div className="flex-1">
           <CategoryRow
-            cat={parent}
+            cat={cat}
+            depth={depth}
             onEdit={onEdit}
             onDelete={onDelete}
             onAddChild={onAddChild}
@@ -161,13 +162,14 @@ function CategoryGroup({
       </button>
 
       {expanded &&
-        children.map((child) => (
-          <CategoryRow
+        kids.map((child) => (
+          <CategoryTree
             key={child.id}
-            cat={child}
-            isChild
+            cat={child as Category}
+            depth={depth + 1}
             onEdit={onEdit}
             onDelete={onDelete}
+            onAddChild={onAddChild}
           />
         ))}
     </div>
@@ -296,10 +298,10 @@ export default function CategoriesPage() {
               </h2>
               <div className="space-y-2">
                 {expenseParents.map((parent) => (
-                  <CategoryGroup
+                  <CategoryTree
                     key={parent.id}
-                    parent={parent}
-                    children={childrenMap.get(parent.id) ?? []}
+                    cat={parent}
+                    depth={0}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onAddChild={handleAddChild}
@@ -318,10 +320,10 @@ export default function CategoriesPage() {
               </h2>
               <div className="space-y-2">
                 {incomeParents.map((parent) => (
-                  <CategoryGroup
+                  <CategoryTree
                     key={parent.id}
-                    parent={parent}
-                    children={childrenMap.get(parent.id) ?? []}
+                    cat={parent}
+                    depth={0}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onAddChild={handleAddChild}

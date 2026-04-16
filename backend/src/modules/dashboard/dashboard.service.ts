@@ -289,15 +289,30 @@ export class DashboardService {
               name: true,
               color: true,
               parentCategoryId: true,
-              parent: { select: { id: true, name: true, color: true } },
+              parent: {
+                select: {
+                  id: true,
+                  name: true,
+                  color: true,
+                  parentCategoryId: true,
+                  parent: { select: { id: true, name: true, color: true } },
+                },
+              },
             },
           })
         : [];
 
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-    // Agrupa por categoria pai (ou por ela mesma se não tem pai)
-    const byParent = new Map<
+    // Resolve a ROOT ancestor (sobe até a raiz — 3 níveis max)
+    function getRoot(cat: { id: string; name: string; color: string; parent?: { id: string; name: string; color: string; parent?: { id: string; name: string; color: string } | null } | null }): { id: string; name: string; color: string } {
+      if (cat.parent?.parent) return cat.parent.parent;
+      if (cat.parent) return cat.parent;
+      return cat;
+    }
+
+    // Agrupa por ROOT ancestor
+    const byRoot = new Map<
       string,
       { name: string; color: string; total: number }
     >();
@@ -305,22 +320,22 @@ export class DashboardService {
     for (const g of grouped) {
       const total = toMoney(g._sum.amount);
       const cat = g.categoryId ? categoryMap.get(g.categoryId) : undefined;
-      const parent = cat?.parent ?? cat;
-      const key = parent?.id ?? '__none__';
-      const existing = byParent.get(key);
+      const root = cat ? getRoot(cat) : undefined;
+      const key = root?.id ?? '__none__';
+      const existing = byRoot.get(key);
 
       if (existing) {
         existing.total += total;
       } else {
-        byParent.set(key, {
-          name: parent?.name ?? 'Sem categoria',
-          color: parent?.color ?? '#9ca3af',
+        byRoot.set(key, {
+          name: root?.name ?? 'Sem categoria',
+          color: root?.color ?? '#9ca3af',
           total,
         });
       }
     }
 
-    return Array.from(byParent.entries()).map(([id, item]) => ({
+    return Array.from(byRoot.entries()).map(([id, item]) => ({
       categoryId: id === '__none__' ? null : id,
       categoryName: item.name,
       categoryColor: item.color,

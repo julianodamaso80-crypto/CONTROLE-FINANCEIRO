@@ -552,20 +552,31 @@ export class WhatsAppService {
       this.categories.findAll(companyId),
     ]);
 
-    // Monta contexto com hierarquia pai > filhos pra IA reconhecer subcategorias
+    // Monta contexto com hierarquia 3 níveis: Pai > Sub > SubDaSub
     const categoryTree: string[] = [];
-    const parents = categoriesList.filter((c) => !c.parentCategoryId);
-    for (const parent of parents) {
-      const children = categoriesList.filter(
-        (c) => c.parentCategoryId === parent.id,
+    const roots = categoriesList.filter((c) => !c.parentCategoryId);
+    for (const root of roots) {
+      const level1 = categoriesList.filter(
+        (c) => c.parentCategoryId === root.id,
       );
-      if (children.length > 0) {
-        categoryTree.push(
-          `${parent.name} > ${children.map((c) => c.name).join(', ')}`,
-        );
-      } else {
-        categoryTree.push(parent.name);
+      if (level1.length === 0) {
+        categoryTree.push(root.name);
+        continue;
       }
+      const parts: string[] = [];
+      for (const sub of level1) {
+        const level2 = categoriesList.filter(
+          (c) => c.parentCategoryId === sub.id,
+        );
+        if (level2.length > 0) {
+          parts.push(
+            `${sub.name}(${level2.map((c) => c.name).join(',')})`,
+          );
+        } else {
+          parts.push(sub.name);
+        }
+      }
+      categoryTree.push(`${root.name} > ${parts.join(', ')}`);
     }
 
     const context = {

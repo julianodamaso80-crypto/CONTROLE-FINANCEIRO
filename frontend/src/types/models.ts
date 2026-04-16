@@ -36,6 +36,8 @@ export interface CategoryChild {
   type: CategoryType;
   color: string;
   icon: string;
+  parentCategoryId?: string | null;
+  children?: CategoryChild[];
 }
 
 export interface Category {
