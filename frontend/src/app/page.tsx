@@ -1,3 +1,4 @@
+import { HeroLightRays } from '@/components/shared/hero-light-rays';
 import Link from 'next/link';
 import {
   Zap,
@@ -123,22 +124,22 @@ export default function LandingPage() {
       </header>
 
       {/* ============ HERO ============ */}
-      <section className="relative overflow-hidden border-b-2 border-black bg-[#90ff6b]">
-        <div className="absolute inset-0 dot-pattern opacity-10" />
+      <section className="relative overflow-hidden border-b-2 border-black bg-[#171e19]">
+        <HeroLightRays />
         <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-24 lg:grid-cols-2 lg:py-32">
           {/* Left */}
-          <div className="flex flex-col items-center justify-center text-center">
-            <span className="mb-8 inline-flex items-center gap-2 rounded-full border-2 border-black bg-white px-5 py-2 font-cabinet text-sm font-bold">
-              <span className="h-2 w-2 rounded-full bg-black" />
+          <div className="flex flex-col items-center justify-center text-center text-white">
+            <span className="mb-8 inline-flex items-center gap-2 rounded-full border-2 border-[#90ff6b]/40 bg-[#90ff6b]/10 px-5 py-2 font-cabinet text-sm font-bold text-[#90ff6b]">
+              <span className="h-2 w-2 rounded-full bg-[#90ff6b]" />
               NOVO: IA Classificadora 2.0
             </span>
 
             <h1 className="text-balance font-cabinet text-6xl font-extrabold leading-[0.95] tracking-tighter sm:text-7xl lg:text-8xl">
               Seu caixa{' '}
-              <span className="text-stroke">vive</span> no WhatsApp.
+              <span style={{ WebkitTextStroke: '2px #90ff6b', color: 'transparent' }}>vive</span> no WhatsApp.
             </h1>
 
-            <p className="mt-8 max-w-xl text-balance text-xl font-medium text-black/80">
+            <p className="mt-8 max-w-xl text-balance text-xl font-medium text-white/70">
               Lance despesas e receitas mandando mensagem. A IA categoriza,
               o dashboard atualiza e o seu contador sorri. Zero planilha,
               zero atraso.
@@ -147,20 +148,22 @@ export default function LandingPage() {
             <div className="mt-10 flex flex-wrap justify-center gap-5">
               <Link
                 href="/register"
-                className="brutal-btn brutal-shadow inline-flex items-center gap-3 rounded-xl border-2 border-black bg-black px-8 py-5 font-cabinet text-lg font-extrabold text-white"
+                className="brutal-btn inline-flex items-center gap-3 rounded-xl border-2 border-[#90ff6b] bg-[#90ff6b] px-8 py-5 font-cabinet text-lg font-extrabold text-black"
+                style={{ boxShadow: '4px 4px 0px 0px #90ff6b' }}
               >
                 Começar grátis
                 <ArrowRight className="h-5 w-5" />
               </Link>
               <a
                 href="#how"
-                className="brutal-btn brutal-shadow-sm inline-flex items-center gap-3 rounded-xl border-2 border-black bg-white px-8 py-5 font-cabinet text-lg font-extrabold text-black"
+                className="brutal-btn inline-flex items-center gap-3 rounded-xl border-2 border-white/20 bg-white/5 px-8 py-5 font-cabinet text-lg font-extrabold text-white backdrop-blur-sm"
+                style={{ boxShadow: '4px 4px 0px 0px rgba(255,255,255,0.1)' }}
               >
                 Ver como funciona
               </a>
             </div>
 
-            <div className="mt-10 flex items-center gap-6 text-sm font-bold">
+            <div className="mt-10 flex items-center gap-6 text-sm font-bold text-[#90ff6b]">
               <div className="flex items-center gap-2">
                 <Check className="h-5 w-5" strokeWidth={3} />
                 14 dias grátis
