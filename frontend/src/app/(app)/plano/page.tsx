@@ -113,7 +113,7 @@ export default function PlanoPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
         title="Meu Plano"
         subtitle="Gerencie sua assinatura do Meu Caixa"

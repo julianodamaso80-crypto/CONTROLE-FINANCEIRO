@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -10,6 +11,8 @@ import {
   Settings,
   CreditCard,
   LogOut,
+  Menu,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
@@ -26,18 +29,16 @@ const navItems = [
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];
 
-export function Sidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
   return (
-    <aside className="flex h-screen w-[260px] flex-col border-r bg-card">
-      {/* Logo */}
-      <div className="p-6">
-        <FinnixLogo size="md" />
+    <>
+      <div className="p-4 md:p-6">
+        <FinnixLogo size="sm" />
       </div>
 
-      {/* Navegação */}
       <nav className="flex-1 space-y-1 px-3">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -45,6 +46,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
                 isActive
@@ -59,7 +61,6 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Rodapé com usuário */}
       <div className="p-4">
         <Separator className="mb-4" />
         <div className="flex items-center justify-between">
@@ -79,6 +80,62 @@ export function Sidebar() {
           </Button>
         </div>
       </div>
+    </>
+  );
+}
+
+export function MobileHeader() {
+  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Fecha ao navegar
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Bloqueia scroll do body quando aberto
+  useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [open]);
+
+  return (
+    <>
+      {/* Barra do topo — só aparece em telas < md */}
+      <header className="flex items-center justify-between border-b bg-card px-4 py-3 md:hidden">
+        <FinnixLogo size="sm" />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setOpen((v) => !v)}
+          aria-label="Menu"
+        >
+          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
+      </header>
+
+      {/* Overlay + Drawer */}
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50 md:hidden"
+            onClick={() => setOpen(false)}
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-card shadow-xl md:hidden">
+            <SidebarContent onNavigate={() => setOpen(false)} />
+          </aside>
+        </>
+      )}
+    </>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className="hidden h-screen w-[260px] flex-col border-r bg-card md:flex">
+      <SidebarContent />
     </aside>
   );
 }

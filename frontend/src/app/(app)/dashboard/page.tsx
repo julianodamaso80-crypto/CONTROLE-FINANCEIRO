@@ -100,12 +100,12 @@ export default function DashboardPage() {
           </>
         }
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Select
               value={period}
               onValueChange={(v) => setPeriod(v as PeriodOption)}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -120,7 +120,7 @@ export default function DashboardPage() {
               value={segmentId || '__all__'}
               onValueChange={(v) => setSegmentId(v === '__all__' ? '' : v)}
             >
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Todos os segmentos" />
               </SelectTrigger>
               <SelectContent>

@@ -47,15 +47,16 @@ export function TransactionTable({
   }
 
   return (
+    <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Data</TableHead>
           <TableHead>Descrição</TableHead>
-          <TableHead>Categoria</TableHead>
-          <TableHead>Segmento</TableHead>
+          <TableHead className="hidden sm:table-cell">Categoria</TableHead>
+          <TableHead className="hidden md:table-cell">Segmento</TableHead>
           <TableHead className="text-right">Valor</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead className="hidden sm:table-cell">Status</TableHead>
           <TableHead className="w-[50px]" />
         </TableRow>
       </TableHeader>
@@ -68,7 +69,7 @@ export function TransactionTable({
             <TableCell className="max-w-[250px] truncate font-medium">
               {tx.description}
             </TableCell>
-            <TableCell>
+            <TableCell className="hidden sm:table-cell">
               {tx.category ? (
                 <div className="flex items-center gap-1.5">
                   <div
@@ -81,7 +82,7 @@ export function TransactionTable({
                 <span className="text-sm text-muted-foreground">—</span>
               )}
             </TableCell>
-            <TableCell>
+            <TableCell className="hidden md:table-cell">
               {tx.segment ? (
                 <span className="text-sm">{tx.segment.name}</span>
               ) : (
@@ -96,7 +97,7 @@ export function TransactionTable({
               {tx.type === 'INCOME' ? '+' : '-'}
               {formatCurrency(tx.amount)}
             </TableCell>
-            <TableCell>
+            <TableCell className="hidden sm:table-cell">
               <Badge variant={statusVariants[tx.status] ?? 'secondary'}>
                 {statusLabels[tx.status] ?? tx.status}
               </Badge>
@@ -108,5 +109,6 @@ export function TransactionTable({
         ))}
       </TableBody>
     </Table>
+    </div>
   );
 }

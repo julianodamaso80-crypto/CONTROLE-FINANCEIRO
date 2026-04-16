@@ -26,10 +26,10 @@ export function PageHeader({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <h1 className="text-2xl font-semibold">{title}</h1>
-          <div className="mt-1 flex items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl font-semibold sm:text-2xl">{title}</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             <p className="text-sm text-muted-foreground">{subtitle}</p>
             <button
               type="button"
