@@ -19,13 +19,19 @@ export function formatDate(
 ): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   if (pattern === 'short') {
-    return d.toLocaleDateString('pt-BR');
+    return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
   }
   return d.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
+    timeZone: 'America/Sao_Paulo',
   });
+}
+
+export function formatDateTime(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
 export function formatDateInput(date: Date = new Date()): string {

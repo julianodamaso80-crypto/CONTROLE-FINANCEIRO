@@ -62,7 +62,7 @@ function fmtBRL(n: number) {
 }
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('pt-BR');
+  return new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
 function statusColor(status: string) {

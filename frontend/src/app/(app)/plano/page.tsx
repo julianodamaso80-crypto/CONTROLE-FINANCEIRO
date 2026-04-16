@@ -171,7 +171,7 @@ export default function PlanoPage() {
             <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
               🎁 <strong>{sub.trialDaysLeft} dia{sub.trialDaysLeft !== 1 ? 's' : ''}</strong>{' '}
               de período gratuito restante. Termina em{' '}
-              {new Date(sub.trialEndsAt).toLocaleString('pt-BR')}.
+              {new Date(sub.trialEndsAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.
             </div>
           )}
 
@@ -185,7 +185,7 @@ export default function PlanoPage() {
           {sub.currentPeriodEnd && !sub.blocked && sub.status === 'ACTIVE' && (
             <p className="text-sm text-muted-foreground">
               Próxima cobrança em{' '}
-              {new Date(sub.currentPeriodEnd).toLocaleDateString('pt-BR')}
+              {new Date(sub.currentPeriodEnd).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
             </p>
           )}
 
