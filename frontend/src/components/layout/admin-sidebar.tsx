@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
-  Building2,
   Users,
   MessageCircle,
   LogOut,
@@ -17,7 +16,6 @@ import { Separator } from '@/components/ui/separator';
 
 const navItems = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-  { href: '/admin/empresas', label: 'Empresas', icon: Building2 },
   { href: '/admin/usuarios', label: 'Usuários', icon: Users },
   { href: '/admin/whatsapp', label: 'WhatsApp', icon: MessageCircle },
 ];

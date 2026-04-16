@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Building2,
   Users,
   ArrowLeftRight,
   TrendingUp,
@@ -102,12 +101,7 @@ export default function AdminOverviewPage() {
 
   const mainCards = [
     {
-      label: 'Empresas',
-      value: data.totals.companies.toString(),
-      icon: Building2,
-    },
-    {
-      label: 'Usuários',
+      label: 'Clientes',
       value: data.totals.users.toString(),
       icon: Users,
     },
@@ -229,15 +223,15 @@ export default function AdminOverviewPage() {
         </div>
       </div>
 
-      {/* Empresas recentes */}
+      {/* Clientes recentes */}
       <Card>
         <CardHeader>
-          <CardTitle>Empresas recentes</CardTitle>
+          <CardTitle>Clientes recentes</CardTitle>
         </CardHeader>
         <CardContent>
           {data.recentCompanies.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Nenhuma empresa ainda.
+              Nenhum cliente ainda.
             </p>
           ) : (
             <div className="divide-y">
@@ -258,10 +252,7 @@ export default function AdminOverviewPage() {
                     </span>
                   </div>
                   <div className="text-right text-xs text-muted-foreground">
-                    <p>
-                      {c._count.users} usuários · {c._count.transactions}{' '}
-                      transações
-                    </p>
+                    <p>{c._count.transactions} transações</p>
                     <p>Desde {formatDate(c.createdAt)}</p>
                   </div>
                 </div>
