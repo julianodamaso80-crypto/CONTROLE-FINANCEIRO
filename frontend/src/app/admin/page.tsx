@@ -1,7 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Building2, Users, ArrowLeftRight, TrendingUp } from 'lucide-react';
+import {
+  Building2,
+  Users,
+  ArrowLeftRight,
+  TrendingUp,
+  Clock,
+  CreditCard,
+  CalendarCheck,
+  Infinity,
+  AlertTriangle,
+} from 'lucide-react';
 import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ApiResponse } from '@/types/api';
@@ -13,6 +23,15 @@ interface AdminOverview {
     transactions: number;
     totalIncome: string;
     totalExpense: string;
+  };
+  subscriptionStats: {
+    trialing: number;
+    active: number;
+    pastDue: number;
+    canceled: number;
+    lifetime: number;
+    monthly: number;
+    annual: number;
   };
   recentCompanies: Array<{
     id: string;
@@ -31,6 +50,19 @@ function formatCurrency(value: string): string {
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('pt-BR');
+}
+
+function planBadge(plan: string) {
+  switch (plan) {
+    case 'BUSINESS':
+      return 'bg-purple-500/20 text-purple-400';
+    case 'PRO':
+      return 'bg-blue-500/20 text-blue-400';
+    case 'STARTER':
+      return 'bg-green-500/20 text-green-400';
+    default:
+      return 'bg-zinc-500/20 text-zinc-400';
+  }
 }
 
 export default function AdminOverviewPage() {
@@ -61,7 +93,7 @@ export default function AdminOverviewPage() {
     );
   }
 
-  const cards = [
+  const mainCards = [
     {
       label: 'Empresas',
       value: data.totals.companies.toString(),
@@ -84,6 +116,40 @@ export default function AdminOverviewPage() {
     },
   ];
 
+  const ss = data.subscriptionStats;
+  const subCards = [
+    {
+      label: 'Em trial',
+      value: ss.trialing,
+      icon: Clock,
+      color: 'text-emerald-400',
+    },
+    {
+      label: 'Mensal ativo',
+      value: ss.monthly,
+      icon: CreditCard,
+      color: 'text-green-400',
+    },
+    {
+      label: 'Anual ativo',
+      value: ss.annual,
+      icon: CalendarCheck,
+      color: 'text-blue-400',
+    },
+    {
+      label: 'Vitalício',
+      value: ss.lifetime,
+      icon: Infinity,
+      color: 'text-purple-400',
+    },
+    {
+      label: 'Pendente',
+      value: ss.pastDue,
+      icon: AlertTriangle,
+      color: 'text-amber-400',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -93,8 +159,9 @@ export default function AdminOverviewPage() {
         </p>
       </div>
 
+      {/* Métricas gerais */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {cards.map((card) => (
+        {mainCards.map((card) => (
           <Card key={card.label}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -109,6 +176,27 @@ export default function AdminOverviewPage() {
         ))}
       </div>
 
+      {/* Assinaturas */}
+      <div>
+        <h2 className="mb-3 text-lg font-semibold">Assinaturas</h2>
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+          {subCards.map((card) => (
+            <Card key={card.label}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {card.label}
+                </CardTitle>
+                <card.icon className={`h-4 w-4 ${card.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{card.value}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Empresas recentes */}
       <Card>
         <CardHeader>
           <CardTitle>Empresas recentes</CardTitle>
@@ -125,9 +213,16 @@ export default function AdminOverviewPage() {
                   key={c.id}
                   className="flex items-center justify-between py-3"
                 >
-                  <div>
-                    <p className="font-medium">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">{c.email}</p>
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="font-medium">{c.name}</p>
+                      <p className="text-xs text-muted-foreground">{c.email}</p>
+                    </div>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${planBadge(c.plan)}`}
+                    >
+                      {c.plan}
+                    </span>
                   </div>
                   <div className="text-right text-xs text-muted-foreground">
                     <p>

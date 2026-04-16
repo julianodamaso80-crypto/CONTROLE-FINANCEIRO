@@ -1,4 +1,12 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+} from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -18,5 +26,23 @@ export class AdminController {
   @Get('companies')
   listCompanies() {
     return this.adminService.listCompanies();
+  }
+
+  @Get('users')
+  listUsers() {
+    return this.adminService.listUsers();
+  }
+
+  @Patch('users/:id/access')
+  updateAccess(
+    @Param('id') id: string,
+    @Body() body: { accessType: 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME' },
+  ) {
+    return this.adminService.updateUserAccess(id, body.accessType);
+  }
+
+  @Delete('users/:id')
+  deleteUser(@Param('id') id: string) {
+    return this.adminService.deleteUser(id);
   }
 }

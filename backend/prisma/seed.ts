@@ -17,19 +17,19 @@ async function main() {
   });
   console.log(`✅ Empresa criada: ${company.name}`);
 
-  // 2. Usuário admin
-  const passwordHash = await bcrypt.hash('senha123', 10);
+  // 2. Único usuário — SUPER_ADMIN
+  const passwordHash = await bcrypt.hash('160807gl', 10);
   const user = await prisma.user.create({
     data: {
       companyId: company.id,
-      name: 'Administrador',
-      email: 'admin@teste.com',
+      name: 'Juliano Damaso',
+      email: 'julianodamaso80@gmail.com',
       passwordHash,
-      role: 'ADMIN',
+      role: 'SUPER_ADMIN',
       phone: '(11) 99999-0001',
     },
   });
-  console.log(`✅ Usuário admin criado: ${user.email} / senha123`);
+  console.log(`✅ Usuário SUPER_ADMIN criado: ${user.email}`);
 
   // 3. Categorias
   const categoriesData = [
@@ -278,7 +278,7 @@ async function main() {
   console.log(`   💸 Total despesas: R$ ${totalExpense.toFixed(2)}`);
   console.log(`   📊 Balanço: R$ ${(totalIncome - totalExpense).toFixed(2)}`);
   console.log('\n🎉 Seed concluído com sucesso!');
-  console.log('   Login: admin@teste.com / senha123');
+  console.log('   Login: julianodamaso80@gmail.com');
 }
 
 main()

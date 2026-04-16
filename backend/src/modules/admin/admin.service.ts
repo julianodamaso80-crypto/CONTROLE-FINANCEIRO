@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @Injectable()
@@ -13,6 +13,7 @@ export class AdminService {
       incomeAgg,
       expenseAgg,
       recentCompanies,
+      subscriptionStats,
     ] = await Promise.all([
       this.prisma.company.count(),
       this.prisma.user.count(),
@@ -37,6 +38,7 @@ export class AdminService {
           _count: { select: { users: true, transactions: true } },
         },
       }),
+      this.getSubscriptionStats(),
     ]);
 
     return {
@@ -47,8 +49,27 @@ export class AdminService {
         totalIncome: incomeAgg._sum.amount?.toString() ?? '0',
         totalExpense: expenseAgg._sum.amount?.toString() ?? '0',
       },
+      subscriptionStats,
       recentCompanies,
     };
+  }
+
+  private async getSubscriptionStats() {
+    const [trialing, active, pastDue, canceled, lifetime] = await Promise.all([
+      this.prisma.subscription.count({ where: { status: 'TRIALING' } }),
+      this.prisma.subscription.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.subscription.count({ where: { status: 'PAST_DUE' } }),
+      this.prisma.subscription.count({ where: { status: 'CANCELED' } }),
+      this.prisma.company.count({ where: { plan: 'BUSINESS' } }),
+    ]);
+    const monthly = await this.prisma.subscription.count({
+      where: { status: 'ACTIVE', plan: 'MONTHLY' },
+    });
+    const annual = await this.prisma.subscription.count({
+      where: { status: 'ACTIVE', plan: 'ANNUAL' },
+    });
+
+    return { trialing, active, pastDue, canceled, lifetime, monthly, annual };
   }
 
   async listCompanies() {
@@ -71,5 +92,252 @@ export class AdminService {
         },
       },
     });
+  }
+
+  async listUsers() {
+    const users = await this.prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        company: {
+          select: {
+            id: true,
+            name: true,
+            plan: true,
+            subscription: {
+              select: {
+                plan: true,
+                status: true,
+                trialEndsAt: true,
+                currentPeriodEnd: true,
+                nextPaymentAt: true,
+                lastPaymentAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return users.map((u) => {
+      const sub = u.company.subscription;
+      let accessLabel = 'Sem assinatura';
+      if (u.company.plan === 'BUSINESS') {
+        accessLabel = 'Vitalício';
+      } else if (sub) {
+        if (sub.status === 'TRIALING') {
+          const daysLeft = Math.max(
+            0,
+            Math.ceil(
+              (new Date(sub.trialEndsAt).getTime() - Date.now()) /
+                (1000 * 60 * 60 * 24),
+            ),
+          );
+          accessLabel = `Trial (${daysLeft}d restante)`;
+        } else if (sub.status === 'ACTIVE') {
+          accessLabel =
+            sub.plan === 'MONTHLY' ? 'Mensal ativo' : 'Anual ativo';
+        } else if (sub.status === 'PAST_DUE') {
+          accessLabel = 'Pagamento pendente';
+        } else if (sub.status === 'CANCELED') {
+          accessLabel = 'Cancelado';
+        } else if (sub.status === 'EXPIRED') {
+          accessLabel = 'Expirado';
+        }
+      }
+
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        role: u.role,
+        isActive: u.isActive,
+        createdAt: u.createdAt,
+        companyName: u.company.name,
+        companyPlan: u.company.plan,
+        subscriptionStatus: sub?.status ?? null,
+        subscriptionPlan: sub?.plan ?? null,
+        trialEndsAt: sub?.trialEndsAt ?? null,
+        currentPeriodEnd: sub?.currentPeriodEnd ?? null,
+        lastPaymentAt: sub?.lastPaymentAt ?? null,
+        accessLabel,
+      };
+    });
+  }
+
+  async updateUserAccess(
+    userId: string,
+    accessType: 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME',
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, companyId: true },
+    });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    if (accessType === 'LIFETIME') {
+      // Set company plan to BUSINESS (used as lifetime flag)
+      await this.prisma.company.update({
+        where: { id: user.companyId },
+        data: { plan: 'BUSINESS' },
+      });
+      // If subscription exists, mark ACTIVE
+      await this.prisma.subscription.updateMany({
+        where: { companyId: user.companyId },
+        data: { status: 'ACTIVE' },
+      });
+      return { message: 'Acesso vitalício concedido' };
+    }
+
+    if (accessType === 'TRIAL') {
+      // Reset trial: 7 days
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + 7);
+
+      await this.prisma.company.update({
+        where: { id: user.companyId },
+        data: { plan: 'FREE' },
+      });
+
+      const existing = await this.prisma.subscription.findUnique({
+        where: { companyId: user.companyId },
+      });
+      if (existing) {
+        await this.prisma.subscription.update({
+          where: { companyId: user.companyId },
+          data: { status: 'TRIALING', trialEndsAt: trialEnd },
+        });
+      } else {
+        await this.prisma.subscription.create({
+          data: {
+            companyId: user.companyId,
+            userId: user.id,
+            plan: 'MONTHLY',
+            status: 'TRIALING',
+            trialEndsAt: trialEnd,
+          },
+        });
+      }
+      return { message: 'Trial de 7 dias concedido' };
+    }
+
+    // MONTHLY or ANNUAL — activate subscription
+    const plan = accessType === 'MONTHLY' ? 'MONTHLY' : 'ANNUAL';
+    const periodEnd = new Date();
+    if (accessType === 'MONTHLY') {
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+    } else {
+      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+    }
+
+    await this.prisma.company.update({
+      where: { id: user.companyId },
+      data: { plan: 'STARTER' },
+    });
+
+    const existing = await this.prisma.subscription.findUnique({
+      where: { companyId: user.companyId },
+    });
+    if (existing) {
+      await this.prisma.subscription.update({
+        where: { companyId: user.companyId },
+        data: {
+          plan,
+          status: 'ACTIVE',
+          currentPeriodEnd: periodEnd,
+          lastPaymentAt: new Date(),
+        },
+      });
+    } else {
+      await this.prisma.subscription.create({
+        data: {
+          companyId: user.companyId,
+          userId: user.id,
+          plan,
+          status: 'ACTIVE',
+          trialEndsAt: new Date(),
+          currentPeriodEnd: periodEnd,
+          lastPaymentAt: new Date(),
+        },
+      });
+    }
+
+    return {
+      message: `Plano ${accessType === 'MONTHLY' ? 'mensal' : 'anual'} ativado`,
+    };
+  }
+
+  async deleteUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, companyId: true, role: true },
+    });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    if (user.role === 'SUPER_ADMIN') {
+      throw new NotFoundException('Não é possível excluir o SUPER_ADMIN');
+    }
+
+    // Delete all related data for the user's company
+    await this.prisma.$transaction([
+      this.prisma.whatsAppMessage.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.whatsAppInstance.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.accountTransaction.deleteMany({
+        where: {
+          transaction: { companyId: user.companyId },
+        },
+      }),
+      this.prisma.transaction.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.passwordResetCode.deleteMany({
+        where: { userId: user.id },
+      }),
+      this.prisma.subscription.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.bankAccount.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.category.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.segment.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.client.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.supplier.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.budget.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.alert.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.investment.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.user.deleteMany({
+        where: { companyId: user.companyId },
+      }),
+      this.prisma.company.delete({
+        where: { id: user.companyId },
+      }),
+    ]);
+
+    return { message: 'Usuário e empresa excluídos' };
   }
 }
