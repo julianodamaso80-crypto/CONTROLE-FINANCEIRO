@@ -551,9 +551,25 @@ export class WhatsAppService {
       this.categories.findAll(companyId),
     ]);
 
+    // Monta contexto com hierarquia pai > filhos pra IA reconhecer subcategorias
+    const categoryTree: string[] = [];
+    const parents = categoriesList.filter((c) => !c.parentCategoryId);
+    for (const parent of parents) {
+      const children = categoriesList.filter(
+        (c) => c.parentCategoryId === parent.id,
+      );
+      if (children.length > 0) {
+        categoryTree.push(
+          `${parent.name} > ${children.map((c) => c.name).join(', ')}`,
+        );
+      } else {
+        categoryTree.push(parent.name);
+      }
+    }
+
     const context = {
       segments: segmentsList.map((s) => s.name),
-      categories: categoriesList.map((c) => c.name),
+      categories: categoryTree,
     };
 
     let interpretation;

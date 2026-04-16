@@ -263,7 +263,11 @@ export class DashboardService {
       }));
   }
 
-  /** Constrói o gráfico de pizza por categoria de despesa */
+  /**
+   * Constrói o gráfico de pizza por CATEGORIA PAI de despesa.
+   * Se uma transação usa uma subcategoria, soma no pai.
+   * Isso dá uma visão mais limpa no gráfico.
+   */
   private async buildChartByCategory(
     companyId: string,
     grouped: Array<{
@@ -280,32 +284,57 @@ export class DashboardService {
       categoryIds.length > 0
         ? await this.prisma.category.findMany({
             where: { id: { in: categoryIds }, companyId },
-            select: { id: true, name: true, color: true },
+            select: {
+              id: true,
+              name: true,
+              color: true,
+              parentCategoryId: true,
+              parent: { select: { id: true, name: true, color: true } },
+            },
           })
         : [];
 
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-    return grouped.map((g) => {
+    // Agrupa por categoria pai (ou por ela mesma se não tem pai)
+    const byParent = new Map<
+      string,
+      { name: string; color: string; total: number }
+    >();
+
+    for (const g of grouped) {
       const total = toMoney(g._sum.amount);
       const cat = g.categoryId ? categoryMap.get(g.categoryId) : undefined;
+      const parent = cat?.parent ?? cat;
+      const key = parent?.id ?? '__none__';
+      const existing = byParent.get(key);
 
-      return {
-        categoryId: g.categoryId,
-        categoryName: cat?.name ?? 'Sem categoria',
-        categoryColor: cat?.color ?? '#9ca3af',
-        total,
-        percentage:
-          totalExpense > 0
-            ? Number(
-                new Decimal(total)
-                  .div(new Decimal(totalExpense))
-                  .mul(100)
-                  .toFixed(2),
-              )
-            : 0,
-      };
-    });
+      if (existing) {
+        existing.total += total;
+      } else {
+        byParent.set(key, {
+          name: parent?.name ?? 'Sem categoria',
+          color: parent?.color ?? '#9ca3af',
+          total,
+        });
+      }
+    }
+
+    return Array.from(byParent.entries()).map(([id, item]) => ({
+      categoryId: id === '__none__' ? null : id,
+      categoryName: item.name,
+      categoryColor: item.color,
+      total: item.total,
+      percentage:
+        totalExpense > 0
+          ? Number(
+              new Decimal(item.total)
+                .div(new Decimal(totalExpense))
+                .mul(100)
+                .toFixed(2),
+            )
+          : 0,
+    }));
   }
 
   /** Constrói o agrupamento por segmento */

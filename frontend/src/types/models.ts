@@ -30,6 +30,14 @@ export interface Company {
   whatsappNumber?: string | null;
 }
 
+export interface CategoryChild {
+  id: string;
+  name: string;
+  type: CategoryType;
+  color: string;
+  icon: string;
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -37,6 +45,8 @@ export interface Category {
   color: string;
   icon: string;
   parentCategoryId?: string | null;
+  parent?: { id: string; name: string } | null;
+  children?: CategoryChild[];
 }
 
 export interface Segment {

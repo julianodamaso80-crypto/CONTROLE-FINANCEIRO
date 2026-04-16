@@ -1,12 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { FolderTree, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  FolderTree,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { useCategories, useDeleteCategory } from '@/hooks/use-categories';
 import type { Category } from '@/types/models';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
@@ -29,22 +36,159 @@ const typeVariants: Record<string, 'success' | 'destructive' | 'secondary'> = {
   BOTH: 'secondary',
 };
 
+function CategoryRow({
+  cat,
+  isChild,
+  onEdit,
+  onDelete,
+  onAddChild,
+}: {
+  cat: Category;
+  isChild?: boolean;
+  onEdit: (c: Category) => void;
+  onDelete: (id: string) => void;
+  onAddChild?: (parentId: string) => void;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between rounded-md border px-4 py-3 ${
+        isChild ? 'ml-8 border-dashed' : ''
+      }`}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-xs font-bold text-black"
+          style={{ backgroundColor: cat.color }}
+        >
+          {cat.name.charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{cat.name}</p>
+          {isChild && cat.parent && (
+            <p className="truncate text-xs text-muted-foreground">
+              dentro de {cat.parent.name}
+            </p>
+          )}
+        </div>
+        <Badge
+          variant={typeVariants[cat.type] ?? 'secondary'}
+          className="shrink-0"
+        >
+          {typeLabels[cat.type] ?? cat.type}
+        </Badge>
+      </div>
+
+      <div className="flex items-center gap-1">
+        {!isChild && onAddChild && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title="Adicionar subcategoria"
+            onClick={() => onAddChild(cat.id)}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit(cat)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() => onDelete(cat.id)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+}
+
+function CategoryGroup({
+  parent,
+  children,
+  onEdit,
+  onDelete,
+  onAddChild,
+}: {
+  parent: Category;
+  children: Category[];
+  onEdit: (c: Category) => void;
+  onDelete: (id: string) => void;
+  onAddChild: (parentId: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        className="flex w-full items-center gap-1 text-left"
+        onClick={() => children.length > 0 && setExpanded((v) => !v)}
+      >
+        {children.length > 0 ? (
+          expanded ? (
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )
+        ) : (
+          <div className="w-4" />
+        )}
+        <div className="flex-1">
+          <CategoryRow
+            cat={parent}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onAddChild={onAddChild}
+          />
+        </div>
+      </button>
+
+      {expanded &&
+        children.map((child) => (
+          <CategoryRow
+            key={child.id}
+            cat={child}
+            isChild
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
+    </div>
+  );
+}
+
 export default function CategoriesPage() {
   const { data: categories, isLoading } = useCategories();
   const deleteMutation = useDeleteCategory();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(
-    null,
-  );
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [defaultParentId, setDefaultParentId] = useState<string | undefined>();
 
   const handleEdit = (category: Category) => {
+    setDefaultParentId(undefined);
     setEditingCategory(category);
     setDialogOpen(true);
   };
 
   const handleOpenChange = (open: boolean) => {
     setDialogOpen(open);
-    if (!open) setEditingCategory(null);
+    if (!open) {
+      setEditingCategory(null);
+      setDefaultParentId(undefined);
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -53,40 +197,66 @@ export default function CategoriesPage() {
     }
   };
 
+  const handleAddChild = (parentId: string) => {
+    setEditingCategory(null);
+    setDefaultParentId(parentId);
+    setDialogOpen(true);
+  };
+
+  const handleNewCategory = () => {
+    setDefaultParentId(undefined);
+    setEditingCategory(null);
+    setDialogOpen(true);
+  };
+
+  // Organiza em árvore: pais (sem parent) + filhos agrupados
+  const parents = categories?.filter((c) => !c.parentCategoryId) ?? [];
+  const childrenMap = new Map<string, Category[]>();
+  categories
+    ?.filter((c) => c.parentCategoryId)
+    .forEach((c) => {
+      const key = c.parentCategoryId!;
+      const arr = childrenMap.get(key) ?? [];
+      arr.push(c);
+      childrenMap.set(key, arr);
+    });
+
+  // Separa por tipo pra organizar melhor
+  const expenseParents = parents.filter(
+    (c) => c.type === 'EXPENSE' || c.type === 'BOTH',
+  );
+  const incomeParents = parents.filter(
+    (c) => c.type === 'INCOME' || c.type === 'BOTH',
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Categorias"
-        subtitle="Organize receitas e despesas em categorias"
-        helpTitle="Pra que servem as categorias?"
+        subtitle="Organize receitas e despesas com categorias pai e subcategorias"
+        helpTitle="Como funciona a hierarquia?"
         helpBody={
           <>
             <p>
-              Categorias classificam cada lançamento pra você entender pra
-              onde o dinheiro está indo. No relatório do mês, você vê
-              quanto foi pra <strong>Alimentação</strong>, quanto pra{' '}
-              <strong>Transporte</strong>, etc.
+              <strong>Categorias pai</strong> agrupam o geral (ex: Insumos,
+              Tributos, Despesas Fixas).{' '}
+              <strong>Subcategorias</strong> detalham (ex: Bobina, Tinta
+              dentro de Insumos).
             </p>
             <p className="pt-1">
-              <strong>Exemplos de categorias de despesa:</strong> Alimentação,
-              Transporte, Internet, Aluguel, Energia, Marketing, Software,
-              Funcionários, Fornecedores, Impostos.
-            </p>
-            <p>
-              <strong>Exemplos de categorias de receita:</strong> Vendas,
-              Serviços, Comissões, Assinaturas, Outros.
+              No relatório, o gráfico de pizza mostra as categorias pai.
+              Ao clicar, você vê o detalhamento por subcategoria. No
+              WhatsApp, o bot reconhece:{' '}
+              <em>&quot;comprei bobina 500&quot;</em> → Insumos {'>'} Bobina.
             </p>
             <p className="pt-1">
-              Quando você registrar uma despesa pelo WhatsApp (ex:{' '}
-              <em>&quot;gastei 50 no uber&quot;</em>), o bot tenta casar com
-              a categoria mais próxima que você tem cadastrada aqui. Por
-              isso vale a pena criar 5-10 categorias que fazem sentido pro
-              seu negócio.
+              Use o botão <strong>+</strong> ao lado de uma categoria
+              pai pra adicionar subcategorias rapidamente.
             </p>
           </>
         }
         actions={
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={handleNewCategory}>
             <Plus className="mr-2 h-4 w-4" />
             Nova Categoria
           </Button>
@@ -94,63 +264,56 @@ export default function CategoriesPage() {
       />
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[100px]" />
+            <Skeleton key={i} className="h-[56px]" />
           ))}
         </div>
       ) : categories && categories.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {categories.map((cat) => (
-            <Card key={cat.id}>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-black"
-                      style={{ backgroundColor: cat.color }}
-                    >
-                      {cat.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-medium">{cat.name}</p>
-                      <Badge
-                        variant={typeVariants[cat.type] ?? 'secondary'}
-                        className="mt-1"
-                      >
-                        {typeLabels[cat.type] ?? cat.type}
-                      </Badge>
-                    </div>
-                  </div>
+        <div className="space-y-8">
+          {/* Despesas */}
+          {expenseParents.length > 0 && (
+            <div className="space-y-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                <span className="h-2 w-2 rounded-full bg-red-400" />
+                Despesas
+              </h2>
+              <div className="space-y-2">
+                {expenseParents.map((parent) => (
+                  <CategoryGroup
+                    key={parent.id}
+                    parent={parent}
+                    children={childrenMap.get(parent.id) ?? []}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onAddChild={handleAddChild}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(cat)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => handleDelete(cat.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {/* Receitas */}
+          {incomeParents.length > 0 && (
+            <div className="space-y-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                <span className="h-2 w-2 rounded-full bg-green-400" />
+                Receitas
+              </h2>
+              <div className="space-y-2">
+                {incomeParents.map((parent) => (
+                  <CategoryGroup
+                    key={parent.id}
+                    parent={parent}
+                    children={childrenMap.get(parent.id) ?? []}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onAddChild={handleAddChild}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
@@ -158,10 +321,11 @@ export default function CategoriesPage() {
           <h3 className="mb-2 text-lg font-medium">
             Nenhuma categoria criada
           </h3>
-          <p className="mb-6 text-sm text-muted-foreground">
-            Crie categorias para organizar suas transações
+          <p className="mb-6 max-w-md text-center text-sm text-muted-foreground">
+            Crie categorias pra organizar suas transações. O sistema já
+            cria as mais comuns no cadastro, mas você pode personalizar.
           </p>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={handleNewCategory}>
             <Plus className="mr-2 h-4 w-4" />
             Criar primeira categoria
           </Button>
@@ -172,6 +336,7 @@ export default function CategoriesPage() {
         open={dialogOpen}
         onOpenChange={handleOpenChange}
         editingCategory={editingCategory}
+        defaultParentId={defaultParentId}
       />
     </div>
   );

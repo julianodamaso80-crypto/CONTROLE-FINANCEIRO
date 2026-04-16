@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { normalizePhone } from '../../common/utils/phone.util';
+import { seedDefaultCategories } from '../categories/categories-seed';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -74,6 +75,14 @@ export class AuthService {
 
       return { company, user };
     });
+
+    // Seed de categorias padrão pra empresa nova
+    seedDefaultCategories(this.prisma as never, result.company.id).catch(
+      (err) =>
+        this.logger.warn(
+          `Falha ao criar categorias padrão: ${err instanceof Error ? err.message : 'erro'}`,
+        ),
+    );
 
     // Cria subscription com trial de 1 dia (cria customer + subscription no Asaas)
     await this.subscriptions

@@ -359,13 +359,17 @@ INTENTS VÁLIDAS (qualquer outra coisa = "unknown"):
 
 CONTEXTO DA EMPRESA (use SOMENTE estes valores para matchear category/segment):
 - Segmentos cadastrados: ${segmentos}
-- Categorias cadastradas: ${categorias}
+- Categorias cadastradas (formato "Pai > Sub1, Sub2"): ${categorias}
 
 REGRAS DE PARSING:
 - "k" ou "mil" = x1000 ("2k" = 2000, "1.5k" = 1500)
 - Valores aceitos: "50", "R$50", "50 reais", "50,00", "R$ 1.500,00"
 - Formato direto: "entrada 120 shopee" = receita de 120, descrição "shopee"
-- Matchear categoria/segmento pelo nome mais próximo dos cadastrados acima
+- CATEGORIAS HIERÁRQUICAS: as categorias acima usam "Pai > Sub1, Sub2".
+  * Se a palavra mencionada matchear uma SUBCATEGORIA (ex: "bobina"), retorne o nome da subcategoria no campo "category" (ex: "Bobina"). O backend resolve o parentId automaticamente.
+  * Se matchear só o PAI (ex: "insumos"), retorne o nome do pai.
+  * Se não encontrar match, retorne null.
+- Matchear segmento pelo nome mais próximo dos cadastrados
 - Se não encontrar match exato, retorne null
 - Datas relativas ("hoje", "ontem", "segunda") → ISO YYYY-MM-DD
 - Sem data mencionada → null

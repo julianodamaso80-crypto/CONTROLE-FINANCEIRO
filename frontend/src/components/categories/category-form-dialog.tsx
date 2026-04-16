@@ -30,14 +30,18 @@ import {
 } from '@/components/ui/select';
 
 const presetColors = [
-  '#22c55e',
-  '#3b82f6',
-  '#f97316',
-  '#eab308',
-  '#ec4899',
-  '#8b5cf6',
-  '#ef4444',
-  '#06b6d4',
+  // Verdes
+  '#22c55e', '#16a34a', '#4ade80',
+  // Azuis
+  '#3b82f6', '#2563eb', '#06b6d4', '#0ea5e9',
+  // Laranjas / Amarelos
+  '#f97316', '#f59e0b', '#eab308',
+  // Rosas / Roxos
+  '#ec4899', '#d946ef', '#8b5cf6', '#7c3aed',
+  // Vermelhos
+  '#ef4444', '#dc2626', '#f87171',
+  // Neutros
+  '#6b7280', '#78716c', '#a1a1aa',
 ];
 
 const iconOptions = [
@@ -74,12 +78,14 @@ interface CategoryFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingCategory?: Category | null;
+  defaultParentId?: string;
 }
 
 export function CategoryFormDialog({
   open,
   onOpenChange,
   editingCategory,
+  defaultParentId,
 }: CategoryFormDialogProps) {
   const { data: categories } = useCategories();
   const createMutation = useCreateCategory();
@@ -112,15 +118,19 @@ export function CategoryFormDialog({
         parentCategoryId: editingCategory.parentCategoryId ?? '',
       });
     } else {
+      // Se está criando subcategoria, herda tipo do pai
+      const parentCat = defaultParentId
+        ? categories?.find((c) => c.id === defaultParentId)
+        : undefined;
       reset({
         name: '',
-        type: 'EXPENSE',
-        color: '#22c55e',
+        type: parentCat?.type ?? 'EXPENSE',
+        color: parentCat?.color ?? '#22c55e',
         icon: 'trending-up',
-        parentCategoryId: '',
+        parentCategoryId: defaultParentId ?? '',
       });
     }
-  }, [editingCategory, reset]);
+  }, [editingCategory, defaultParentId, categories, reset]);
 
   const onSubmit = (data: FormValues) => {
     const payload = {
@@ -146,9 +156,11 @@ export function CategoryFormDialog({
   const isPending =
     createMutation.isPending || updateMutation.isPending;
 
-  // Filtra categorias pra não mostrar a própria como pai
+  // Filtra: só pais (sem parentCategoryId) + não a própria
   const parentOptions =
-    categories?.filter((c) => c.id !== editingCategory?.id) ?? [];
+    categories?.filter(
+      (c) => c.id !== editingCategory?.id && !c.parentCategoryId,
+    ) ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -212,12 +224,15 @@ export function CategoryFormDialog({
                   onClick={() => setValue('color', color)}
                 />
               ))}
-              <Input
-                className="h-8 w-24"
-                value={watchColor}
-                onChange={(e) => setValue('color', e.target.value)}
-                maxLength={7}
-              />
+              <label className="relative h-8 w-8 cursor-pointer overflow-hidden rounded-full border-2 border-dashed border-muted-foreground" title="Escolher cor personalizada">
+                <input
+                  type="color"
+                  value={watchColor}
+                  onChange={(e) => setValue('color', e.target.value)}
+                  className="absolute -inset-2 h-12 w-12 cursor-pointer opacity-0"
+                />
+                <div className="h-full w-full rounded-full" style={{ backgroundColor: watchColor }} />
+              </label>
             </div>
           </div>
 
