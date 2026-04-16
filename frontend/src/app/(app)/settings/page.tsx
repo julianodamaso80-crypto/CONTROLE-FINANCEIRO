@@ -24,7 +24,7 @@ import type { Company, User } from '@/types/models';
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  const isAdmin = user?.role === 'ADMIN';
 
   // Perfil
   const [profile, setProfile] = useState({

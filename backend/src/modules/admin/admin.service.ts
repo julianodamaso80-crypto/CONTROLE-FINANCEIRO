@@ -27,12 +27,12 @@ export class AdminService {
       activeClients,
     ] = await Promise.all([
       // Clientes = users que NÃO são SUPER_ADMIN
-      this.prisma.user.count({ where: { role: { not: 'SUPER_ADMIN' } } }),
+      this.prisma.user.count({ where: { role: { not: 'ADMIN' } } }),
       this.prisma.user.count({
-        where: { role: { not: 'SUPER_ADMIN' }, createdAt: { gte: startOfMonth } },
+        where: { role: { not: 'ADMIN' }, createdAt: { gte: startOfMonth } },
       }),
       this.prisma.user.count({
-        where: { role: { not: 'SUPER_ADMIN' }, createdAt: { gte: startOfWeek } },
+        where: { role: { not: 'ADMIN' }, createdAt: { gte: startOfWeek } },
       }),
       this.prisma.whatsAppMessage.count(),
       this.prisma.whatsAppMessage.count({
@@ -40,7 +40,7 @@ export class AdminService {
       }),
       // Últimos 10 clientes cadastrados (excluindo sistema e admin)
       this.prisma.user.findMany({
-        where: { role: { not: 'SUPER_ADMIN' } },
+        where: { role: { not: 'ADMIN' } },
         orderBy: { createdAt: 'desc' },
         take: 10,
         select: {
@@ -381,8 +381,8 @@ export class AdminService {
       select: { id: true, companyId: true, role: true },
     });
     if (!user) throw new NotFoundException('Usuário não encontrado');
-    if (user.role === 'SUPER_ADMIN') {
-      throw new NotFoundException('Não é possível excluir o SUPER_ADMIN');
+    if (user.role === 'ADMIN') {
+      throw new NotFoundException('Não é possível excluir o administrador');
     }
 
     // Delete all related data for the user's company

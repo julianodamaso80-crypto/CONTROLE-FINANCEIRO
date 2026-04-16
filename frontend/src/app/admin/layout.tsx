@@ -19,12 +19,12 @@ export default function AdminLayout({
       router.replace('/login');
       return;
     }
-    if (user?.role !== 'SUPER_ADMIN') {
+    if (user?.role !== 'ADMIN') {
       router.replace('/dashboard');
     }
   }, [user, isAuthenticated, isLoading, router]);
 
-  if (isLoading || !isAuthenticated || user?.role !== 'SUPER_ADMIN') {
+  if (isLoading || !isAuthenticated || user?.role !== 'ADMIN') {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />

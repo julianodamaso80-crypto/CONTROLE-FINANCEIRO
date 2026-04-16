@@ -49,7 +49,7 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     setIsSubmitting(true);
     try {
-      await authRegister({ ...data, companyName: data.name });
+      await authRegister(data);
       toast.success('Conta criada com sucesso!');
       router.push('/dashboard');
     } catch (error) {

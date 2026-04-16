@@ -37,8 +37,8 @@ export class SubscriptionGuard implements CanActivate {
     const user = request.user as RequestUser | undefined;
     if (!user?.companyId) return true; // JwtAuthGuard já cuidou disso
 
-    // SUPER_ADMIN sempre permitido
-    if (user.role === 'SUPER_ADMIN') return true;
+    // ADMIN (dono da plataforma) sempre permitido
+    if (user.role === 'ADMIN') return true;
 
     const allowed = await this.subscriptions.isAccessAllowed(user.companyId);
     if (!allowed) {

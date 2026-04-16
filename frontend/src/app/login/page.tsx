@@ -39,7 +39,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       const user = await login(data.email, data.password);
-      router.push(user.role === 'SUPER_ADMIN' ? '/admin' : '/dashboard');
+      router.push(user.role === 'ADMIN' ? '/admin' : '/dashboard');
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Erro ao fazer login',

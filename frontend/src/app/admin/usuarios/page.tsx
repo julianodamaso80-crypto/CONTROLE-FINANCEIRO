@@ -166,7 +166,7 @@ export default function AdminUsuariosPage() {
   }
 
   // Stats
-  const total = users.filter((u) => u.role !== 'SUPER_ADMIN').length;
+  const total = users.filter((u) => u.role !== 'ADMIN').length;
   const trialing = users.filter(
     (u) => u.subscriptionStatus === 'TRIALING',
   ).length;
@@ -268,7 +268,7 @@ export default function AdminUsuariosPage() {
                 <tbody className="divide-y">
                   {users.map((u) => {
                     const badge = statusBadge(u);
-                    const isSuperAdmin = u.role === 'SUPER_ADMIN';
+                    const isSuperAdmin = u.role === 'ADMIN';
 
                     return (
                       <tr

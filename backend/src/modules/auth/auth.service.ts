@@ -36,10 +36,11 @@ export class AuthService {
       );
     }
 
-    const existingCompany = await this.prisma.company.findUnique({
+    // Checa duplicidade por email (no user, não na company)
+    const existingUser = await this.prisma.user.findFirst({
       where: { email: dto.email },
     });
-    if (existingCompany) {
+    if (existingUser) {
       throw new ConflictException('Este email já está cadastrado');
     }
 
@@ -53,10 +54,10 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
     const result = await this.prisma.$transaction(async (tx) => {
+      // Company criada automaticamente com nome do user (sem campo de empresa no signup)
       const company = await tx.company.create({
         data: {
-          name: dto.companyName,
-          document: dto.companyDocument,
+          name: dto.name,
           email: dto.email,
         },
       });
@@ -68,7 +69,7 @@ export class AuthService {
           email: dto.email,
           passwordHash,
           phone: normalizedPhone,
-          role: 'ADMIN',
+          role: 'USER',
           isActive: true,
         },
       });

@@ -1,4 +1,4 @@
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'USER' | 'FINANCE';
+export type UserRole = 'ADMIN' | 'USER' | 'FINANCE';
 export type CategoryType = 'INCOME' | 'EXPENSE' | 'BOTH';
 export type BankAccountType =
   | 'CHECKING'
