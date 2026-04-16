@@ -409,6 +409,7 @@ REGRAS DE PARSING:
 - Datas relativas ("hoje", "ontem", "segunda") → ISO YYYY-MM-DD
 - Sem data mencionada → null
 - NUNCA invente categoria ou segmento que não esteja na lista acima
+- TEXTO DE PDF: o input pode ser texto extraído de um PDF (nota fiscal, boleto, extrato). Nesse caso será longo e com formatação irregular. Extraia: valor total, descrição, data, e classifique como register_expense ou register_income. Se o PDF tiver múltiplas linhas de transação, extraia o TOTAL GERAL. Se não conseguir determinar se é despesa ou receita, retorne intent "unknown" com reasoning explicando a dúvida.
 
 EXEMPLOS:
 1. "gastei 50 no uber" → {"intent":"register_expense","confidence":0.95,"data":{"amount":50,"description":"Uber"}}

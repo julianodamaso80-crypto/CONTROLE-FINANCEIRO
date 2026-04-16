@@ -38,7 +38,7 @@ interface MessageContent {
   extendedTextMessage?: { text?: string };
   imageMessage?: { caption?: string; mimetype?: string };
   audioMessage?: { mimetype?: string; ptt?: boolean; seconds?: number };
-  documentMessage?: { fileName?: string; mimetype?: string };
+  documentMessage?: { fileName?: string; mimetype?: string; caption?: string };
 }
 
 interface MessageData {
@@ -400,13 +400,18 @@ export class WhatsAppService {
 
     const hasImage = !!data.message?.imageMessage;
     const hasAudio = !!data.message?.audioMessage;
+    const hasPdf =
+      !!data.message?.documentMessage &&
+      (data.message.documentMessage.mimetype ?? '').includes('pdf');
     const imageCaption = data.message?.imageMessage?.caption ?? null;
+    const pdfCaption = data.message?.documentMessage?.caption ?? null;
 
     // Precisa ter algum conteúdo processável
     const messageText =
       plainText ??
       (hasImage ? imageCaption ?? '[imagem enviada]' : null) ??
-      (hasAudio ? '[áudio enviado]' : null);
+      (hasAudio ? '[áudio enviado]' : null) ??
+      (hasPdf ? pdfCaption ?? `[PDF: ${data.message?.documentMessage?.fileName ?? 'documento'}]` : null);
     if (!messageText) return;
 
     const externalMessageId = data.key?.id;
@@ -547,6 +552,80 @@ export class WhatsAppService {
       }
     }
 
+    // PDF: extrai texto com pdf-parse, alimenta pipeline de texto
+    let pdfExtractedText: string | null = null;
+    if (hasPdf) {
+      const pdfMedia = await this.evolution.getMediaBase64(instanceName, {
+        id: data.key?.id,
+        remoteJid: data.key?.remoteJid,
+        fromMe: data.key?.fromMe,
+      });
+      if (!pdfMedia) {
+        const reply =
+          '❌ Não consegui baixar o PDF. Tente enviar de novo ou descrever em texto.';
+        await this.evolution
+          .sendTextMessage(instanceName, senderNumber, reply)
+          .catch(() => {});
+        await this.prisma.whatsAppMessage.create({
+          data: {
+            companyId,
+            userId: sender.id,
+            phoneNumber: senderNumber,
+            direction: 'OUTBOUND',
+            messageText: reply,
+            actionTaken: 'pdf_fetch_failed',
+          },
+        });
+        return;
+      }
+
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const pdfParse = require('pdf-parse');
+        const buffer = Buffer.from(pdfMedia.base64, 'base64');
+        const parsed = await pdfParse(buffer);
+        const text = (parsed.text ?? '').trim();
+
+        if (text.length > 20) {
+          // PDF com texto extraível — usa como input pro classificador
+          pdfExtractedText = text.slice(0, 3000); // limita pra não estourar tokens
+          this.logger.log(
+            `PDF parsed: ${String(text.length)} chars, truncated to 3000`,
+          );
+        } else {
+          // PDF escaneado (sem texto) — tenta como imagem (primeira página)
+          this.logger.log(
+            'PDF sem texto extraível — tentando via vision',
+          );
+        }
+      } catch (err) {
+        this.logger.warn(
+          `pdf-parse falhou: ${err instanceof Error ? err.message : 'erro'}`,
+        );
+      }
+
+      // Se não conseguiu extrair texto, pede pro cliente descrever
+      if (!pdfExtractedText) {
+        const reply =
+          '📄 Recebi seu PDF, mas não consegui ler o conteúdo. ' +
+          'Me descreve o que é: por exemplo, _"despesa de 500 da nota de bobina"_ ou _"receita de 2k do cliente silva"_.';
+        await this.evolution
+          .sendTextMessage(instanceName, senderNumber, reply)
+          .catch(() => {});
+        await this.prisma.whatsAppMessage.create({
+          data: {
+            companyId,
+            userId: sender.id,
+            phoneNumber: senderNumber,
+            direction: 'OUTBOUND',
+            messageText: reply,
+            actionTaken: 'pdf_unreadable',
+          },
+        });
+        return;
+      }
+    }
+
     const [segmentsList, categoriesList] = await Promise.all([
       this.segments.findAll(companyId),
       this.categories.findAll(companyId),
@@ -621,10 +700,37 @@ export class WhatsAppService {
       llmUsage = imgResult.usage;
     } else {
       // Texto normal OU áudio já transcrito
-      const inputText = transcribedText ?? messageText;
+      const inputText = pdfExtractedText ?? transcribedText ?? messageText;
       const msgResult = await this.ai.interpretMessage(inputText, context);
       interpretation = msgResult.interpretation;
       llmUsage = msgResult.usage;
+    }
+
+    // Se veio de PDF e a IA não soube classificar, pergunta ao cliente
+    if (hasPdf && interpretation.intent === 'unknown') {
+      const reply =
+        `📄 Li seu PDF${data.message?.documentMessage?.fileName ? ` (${data.message.documentMessage.fileName})` : ''}, ` +
+        'mas não consegui identificar se é uma *despesa* ou *receita*.\n\n' +
+        'Me ajuda: responde com algo como:\n' +
+        '• _"despesa de 500 nota de bobina"_\n' +
+        '• _"receita de 2k referente ao PDF"_\n\n' +
+        (interpretation.reasoning
+          ? `_O que encontrei no documento: ${interpretation.reasoning}_`
+          : '');
+      await this.evolution
+        .sendTextMessage(instanceName, senderNumber, reply)
+        .catch(() => {});
+      await this.prisma.whatsAppMessage.create({
+        data: {
+          companyId,
+          userId: sender.id,
+          phoneNumber: senderNumber,
+          direction: 'OUTBOUND',
+          messageText: reply,
+          actionTaken: 'pdf_needs_clarification',
+        },
+      });
+      return;
     }
 
     const result = await this.executeIntent(companyId, interpretation);
