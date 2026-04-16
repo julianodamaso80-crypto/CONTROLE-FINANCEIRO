@@ -216,25 +216,8 @@ export default function CategoriesPage() {
     setDialogOpen(true);
   };
 
-  // Organiza em árvore: pais (sem parent) + filhos agrupados
-  const parents = categories?.filter((c) => !c.parentCategoryId) ?? [];
-  const childrenMap = new Map<string, Category[]>();
-  categories
-    ?.filter((c) => c.parentCategoryId)
-    .forEach((c) => {
-      const key = c.parentCategoryId!;
-      const arr = childrenMap.get(key) ?? [];
-      arr.push(c);
-      childrenMap.set(key, arr);
-    });
-
-  // Separa por tipo pra organizar melhor
-  const expenseParents = parents.filter(
-    (c) => c.type === 'EXPENSE' || c.type === 'BOTH',
-  );
-  const incomeParents = parents.filter(
-    (c) => c.type === 'INCOME' || c.type === 'BOTH',
-  );
+  // Raízes: categorias sem parent (nível 0). Agora são "Despesa" e "Receita".
+  const roots = categories?.filter((c) => !c.parentCategoryId) ?? [];
 
   return (
     <div className="space-y-6">
@@ -288,50 +271,17 @@ export default function CategoriesPage() {
           ))}
         </div>
       ) : categories && categories.length > 0 ? (
-        <div className="space-y-8">
-          {/* Despesas */}
-          {expenseParents.length > 0 && (
-            <div className="space-y-2">
-              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-red-400" />
-                Despesas
-              </h2>
-              <div className="space-y-2">
-                {expenseParents.map((parent) => (
-                  <CategoryTree
-                    key={parent.id}
-                    cat={parent}
-                    depth={0}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onAddChild={handleAddChild}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Receitas */}
-          {incomeParents.length > 0 && (
-            <div className="space-y-2">
-              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-green-400" />
-                Receitas
-              </h2>
-              <div className="space-y-2">
-                {incomeParents.map((parent) => (
-                  <CategoryTree
-                    key={parent.id}
-                    cat={parent}
-                    depth={0}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onAddChild={handleAddChild}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="space-y-4">
+          {roots.map((root) => (
+            <CategoryTree
+              key={root.id}
+              cat={root}
+              depth={0}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onAddChild={handleAddChild}
+            />
+          ))}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
