@@ -9,13 +9,18 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequestUser } from '../../common/types/request-user.type';
+import { PrismaService } from '../../common/prisma/prisma.service';
 import { CategoriesService } from './categories.service';
+import { seedDefaultCategories } from './categories-seed';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Controller('categories')
 export class CategoriesController {
-  constructor(private readonly categoriesService: CategoriesService) {}
+  constructor(
+    private readonly categoriesService: CategoriesService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Get()
   async findAll(@CurrentUser() user: RequestUser) {
@@ -53,5 +58,18 @@ export class CategoriesController {
     @Param('id') id: string,
   ) {
     return this.categoriesService.remove(user.companyId, id);
+  }
+
+  /**
+   * Instala as categorias sugeridas (idempotente — não duplica).
+   * Útil pra clientes existentes que criaram a conta antes do seed.
+   */
+  @Post('seed')
+  async seed(@CurrentUser() user: RequestUser) {
+    const result = await seedDefaultCategories(
+      this.prisma as never,
+      user.companyId,
+    );
+    return result;
   }
 }

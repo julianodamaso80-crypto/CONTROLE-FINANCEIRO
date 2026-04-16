@@ -137,26 +137,51 @@ const DEFAULT_CATEGORIES: SeedCategory[] = [
 ];
 
 /**
- * Cria as categorias padrão para uma empresa recém-cadastrada.
- * Seguro pra chamar em paralelo com outras coisas do signup.
+ * Cria as categorias padrão para uma empresa.
+ * IDEMPOTENTE: pula categorias que já existem (por nome + companyId).
+ * Seguro pra chamar tanto no signup quanto pra clientes existentes.
  */
 export async function seedDefaultCategories(
   prisma: PrismaClient,
   companyId: string,
-): Promise<void> {
+): Promise<{ created: number; skipped: number }> {
+  let created = 0;
+  let skipped = 0;
+
   for (const cat of DEFAULT_CATEGORIES) {
-    const parent = await prisma.category.create({
-      data: {
-        companyId,
-        name: cat.name,
-        type: cat.type,
-        color: cat.color,
-        icon: cat.icon,
-      },
+    // Verifica se já existe
+    const existing = await prisma.category.findFirst({
+      where: { companyId, name: cat.name, parentCategoryId: null },
     });
+
+    let parentId: string;
+
+    if (existing) {
+      parentId = existing.id;
+      skipped++;
+    } else {
+      const parent = await prisma.category.create({
+        data: {
+          companyId,
+          name: cat.name,
+          type: cat.type,
+          color: cat.color,
+          icon: cat.icon,
+        },
+      });
+      parentId = parent.id;
+      created++;
+    }
 
     if (cat.children) {
       for (const child of cat.children) {
+        const existingChild = await prisma.category.findFirst({
+          where: { companyId, name: child.name, parentCategoryId: parentId },
+        });
+        if (existingChild) {
+          skipped++;
+          continue;
+        }
         await prisma.category.create({
           data: {
             companyId,
@@ -164,10 +189,13 @@ export async function seedDefaultCategories(
             type: child.type,
             color: child.color,
             icon: child.icon,
-            parentCategoryId: parent.id,
+            parentCategoryId: parentId,
           },
         });
+        created++;
       }
     }
   }
+
+  return { created, skipped };
 }

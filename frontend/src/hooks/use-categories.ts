@@ -57,6 +57,29 @@ export function useUpdateCategory() {
   });
 }
 
+export function useSeedCategories() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post<ApiResponse<{ created: number; skipped: number }>>(
+        '/categories/seed',
+      );
+      return res.data.data;
+    },
+    onSuccess: (data) => {
+      if (data.created > 0) {
+        toast.success(`${data.created} categorias sugeridas instaladas`);
+      } else {
+        toast.info('Todas as categorias sugeridas já existem');
+      }
+      void queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
 export function useDeleteCategory() {
   const queryClient = useQueryClient();
   return useMutation({

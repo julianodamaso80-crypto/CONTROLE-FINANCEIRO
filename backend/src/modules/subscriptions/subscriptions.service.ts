@@ -127,14 +127,17 @@ export class SubscriptionsService {
 
   /**
    * Retorna true se o company pode usar o sistema agora.
-   * Regras:
-   * - TRIALING + trialEndsAt no futuro → pode
-   * - ACTIVE → pode
-   * - qualquer outro → bloqueado
+   * Se o company não tem subscription (cliente antigo, pré-planos),
+   * cria automaticamente com trial de 7 dias.
    */
   async isAccessAllowed(companyId: string): Promise<boolean> {
-    const sub = await this.getByCompanyId(companyId);
-    if (!sub) return false;
+    let sub = await this.getByCompanyId(companyId);
+
+    // Auto-provision pra clientes existentes que não tinham subscription
+    if (!sub) {
+      sub = await this.autoProvisionTrial(companyId);
+      if (!sub) return false;
+    }
 
     const now = new Date();
 
@@ -150,6 +153,101 @@ export class SubscriptionsService {
     }
 
     return false;
+  }
+
+  /**
+   * Cria subscription com trial de 7 dias pra empresa existente que
+   * não tem registro (migração de clientes pré-planos). Tenta criar
+   * customer + subscription no Asaas se configurado.
+   */
+  private async autoProvisionTrial(
+    companyId: string,
+  ): Promise<Subscription | null> {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      include: {
+        users: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+        },
+      },
+    });
+    if (!company || company.users.length === 0) return null;
+
+    const user = company.users[0]!;
+    const LEGACY_TRIAL_DAYS = 7;
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + LEGACY_TRIAL_DAYS);
+
+    this.logger.log(
+      `Auto-provisioning subscription for legacy company ${companyId} (user ${user.name})`,
+    );
+
+    try {
+      if (this.appConfig.isAsaasConfigured()) {
+        const customer = await this.asaas.createCustomer({
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          externalReference: companyId,
+        });
+
+        const nextDueDate = trialEndsAt.toISOString().slice(0, 10);
+        const asaasSub = await this.asaas.createSubscription({
+          customerId: customer.id,
+          value: PLAN_VALUES.MONTHLY,
+          cycle: PLAN_CYCLE.MONTHLY,
+          nextDueDate,
+          billingType: 'UNDEFINED',
+          externalReference: companyId,
+        });
+
+        const paymentUrl = await this.asaas.getNextPaymentUrl(asaasSub.id);
+
+        return this.prisma.subscription.create({
+          data: {
+            companyId,
+            userId: user.id,
+            plan: 'MONTHLY',
+            status: 'TRIALING',
+            asaasCustomerId: customer.id,
+            asaasSubscriptionId: asaasSub.id,
+            asaasPaymentUrl: paymentUrl,
+            trialEndsAt,
+            nextPaymentAt: trialEndsAt,
+          },
+        });
+      }
+
+      return this.prisma.subscription.create({
+        data: {
+          companyId,
+          userId: user.id,
+          plan: 'MONTHLY',
+          status: 'TRIALING',
+          trialEndsAt,
+          lastError: 'Asaas não configurado — trial local',
+        },
+      });
+    } catch (err) {
+      this.logger.error(
+        `Auto-provision failed: ${err instanceof Error ? err.message : 'erro'}`,
+      );
+      // Cria local com trial mesmo se Asaas falhar
+      return this.prisma.subscription
+        .create({
+          data: {
+            companyId,
+            userId: user.id,
+            plan: 'MONTHLY',
+            status: 'TRIALING',
+            trialEndsAt,
+            lastError: err instanceof Error ? err.message : 'erro',
+          },
+        })
+        .catch(() => null);
+    }
   }
 
   async changePlan(
@@ -292,9 +390,12 @@ export class SubscriptionsService {
     this.logger.log(`Sub ${sub.id} → EXPIRED (asaas inactivated)`);
   }
 
-  /** Retorna status útil pro frontend. */
+  /** Retorna status útil pro frontend. Auto-provisiona se não existe. */
   async getStatusDto(companyId: string) {
-    const sub = await this.getByCompanyId(companyId);
+    let sub = await this.getByCompanyId(companyId);
+    if (!sub) {
+      sub = await this.autoProvisionTrial(companyId);
+    }
     if (!sub) return null;
 
     const now = new Date();

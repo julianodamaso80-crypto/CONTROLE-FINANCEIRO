@@ -10,7 +10,11 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
-import { useCategories, useDeleteCategory } from '@/hooks/use-categories';
+import {
+  useCategories,
+  useDeleteCategory,
+  useSeedCategories,
+} from '@/hooks/use-categories';
 import type { Category } from '@/types/models';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -173,6 +177,7 @@ function CategoryGroup({
 export default function CategoriesPage() {
   const { data: categories, isLoading } = useCategories();
   const deleteMutation = useDeleteCategory();
+  const seedMutation = useSeedCategories();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [defaultParentId, setDefaultParentId] = useState<string | undefined>();
@@ -256,10 +261,21 @@ export default function CategoriesPage() {
           </>
         }
         actions={
-          <Button onClick={handleNewCategory}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Categoria
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => seedMutation.mutate()}
+              disabled={seedMutation.isPending}
+            >
+              {seedMutation.isPending
+                ? 'Instalando...'
+                : 'Instalar sugeridas'}
+            </Button>
+            <Button onClick={handleNewCategory}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Categoria
+            </Button>
+          </div>
         }
       />
 
