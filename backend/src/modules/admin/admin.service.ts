@@ -9,63 +9,120 @@ export class AdminService {
   private readonly USD_TO_BRL = 5.5;
 
   async getOverview() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+
     const [
-      totalCompanies,
-      totalUsers,
-      totalTransactions,
-      incomeAgg,
-      expenseAgg,
-      recentCompanies,
+      totalClients,
+      clientsThisMonth,
+      clientsThisWeek,
+      totalMessages,
+      messagesThisMonth,
+      recentClients,
       subscriptionStats,
       llmCostAgg,
+      activeClients,
     ] = await Promise.all([
-      this.prisma.company.count(),
-      this.prisma.user.count(),
-      this.prisma.transaction.count(),
-      this.prisma.transaction.aggregate({
-        _sum: { amount: true },
-        where: { type: 'INCOME', status: 'PAID' },
+      // Clientes = users que NÃO são SUPER_ADMIN
+      this.prisma.user.count({ where: { role: { not: 'SUPER_ADMIN' } } }),
+      this.prisma.user.count({
+        where: { role: { not: 'SUPER_ADMIN' }, createdAt: { gte: startOfMonth } },
       }),
-      this.prisma.transaction.aggregate({
-        _sum: { amount: true },
-        where: { type: 'EXPENSE', status: 'PAID' },
+      this.prisma.user.count({
+        where: { role: { not: 'SUPER_ADMIN' }, createdAt: { gte: startOfWeek } },
       }),
-      this.prisma.company.findMany({
+      this.prisma.whatsAppMessage.count(),
+      this.prisma.whatsAppMessage.count({
+        where: { createdAt: { gte: startOfMonth } },
+      }),
+      // Últimos 10 clientes cadastrados (excluindo sistema e admin)
+      this.prisma.user.findMany({
+        where: { role: { not: 'SUPER_ADMIN' } },
         orderBy: { createdAt: 'desc' },
-        take: 5,
+        take: 10,
         select: {
           id: true,
           name: true,
           email: true,
-          plan: true,
+          phone: true,
           createdAt: true,
-          _count: { select: { users: true, transactions: true } },
+          company: {
+            select: {
+              name: true,
+              plan: true,
+              subscription: {
+                select: { status: true, plan: true, trialEndsAt: true },
+              },
+            },
+          },
         },
       }),
       this.getSubscriptionStats(),
       this.prisma.whatsAppMessage.aggregate({
         _sum: { llmCostUsd: true, promptTokens: true, completionTokens: true },
       }),
+      // Clientes que usaram o bot nos últimos 7 dias
+      this.prisma.whatsAppMessage.groupBy({
+        by: ['companyId'],
+        where: {
+          createdAt: { gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) },
+          companyId: { not: null },
+        },
+      }),
     ]);
 
     const totalCostUsd = llmCostAgg._sum.llmCostUsd ?? 0;
 
+    // MRR estimado: (mensal * 19.90) + (anual * 199.90 / 12)
+    const mrr =
+      subscriptionStats.monthly * 19.9 +
+      subscriptionStats.annual * (199.9 / 12);
+
     return {
-      totals: {
-        companies: totalCompanies,
-        users: totalUsers,
-        transactions: totalTransactions,
-        totalIncome: incomeAgg._sum.amount?.toString() ?? '0',
-        totalExpense: expenseAgg._sum.amount?.toString() ?? '0',
+      clients: {
+        total: totalClients,
+        thisMonth: clientsThisMonth,
+        thisWeek: clientsThisWeek,
+        activeLastWeek: activeClients.length,
+      },
+      messages: {
+        total: totalMessages,
+        thisMonth: messagesThisMonth,
+      },
+      revenue: {
+        mrr,
       },
       llmCost: {
         totalUsd: totalCostUsd,
         totalBrl: totalCostUsd * this.USD_TO_BRL,
-        totalPromptTokens: llmCostAgg._sum.promptTokens ?? 0,
-        totalCompletionTokens: llmCostAgg._sum.completionTokens ?? 0,
+        totalTokens:
+          (llmCostAgg._sum.promptTokens ?? 0) +
+          (llmCostAgg._sum.completionTokens ?? 0),
       },
       subscriptionStats,
-      recentCompanies,
+      recentClients: recentClients.map((u) => {
+        const sub = u.company.subscription;
+        let status = 'Sem plano';
+        if (u.company.plan === 'BUSINESS') status = 'Vitalício';
+        else if (sub?.status === 'ACTIVE')
+          status = sub.plan === 'ANNUAL' ? 'Anual' : 'Mensal';
+        else if (sub?.status === 'TRIALING') status = 'Trial';
+        else if (sub?.status === 'PAST_DUE') status = 'Pendente';
+        else if (sub?.status === 'CANCELED') status = 'Cancelado';
+
+        return {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          phone: u.phone,
+          companyName: u.company.name,
+          status,
+          createdAt: u.createdAt,
+        };
+      }),
     };
   }
 

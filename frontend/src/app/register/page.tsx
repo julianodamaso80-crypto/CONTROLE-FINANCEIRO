@@ -16,10 +16,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const registerSchema = z.object({
-  companyName: z
-    .string()
-    .min(2, 'Nome da empresa deve ter no mínimo 2 caracteres')
-    .max(120, 'Nome da empresa deve ter no máximo 120 caracteres'),
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
   email: z.string().email('Email inválido'),
   password: z.string().min(8, 'A senha deve ter no mínimo 8 caracteres'),
@@ -53,7 +49,7 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     setIsSubmitting(true);
     try {
-      await authRegister(data);
+      await authRegister({ ...data, companyName: data.name });
       toast.success('Conta criada com sucesso!');
       router.push('/dashboard');
     } catch (error) {
@@ -78,20 +74,6 @@ export default function RegisterPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Nome da empresa</Label>
-                <Input
-                  id="companyName"
-                  placeholder="Minha Empresa LTDA"
-                  {...register('companyName')}
-                />
-                {errors.companyName && (
-                  <p className="text-sm text-destructive">
-                    {errors.companyName.message}
-                  </p>
-                )}
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="name">Seu nome</Label>
                 <Input
