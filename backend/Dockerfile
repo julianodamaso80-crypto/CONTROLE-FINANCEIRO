@@ -35,3 +35,4 @@ ENV TZ=America/Sao_Paulo
 EXPOSE 3000
 
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+
