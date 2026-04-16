@@ -1013,7 +1013,7 @@ export class WhatsAppService {
       currency: 'BRL',
     });
 
-    const monthName = now.toLocaleDateString('pt-BR', { month: 'long' });
+    const monthName = now.toLocaleDateString('pt-BR', { month: 'long', timeZone: 'America/Sao_Paulo' });
 
     let response = `📊 *Despesas de ${monthName}:*\n\n`;
     response += `• Total: *${totalFormatted}* (${String(count)} transações)\n`;
@@ -1170,6 +1170,7 @@ export class WhatsAppService {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
+            timeZone: 'America/Sao_Paulo',
           });
         return {
           start: startOfDay(s),
@@ -1347,7 +1348,7 @@ export class WhatsAppService {
         currency: 'BRL',
       });
       const dueFormatted = tx.dueDate
-        ? new Date(tx.dueDate).toLocaleDateString('pt-BR')
+        ? new Date(tx.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
         : '—';
       const emoji = tx.type === 'EXPENSE' ? '🔴' : '🟢';
       response += `${emoji} ${dueFormatted} — ${tx.description}: *${formatted}*\n`;
