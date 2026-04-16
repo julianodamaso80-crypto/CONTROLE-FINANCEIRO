@@ -31,6 +31,38 @@ interface ChatCompletionResponse {
   choices: Array<{
     message: { content: string };
   }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  model?: string;
+}
+
+export interface LlmUsage {
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  costUsd: number;
+}
+
+// Preços OpenRouter USD por 1M tokens (atualizar conforme necessário)
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  'openai/gpt-4o-mini': { input: 0.15, output: 0.60 },
+  'google/gemini-2.5-flash': { input: 0.15, output: 0.60 },
+};
+
+function calcCost(model: string, promptTokens: number, completionTokens: number): number {
+  const pricing = MODEL_PRICING[model] ?? { input: 0.15, output: 0.60 };
+  return (promptTokens * pricing.input + completionTokens * pricing.output) / 1_000_000;
+}
+
+function extractUsage(data: ChatCompletionResponse, fallbackModel: string): LlmUsage {
+  const u = data.usage;
+  const model = data.model ?? fallbackModel;
+  const pt = u?.prompt_tokens ?? 0;
+  const ct = u?.completion_tokens ?? 0;
+  return { model, promptTokens: pt, completionTokens: ct, costUsd: calcCost(model, pt, ct) };
 }
 
 @Injectable()
@@ -48,7 +80,7 @@ export class AiService {
   async transcribeAudio(
     base64: string,
     mimetype: string,
-  ): Promise<string | null> {
+  ): Promise<{ text: string | null; usage: LlmUsage | null }> {
     // Inferir formato pelo mimetype
     let format = 'mp3';
     if (mimetype.includes('ogg')) format = 'ogg';
@@ -93,9 +125,10 @@ export class AiService {
         },
       );
 
+      const usage = extractUsage(data, 'google/gemini-2.5-flash');
       const text = data.choices[0]?.message.content?.trim();
-      if (!text) return null;
-      return text;
+      if (!text) return { text: null, usage };
+      return { text, usage };
     } catch (error) {
       if (axios.isAxiosError(error)) {
         this.logger.error(
@@ -104,7 +137,7 @@ export class AiService {
       } else if (error instanceof Error) {
         this.logger.error(`transcribeAudio: ${error.message}`);
       }
-      return null;
+      return { text: null, usage: null };
     }
   }
 
@@ -118,7 +151,7 @@ export class AiService {
     mimetype: string,
     caption: string | null,
     context: { segments: string[]; categories: string[] },
-  ): Promise<BotInterpretation> {
+  ): Promise<{ interpretation: BotInterpretation; usage: LlmUsage | null }> {
     const systemPrompt = this.buildImagePrompt(context, caption);
 
     try {
@@ -161,13 +194,14 @@ export class AiService {
         },
       );
 
+      const usage = extractUsage(data, this.appConfig.getOpenRouterModel());
       const content = data.choices[0]?.message.content;
-      if (!content) return this.fallbackInterpretation('Visão: resposta vazia');
+      if (!content) return { interpretation: this.fallbackInterpretation('Visão: resposta vazia'), usage };
       const parsed: unknown = JSON.parse(content);
-      return this.validateInterpretation(parsed);
+      return { interpretation: this.validateInterpretation(parsed), usage };
     } catch (error) {
       if (error instanceof SyntaxError) {
-        return this.fallbackInterpretation('Visão: JSON inválido');
+        return { interpretation: this.fallbackInterpretation('Visão: JSON inválido'), usage: null };
       }
       if (axios.isAxiosError(error)) {
         this.logger.error(
@@ -176,7 +210,7 @@ export class AiService {
       } else if (error instanceof Error) {
         this.logger.error(`interpretImage: ${error.message}`);
       }
-      return this.fallbackInterpretation('Erro ao analisar imagem');
+      return { interpretation: this.fallbackInterpretation('Erro ao analisar imagem'), usage: null };
     }
   }
 
@@ -231,7 +265,7 @@ FORMATO DE SAÍDA — APENAS JSON válido:
   async interpretMessage(
     text: string,
     context: { segments: string[]; categories: string[] },
-  ): Promise<BotInterpretation> {
+  ): Promise<{ interpretation: BotInterpretation; usage: LlmUsage | null }> {
     const systemPrompt = this.buildSystemPrompt(context);
 
     try {
@@ -258,17 +292,18 @@ FORMATO DE SAÍDA — APENAS JSON válido:
         },
       );
 
+      const usage = extractUsage(data, this.appConfig.getOpenRouterModel());
       const content = data.choices[0]?.message.content;
       if (!content) {
-        return this.fallbackInterpretation('Resposta vazia da IA');
+        return { interpretation: this.fallbackInterpretation('Resposta vazia da IA'), usage };
       }
 
       const parsed: unknown = JSON.parse(content);
-      return this.validateInterpretation(parsed);
+      return { interpretation: this.validateInterpretation(parsed), usage };
     } catch (error) {
       if (error instanceof SyntaxError) {
         this.logger.warn('Resposta da IA não é JSON válido');
-        return this.fallbackInterpretation('JSON inválido');
+        return { interpretation: this.fallbackInterpretation('JSON inválido'), usage: null };
       }
       if (axios.isAxiosError(error)) {
         this.logger.error(
@@ -277,7 +312,7 @@ FORMATO DE SAÍDA — APENAS JSON válido:
       } else if (error instanceof Error) {
         this.logger.error(`OpenRouter: ${error.message}`);
       }
-      return this.fallbackInterpretation('Erro de comunicação com IA');
+      return { interpretation: this.fallbackInterpretation('Erro de comunicação com IA'), usage: null };
     }
   }
 

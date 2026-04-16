@@ -400,6 +400,10 @@ model WhatsAppMessage {
   actionTaken          String?           @map("action_taken")
   relatedTransactionId String?           @map("related_transaction_id") @db.Uuid
   externalMessageId    String?           @map("external_message_id")
+  modelUsed            String?           @map("model_used")
+  promptTokens         Int?              @map("prompt_tokens")
+  completionTokens     Int?              @map("completion_tokens")
+  llmCostUsd           Float?            @map("llm_cost_usd")
   createdAt            DateTime          @default(now()) @map("created_at")
 
   company Company? @relation(fields: [companyId], references: [id])

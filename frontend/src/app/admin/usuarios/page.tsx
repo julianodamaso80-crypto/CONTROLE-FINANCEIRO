@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Loader2,
-  MoreHorizontal,
   Crown,
   Clock,
   CreditCard,
@@ -11,6 +10,11 @@ import {
   Infinity,
   Trash2,
   RefreshCw,
+  X,
+  Pencil,
+  Brain,
+  MessageCircle,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -38,10 +42,19 @@ interface AdminUser {
   currentPeriodEnd: string | null;
   lastPaymentAt: string | null;
   accessLabel: string;
+  totalTransactions: number;
+  totalMessages: number;
+  llmCostUsd: number;
+  llmCostBrl: number;
+  totalTokens: number;
 }
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('pt-BR');
+}
+
+function fmtBRL(n: number) {
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
 function statusBadge(user: AdminUser) {
@@ -87,8 +100,8 @@ function statusBadge(user: AdminUser) {
 export default function AdminUsuariosPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [editUser, setEditUser] = useState<AdminUser | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -109,34 +122,38 @@ export default function AdminUsuariosPage() {
     userId: string,
     accessType: 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME',
   ) => {
-    setActionLoading(userId);
+    setActionLoading(true);
     try {
       const res = await api.patch(`/admin/users/${userId}/access`, {
         accessType,
       });
       toast.success(res.data.data?.message ?? res.data.message ?? 'Atualizado');
       await fetchUsers();
+      setEditUser(null);
     } catch {
       toast.error('Erro ao atualizar acesso');
     } finally {
-      setActionLoading(null);
-      setOpenMenu(null);
+      setActionLoading(false);
     }
   };
 
   const handleDelete = async (userId: string, name: string) => {
-    if (!confirm(`Excluir ${name} e TODA a empresa + dados? Isso é irreversível.`))
+    if (
+      !confirm(
+        `Excluir ${name} e TODA a empresa + dados? Isso é irreversível.`,
+      )
+    )
       return;
-    setActionLoading(userId);
+    setActionLoading(true);
     try {
       await api.delete(`/admin/users/${userId}`);
       toast.success('Usuário e empresa excluídos');
       await fetchUsers();
+      setEditUser(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erro ao excluir');
     } finally {
-      setActionLoading(null);
-      setOpenMenu(null);
+      setActionLoading(false);
     }
   };
 
@@ -149,19 +166,14 @@ export default function AdminUsuariosPage() {
   }
 
   // Stats
-  const total = users.length;
+  const total = users.filter((u) => u.role !== 'SUPER_ADMIN').length;
   const trialing = users.filter(
     (u) => u.subscriptionStatus === 'TRIALING',
   ).length;
   const active = users.filter(
     (u) => u.subscriptionStatus === 'ACTIVE' || u.companyPlan === 'BUSINESS',
   ).length;
-  const pendente = users.filter(
-    (u) =>
-      u.subscriptionStatus === 'PAST_DUE' ||
-      u.subscriptionStatus === 'CANCELED' ||
-      u.subscriptionStatus === 'EXPIRED',
-  ).length;
+  const totalLlmBrl = users.reduce((s, u) => s + u.llmCostBrl, 0);
 
   return (
     <div className="space-y-6">
@@ -169,7 +181,7 @@ export default function AdminUsuariosPage() {
         <div>
           <h1 className="text-2xl font-bold">Usuários</h1>
           <p className="text-sm text-muted-foreground">
-            Todos os usuários cadastrados no MeuCaixa
+            Todos os clientes cadastrados no MeuCaixa
           </p>
         </div>
         <Button
@@ -187,39 +199,50 @@ export default function AdminUsuariosPage() {
 
       {/* Stats cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        {[
-          { label: 'Total', value: total, icon: Crown, color: 'text-primary' },
-          {
-            label: 'Em trial',
-            value: trialing,
-            icon: Clock,
-            color: 'text-emerald-400',
-          },
-          {
-            label: 'Pagantes',
-            value: active,
-            icon: CreditCard,
-            color: 'text-green-400',
-          },
-          {
-            label: 'Pendente/Cancelado',
-            value: pendente,
-            icon: CalendarCheck,
-            color: 'text-amber-400',
-          },
-        ].map((s) => (
-          <Card key={s.label}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {s.label}
-              </CardTitle>
-              <s.icon className={`h-4 w-4 ${s.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{s.value}</div>
-            </CardContent>
-          </Card>
-        ))}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Clientes
+            </CardTitle>
+            <Crown className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Em trial
+            </CardTitle>
+            <Clock className="h-4 w-4 text-emerald-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{trialing}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Pagantes
+            </CardTitle>
+            <CreditCard className="h-4 w-4 text-green-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{active}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Custo LLM total
+            </CardTitle>
+            <Brain className="h-4 w-4 text-violet-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{fmtBRL(totalLlmBrl)}</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Users table */}
@@ -227,33 +250,30 @@ export default function AdminUsuariosPage() {
         <CardContent className="p-0">
           {users.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">
-              Nenhum usuário cadastrado ainda.
+              Nenhum cliente cadastrado ainda.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs font-medium uppercase text-muted-foreground">
-                    <th className="px-4 py-3">Usuário</th>
-                    <th className="px-4 py-3">Empresa</th>
+                    <th className="px-4 py-3">Cliente</th>
                     <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Acesso</th>
+                    <th className="px-4 py-3">Uso</th>
+                    <th className="px-4 py-3">Custo IA</th>
                     <th className="px-4 py-3">Cadastro</th>
-                    <th className="px-4 py-3">Último pgto</th>
-                    <th className="px-4 py-3 text-right">Ações</th>
+                    <th className="px-4 py-3 text-right">Editar</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {users.map((u) => {
                     const badge = statusBadge(u);
                     const isSuperAdmin = u.role === 'SUPER_ADMIN';
-                    const isMenuOpen = openMenu === u.id;
-                    const isLoading = actionLoading === u.id;
 
                     return (
                       <tr
                         key={u.id}
-                        className="hover:bg-accent/50 transition-colors"
+                        className="transition-colors hover:bg-accent/50"
                       >
                         <td className="px-4 py-3">
                           <div>
@@ -275,111 +295,59 @@ export default function AdminUsuariosPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {u.companyName}
-                        </td>
                         <td className="px-4 py-3">
                           <span
                             className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badge.cls}`}
                           >
                             {badge.label}
                           </span>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            {u.accessLabel}
+                          </p>
                         </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">
-                          {u.accessLabel}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span
+                              className="flex items-center gap-1"
+                              title="Transações"
+                            >
+                              <ArrowLeftRight className="h-3 w-3" />
+                              {u.totalTransactions}
+                            </span>
+                            <span
+                              className="flex items-center gap-1"
+                              title="Mensagens WhatsApp"
+                            >
+                              <MessageCircle className="h-3 w-3" />
+                              {u.totalMessages}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-medium">
+                            {fmtBRL(u.llmCostBrl)}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {u.totalTokens.toLocaleString('pt-BR')} tokens
+                          </p>
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">
                           {formatDate(u.createdAt)}
                         </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">
-                          {u.lastPaymentAt
-                            ? formatDate(u.lastPaymentAt)
-                            : '—'}
-                        </td>
-                        <td className="relative px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right">
                           {isSuperAdmin ? (
                             <span className="text-xs text-muted-foreground">
                               —
                             </span>
                           ) : (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                  setOpenMenu(isMenuOpen ? null : u.id)
-                                }
-                                disabled={isLoading}
-                              >
-                                {isLoading ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <MoreHorizontal className="h-4 w-4" />
-                                )}
-                              </Button>
-
-                              {isMenuOpen && (
-                                <>
-                                  {/* backdrop */}
-                                  <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={() => setOpenMenu(null)}
-                                  />
-                                  <div className="absolute right-4 top-12 z-50 w-52 rounded-lg border bg-popover p-1 shadow-lg">
-                                    <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                                      Alterar acesso
-                                    </p>
-                                    <button
-                                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                                      onClick={() =>
-                                        handleAccess(u.id, 'TRIAL')
-                                      }
-                                    >
-                                      <Clock className="h-4 w-4 text-emerald-400" />
-                                      Trial (7 dias)
-                                    </button>
-                                    <button
-                                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                                      onClick={() =>
-                                        handleAccess(u.id, 'MONTHLY')
-                                      }
-                                    >
-                                      <CreditCard className="h-4 w-4 text-green-400" />
-                                      Mensal
-                                    </button>
-                                    <button
-                                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                                      onClick={() =>
-                                        handleAccess(u.id, 'ANNUAL')
-                                      }
-                                    >
-                                      <CalendarCheck className="h-4 w-4 text-blue-400" />
-                                      Anual
-                                    </button>
-                                    <button
-                                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                                      onClick={() =>
-                                        handleAccess(u.id, 'LIFETIME')
-                                      }
-                                    >
-                                      <Infinity className="h-4 w-4 text-purple-400" />
-                                      Vitalício
-                                    </button>
-                                    <div className="my-1 border-t" />
-                                    <button
-                                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
-                                      onClick={() =>
-                                        handleDelete(u.id, u.name)
-                                      }
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      Excluir usuário
-                                    </button>
-                                  </div>
-                                </>
-                              )}
-                            </>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setEditUser(u)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                           )}
                         </td>
                       </tr>
@@ -391,6 +359,134 @@ export default function AdminUsuariosPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ========== EDIT MODAL ========== */}
+      {editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-xl">
+            <div className="mb-6 flex items-start justify-between">
+              <div>
+                <h2 className="text-lg font-bold">{editUser.name}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {editUser.email}
+                </p>
+                {editUser.phone && (
+                  <p className="text-sm text-muted-foreground">
+                    {editUser.phone}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setEditUser(null)}
+                className="rounded-md p-1 hover:bg-accent"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Info cards */}
+            <div className="mb-6 grid grid-cols-3 gap-3">
+              <div className="rounded-lg border bg-accent/30 p-3 text-center">
+                <p className="text-2xl font-bold">
+                  {editUser.totalTransactions}
+                </p>
+                <p className="text-xs text-muted-foreground">Transações</p>
+              </div>
+              <div className="rounded-lg border bg-accent/30 p-3 text-center">
+                <p className="text-2xl font-bold">{editUser.totalMessages}</p>
+                <p className="text-xs text-muted-foreground">Mensagens</p>
+              </div>
+              <div className="rounded-lg border bg-accent/30 p-3 text-center">
+                <p className="text-2xl font-bold">
+                  {fmtBRL(editUser.llmCostBrl)}
+                </p>
+                <p className="text-xs text-muted-foreground">Custo IA</p>
+              </div>
+            </div>
+
+            {/* Current status */}
+            <div className="mb-6 rounded-lg border p-3">
+              <p className="text-xs font-medium uppercase text-muted-foreground">
+                Status atual
+              </p>
+              <div className="mt-1 flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusBadge(editUser).cls}`}
+                >
+                  {statusBadge(editUser).label}
+                </span>
+                <span className="text-sm">{editUser.accessLabel}</span>
+              </div>
+              {editUser.lastPaymentAt && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Último pagamento: {formatDate(editUser.lastPaymentAt)}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Cliente desde: {formatDate(editUser.createdAt)}
+              </p>
+            </div>
+
+            {/* Plan actions */}
+            <p className="mb-3 text-sm font-semibold">Alterar plano</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => handleAccess(editUser.id, 'TRIAL')}
+                disabled={actionLoading}
+              >
+                <Clock className="h-4 w-4 text-emerald-400" />
+                Trial (7 dias)
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => handleAccess(editUser.id, 'MONTHLY')}
+                disabled={actionLoading}
+              >
+                <CreditCard className="h-4 w-4 text-green-400" />
+                Mensal
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => handleAccess(editUser.id, 'ANNUAL')}
+                disabled={actionLoading}
+              >
+                <CalendarCheck className="h-4 w-4 text-blue-400" />
+                Anual
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start gap-2"
+                onClick={() => handleAccess(editUser.id, 'LIFETIME')}
+                disabled={actionLoading}
+              >
+                <Infinity className="h-4 w-4 text-purple-400" />
+                Vitalício
+              </Button>
+            </div>
+
+            {/* Danger zone */}
+            <div className="mt-6 border-t pt-4">
+              <Button
+                variant="destructive"
+                className="w-full gap-2"
+                onClick={() => handleDelete(editUser.id, editUser.name)}
+                disabled={actionLoading}
+              >
+                {actionLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                Excluir cliente e todos os dados
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

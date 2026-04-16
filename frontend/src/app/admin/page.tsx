@@ -11,6 +11,7 @@ import {
   CalendarCheck,
   Infinity,
   AlertTriangle,
+  Brain,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,12 @@ interface AdminOverview {
     transactions: number;
     totalIncome: string;
     totalExpense: string;
+  };
+  llmCost: {
+    totalUsd: number;
+    totalBrl: number;
+    totalPromptTokens: number;
+    totalCompletionTokens: number;
   };
   subscriptionStats: {
     trialing: number;
@@ -175,6 +182,32 @@ export default function AdminOverviewPage() {
           </Card>
         ))}
       </div>
+
+      {/* Custo LLM */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Custo com IA (LLM)
+          </CardTitle>
+          <Brain className="h-4 w-4 text-violet-400" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {data.llmCost.totalBrl.toLocaleString('pt-BR', {
+              style: 'currency',
+              currency: 'BRL',
+            })}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            US$ {data.llmCost.totalUsd.toFixed(4)} ·{' '}
+            {(
+              data.llmCost.totalPromptTokens +
+              data.llmCost.totalCompletionTokens
+            ).toLocaleString('pt-BR')}{' '}
+            tokens consumidos
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Assinaturas */}
       <div>

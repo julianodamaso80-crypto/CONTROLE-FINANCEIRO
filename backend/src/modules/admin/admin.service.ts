@@ -5,6 +5,9 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Taxa USD → BRL (atualizar periodicamente)
+  private readonly USD_TO_BRL = 5.5;
+
   async getOverview() {
     const [
       totalCompanies,
@@ -14,6 +17,7 @@ export class AdminService {
       expenseAgg,
       recentCompanies,
       subscriptionStats,
+      llmCostAgg,
     ] = await Promise.all([
       this.prisma.company.count(),
       this.prisma.user.count(),
@@ -39,7 +43,12 @@ export class AdminService {
         },
       }),
       this.getSubscriptionStats(),
+      this.prisma.whatsAppMessage.aggregate({
+        _sum: { llmCostUsd: true, promptTokens: true, completionTokens: true },
+      }),
     ]);
+
+    const totalCostUsd = llmCostAgg._sum.llmCostUsd ?? 0;
 
     return {
       totals: {
@@ -48,6 +57,12 @@ export class AdminService {
         transactions: totalTransactions,
         totalIncome: incomeAgg._sum.amount?.toString() ?? '0',
         totalExpense: expenseAgg._sum.amount?.toString() ?? '0',
+      },
+      llmCost: {
+        totalUsd: totalCostUsd,
+        totalBrl: totalCostUsd * this.USD_TO_BRL,
+        totalPromptTokens: llmCostAgg._sum.promptTokens ?? 0,
+        totalCompletionTokens: llmCostAgg._sum.completionTokens ?? 0,
       },
       subscriptionStats,
       recentCompanies,
@@ -105,11 +120,13 @@ export class AdminService {
         role: true,
         isActive: true,
         createdAt: true,
+        companyId: true,
         company: {
           select: {
             id: true,
             name: true,
             plan: true,
+            _count: { select: { transactions: true } },
             subscription: {
               select: {
                 plan: true,
@@ -125,8 +142,30 @@ export class AdminService {
       },
     });
 
+    // Per-company LLM cost aggregation
+    const llmAgg = await this.prisma.whatsAppMessage.groupBy({
+      by: ['companyId'],
+      _sum: { llmCostUsd: true, promptTokens: true, completionTokens: true },
+      _count: true,
+    });
+    const llmByCompany = new Map(
+      llmAgg.map((r) => [
+        r.companyId,
+        {
+          messages: r._count,
+          costUsd: r._sum.llmCostUsd ?? 0,
+          tokens: (r._sum.promptTokens ?? 0) + (r._sum.completionTokens ?? 0),
+        },
+      ]),
+    );
+
     return users.map((u) => {
       const sub = u.company.subscription;
+      const llm = llmByCompany.get(u.companyId) ?? {
+        messages: 0,
+        costUsd: 0,
+        tokens: 0,
+      };
       let accessLabel = 'Sem assinatura';
       if (u.company.plan === 'BUSINESS') {
         accessLabel = 'Vitalício';
@@ -168,6 +207,11 @@ export class AdminService {
         currentPeriodEnd: sub?.currentPeriodEnd ?? null,
         lastPaymentAt: sub?.lastPaymentAt ?? null,
         accessLabel,
+        totalTransactions: u.company._count.transactions,
+        totalMessages: llm.messages,
+        llmCostUsd: llm.costUsd,
+        llmCostBrl: llm.costUsd * this.USD_TO_BRL,
+        totalTokens: llm.tokens,
       };
     });
   }

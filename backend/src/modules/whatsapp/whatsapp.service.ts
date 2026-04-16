@@ -10,7 +10,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AppConfigService } from '../../common/config/app.config';
 import { EvolutionService } from '../evolution/evolution.service';
-import { AiService } from '../ai/ai.service';
+import { AiService, type LlmUsage } from '../ai/ai.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { SegmentsService } from '../segments/segments.service';
 import { CategoriesService } from '../categories/categories.service';
@@ -522,10 +522,11 @@ export class WhatsAppService {
         });
         return;
       }
-      transcribedText = await this.ai.transcribeAudio(
+      const transcribeResult = await this.ai.transcribeAudio(
         audioMedia.base64,
         audioMedia.mimetype,
       );
+      transcribedText = transcribeResult.text;
       if (!transcribedText) {
         const reply =
           '❌ Não consegui entender o áudio. Fale um pouco mais claro ou envie em texto, por favor.';
@@ -573,6 +574,7 @@ export class WhatsAppService {
     };
 
     let interpretation;
+    let llmUsage: LlmUsage | null = null;
     if (hasImage) {
       // Baixa a imagem da Evolution e manda pro gpt-4o-mini vision
       const media = await this.evolution.getMediaBase64(instanceName, {
@@ -598,16 +600,20 @@ export class WhatsAppService {
         });
         return;
       }
-      interpretation = await this.ai.interpretImage(
+      const imgResult = await this.ai.interpretImage(
         media.base64,
         media.mimetype,
         imageCaption,
         context,
       );
+      interpretation = imgResult.interpretation;
+      llmUsage = imgResult.usage;
     } else {
       // Texto normal OU áudio já transcrito
       const inputText = transcribedText ?? messageText;
-      interpretation = await this.ai.interpretMessage(inputText, context);
+      const msgResult = await this.ai.interpretMessage(inputText, context);
+      interpretation = msgResult.interpretation;
+      llmUsage = msgResult.usage;
     }
 
     const result = await this.executeIntent(companyId, interpretation);
@@ -635,6 +641,10 @@ export class WhatsAppService {
           interpretation as unknown as Prisma.InputJsonValue,
         actionTaken: result.actionTaken,
         relatedTransactionId: result.relatedTransactionId,
+        modelUsed: llmUsage?.model ?? null,
+        promptTokens: llmUsage?.promptTokens ?? null,
+        completionTokens: llmUsage?.completionTokens ?? null,
+        llmCostUsd: llmUsage?.costUsd ?? null,
       },
     });
   }
