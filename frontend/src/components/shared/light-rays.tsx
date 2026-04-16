@@ -112,7 +112,7 @@ export function LightRays({
     if (!containerRef.current) return;
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        setIsVisible(entries[0].isIntersecting);
+        setIsVisible(entries[0]?.isIntersecting ?? false);
       },
       { threshold: 0.1 },
     );
