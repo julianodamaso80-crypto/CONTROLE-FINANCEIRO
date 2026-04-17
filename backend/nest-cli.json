@@ -4,6 +4,13 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true,
-    "tsConfigPath": "tsconfig.json"
+    "tsConfigPath": "tsconfig.json",
+    "assets": [
+      {
+        "include": "modules/reports/templates/**/*",
+        "outDir": "dist",
+        "watchAssets": true
+      }
+    ]
   }
 }

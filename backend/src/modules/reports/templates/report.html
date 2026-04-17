@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório MeuCaixa</title>
+<style>
+  @page { size: A4; margin: 0; }
+
+  :root {
+    --green: #90ff6b;
+    --dark: #171e19;
+    --sage: #b7c6c2;
+    --black: #000000;
+    --white: #ffffff;
+    --gray-50: #f7f7f7;
+    --gray-200: #e5e7eb;
+    --gray-400: #9ca3af;
+    --gray-600: #4b5563;
+    --red: #dc2626;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.45;
+    color: var(--dark);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 18mm 16mm;
+    page-break-after: always;
+    position: relative;
+  }
+  .page:last-child { page-break-after: auto; }
+
+  /* === COVER / HEADER === */
+  .cover {
+    background: var(--dark);
+    color: var(--white);
+    padding: 30mm 16mm;
+    min-height: 297mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand-mark {
+    width: 44px;
+    height: 44px;
+    background: var(--green);
+    border: 3px solid var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 22px;
+    color: var(--dark);
+  }
+  .brand-name {
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+  }
+
+  .cover-title {
+    font-size: 56px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    line-height: 0.95;
+    margin: 40mm 0 20px;
+  }
+  .cover-title .accent {
+    -webkit-text-stroke: 2px var(--green);
+    color: transparent;
+  }
+  .cover-sub {
+    font-size: 16px;
+    color: var(--sage);
+    max-width: 380px;
+  }
+
+  .cover-meta {
+    border-top: 2px solid var(--green);
+    padding-top: 16px;
+    font-size: 11px;
+    color: var(--sage);
+    display: flex;
+    justify-content: space-between;
+  }
+  .cover-meta strong { color: var(--white); font-weight: 800; }
+
+  /* === REGULAR PAGE HEADER === */
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--dark);
+    padding-bottom: 10px;
+    margin-bottom: 18px;
+  }
+  .page-header .logo {
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: -0.3px;
+  }
+  .page-header .company {
+    font-size: 10px;
+    color: var(--gray-600);
+    font-weight: 600;
+  }
+
+  h2 {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: -0.8px;
+    margin-bottom: 14px;
+    line-height: 1.1;
+  }
+  h3 {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+    margin: 22px 0 10px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--gray-200);
+  }
+
+  /* === KPI CARDS === */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .kpi {
+    border: 2px solid var(--dark);
+    padding: 12px 14px;
+    background: var(--white);
+    box-shadow: 3px 3px 0 0 var(--dark);
+    border-radius: 6px;
+  }
+  .kpi.highlight {
+    background: var(--green);
+  }
+  .kpi.dark {
+    background: var(--dark);
+    color: var(--white);
+  }
+  .kpi.sage {
+    background: var(--sage);
+  }
+  .kpi-label {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    opacity: 0.75;
+    margin-bottom: 4px;
+  }
+  .kpi-value {
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .kpi-value.negative { color: var(--red); }
+
+  /* === TABLES === */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+    border: 2px solid var(--dark);
+    background: var(--white);
+  }
+  thead {
+    background: var(--dark);
+    color: var(--white);
+  }
+  th {
+    text-align: left;
+    padding: 8px 10px;
+    font-weight: 800;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  th.num { text-align: right; }
+  td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--gray-200);
+    vertical-align: top;
+  }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: var(--gray-50); }
+
+  .tag {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 7px;
+    border: 1.5px solid var(--dark);
+    border-radius: 10px;
+  }
+  .tag-income { background: var(--green); }
+  .tag-expense { background: var(--sage); }
+
+  .empty {
+    text-align: center !important;
+    color: var(--gray-400);
+    font-style: italic;
+    padding: 18px !important;
+  }
+
+  /* === FOOTER === */
+  .page-footer {
+    position: absolute;
+    bottom: 8mm;
+    left: 16mm;
+    right: 16mm;
+    padding-top: 6px;
+    border-top: 1px solid var(--gray-200);
+    font-size: 9px;
+    color: var(--gray-400);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* === LAST PAGE === */
+  .final {
+    background: var(--green);
+    padding: 40mm 16mm;
+    min-height: 297mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+  .final h2 {
+    font-size: 48px;
+    letter-spacing: -1.5px;
+    margin-bottom: 18px;
+  }
+  .final p {
+    font-size: 15px;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<!-- ========= COVER ========= -->
+<div class="cover">
+  <div>
+    <div class="brand">
+      <div class="brand-mark">⚡</div>
+      <div class="brand-name">MeuCaixa</div>
+    </div>
+  </div>
+
+  <div>
+    <div style="font-size:12px; font-weight:800; color:var(--green); text-transform:uppercase; letter-spacing:1.2px; margin-bottom:10px;">
+      Relatório financeiro
+    </div>
+    <h1 class="cover-title">
+      {{COMPANY_NAME}}<br>
+      <span class="accent">no período.</span>
+    </h1>
+    <p class="cover-sub">
+      Resumo consolidado de receitas, despesas, categorias e principais lançamentos.
+    </p>
+  </div>
+
+  <div class="cover-meta">
+    <div>
+      <strong>Período</strong><br>
+      {{PERIOD}}
+    </div>
+    <div style="text-align:right;">
+      <strong>Gerado em</strong><br>
+      {{GENERATED_AT}}
+    </div>
+  </div>
+</div>
+
+<!-- ========= PAGE 2 — RESUMO + CATEGORIAS ========= -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo">⚡ MeuCaixa</div>
+    <div class="company">{{COMPANY_NAME}} · {{PERIOD}}</div>
+  </div>
+
+  <h2>Resumo do período</h2>
+
+  <div class="kpis">
+    <div class="kpi highlight">
+      <div class="kpi-label">Receitas</div>
+      <div class="kpi-value">{{INCOME}}</div>
+    </div>
+    <div class="kpi sage">
+      <div class="kpi-label">Despesas</div>
+      <div class="kpi-value">{{EXPENSE}}</div>
+    </div>
+    <div class="kpi dark">
+      <div class="kpi-label">Saldo</div>
+      <div class="kpi-value {{BALANCE_SIGN}}">{{BALANCE}}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Lançamentos</div>
+      <div class="kpi-value">{{TX_COUNT}}</div>
+    </div>
+  </div>
+
+  <h3>Por categoria</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Categoria</th>
+        <th>Tipo</th>
+        <th class="num">Qtd</th>
+        <th class="num">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{CATEGORY_ROWS}}
+    </tbody>
+  </table>
+
+  <h3>Por segmento</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Segmento</th>
+        <th class="num">Qtd</th>
+        <th class="num">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{SEGMENT_ROWS}}
+    </tbody>
+  </table>
+
+  <div class="page-footer">
+    <span>MeuCaixa · Relatório gerado automaticamente</span>
+    <span>Página 2</span>
+  </div>
+</div>
+
+<!-- ========= PAGE 3 — TOP LANÇAMENTOS ========= -->
+<div class="page">
+  <div class="page-header">
+    <div class="logo">⚡ MeuCaixa</div>
+    <div class="company">{{COMPANY_NAME}} · {{PERIOD}}</div>
+  </div>
+
+  <h2>Principais lançamentos</h2>
+
+  <h3>Maiores despesas</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:18%;">Data</th>
+        <th>Descrição</th>
+        <th style="width:22%;">Categoria</th>
+        <th class="num" style="width:18%;">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{EXPENSE_ROWS}}
+    </tbody>
+  </table>
+
+  <h3>Maiores receitas</h3>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:18%;">Data</th>
+        <th>Descrição</th>
+        <th style="width:22%;">Categoria</th>
+        <th class="num" style="width:18%;">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{INCOME_ROWS}}
+    </tbody>
+  </table>
+
+  <div class="page-footer">
+    <span>MeuCaixa · Relatório gerado automaticamente</span>
+    <span>Página 3</span>
+  </div>
+</div>
+
+<!-- ========= FINAL ========= -->
+<div class="final">
+  <h2>Seu caixa<br>vive no WhatsApp.</h2>
+  <p>Registre despesas e receitas por texto, áudio, foto da nota ou PDF de boleto.</p>
+  <p>A IA categoriza tudo — direto no WhatsApp.</p>
+  <p style="margin-top:24px; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase;">meucaixa.store</p>
+</div>
+
+</body>
+</html>

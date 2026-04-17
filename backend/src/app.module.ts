@@ -21,6 +21,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { HealthModule } from './modules/health/health.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { HealthModule } from './modules/health/health.module';
     SubscriptionsModule,
     WebhooksModule,
     HealthModule,
+    ReportsModule,
   ],
   providers: [
     // Ordem importa: Throttler → JWT → Subscription
