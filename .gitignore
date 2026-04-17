@@ -44,6 +44,7 @@ test_reports.py
 test_pdf_e2e.py
 test_ai_pdf_intent.py
 test_whatsapp_pdf.py
+upgrade_users_lifetime.py
 fetch_pdf.py
 test-report.pdf
 

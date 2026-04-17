@@ -26,6 +26,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const {
     register,
@@ -37,13 +38,15 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginForm) => {
     setIsSubmitting(true);
+    setLoginError(null);
     try {
       const user = await login(data.email, data.password);
       router.push(user.role === 'ADMIN' ? '/admin' : '/dashboard');
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Erro ao fazer login',
-      );
+      const message =
+        error instanceof Error ? error.message : 'Erro ao fazer login';
+      setLoginError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -61,6 +64,14 @@ export default function LoginPage() {
             <CardTitle className="text-xl">Entrar no Meu Caixa</CardTitle>
           </CardHeader>
           <CardContent>
+            {loginError && (
+              <div
+                role="alert"
+                className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+              >
+                {loginError}
+              </div>
+            )}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
