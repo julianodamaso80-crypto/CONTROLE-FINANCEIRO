@@ -1,4 +1,5 @@
 import { HeroLightRays } from '@/components/shared/hero-light-rays';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   Zap,
@@ -82,13 +83,15 @@ export default function LandingPage() {
       {/* ============ NAV ============ */}
       <header className="sticky top-0 z-50 h-20 border-b-2 border-black bg-[#90ff6b]">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center border-2 border-black bg-black">
-              <Zap className="h-5 w-5 fill-[#90ff6b] text-[#90ff6b]" />
-            </div>
-            <span className="font-cabinet text-2xl font-extrabold">
-              MeuCaixa
-            </span>
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/logo-sem-fundo-2.png"
+              alt="MeuCaixa"
+              width={180}
+              height={48}
+              priority
+              className="h-12 w-auto object-contain"
+            />
           </Link>
 
           <nav className="hidden items-center gap-10 md:flex">
