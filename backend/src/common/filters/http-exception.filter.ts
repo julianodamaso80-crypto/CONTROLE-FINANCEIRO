@@ -18,6 +18,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let status: number;
     let message: string;
     let error: string;
+    let code: string | undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -33,6 +34,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
           ? (resp['message'] as string[]).join(', ')
           : (resp['message'] as string) ?? exception.message;
         error = (resp['error'] as string) ?? exception.name;
+        if (typeof resp['code'] === 'string') code = resp['code'] as string;
       } else {
         message = exception.message;
         error = exception.name;
@@ -78,6 +80,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode: status,
       message,
       error,
+      ...(code ? { code } : {}),
       timestamp: new Date().toISOString(),
       path: request.url,
     });

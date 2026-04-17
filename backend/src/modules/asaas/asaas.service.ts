@@ -81,6 +81,27 @@ export class AsaasService {
     }
   }
 
+  /** Atualiza dados de um customer existente (ex.: preencher CPF/CNPJ). */
+  async updateCustomer(
+    customerId: string,
+    input: { cpfCnpj?: string; name?: string; phone?: string },
+  ): Promise<AsaasCustomer> {
+    try {
+      const payload: Record<string, unknown> = {};
+      if (input.cpfCnpj) payload['cpfCnpj'] = input.cpfCnpj;
+      if (input.name) payload['name'] = input.name;
+      if (input.phone) payload['mobilePhone'] = input.phone;
+      const { data } = await this.getHttp().post<AsaasCustomer>(
+        `/customers/${customerId}`,
+        payload,
+      );
+      return data;
+    } catch (error) {
+      this.logError('updateCustomer', error);
+      throw new BadGatewayException('Erro ao atualizar cliente no Asaas.');
+    }
+  }
+
   /**
    * Cria uma assinatura recorrente (monthly ou yearly) no Asaas.
    * nextDueDate é a data do PRIMEIRO pagamento. Setar para daqui 3 dias

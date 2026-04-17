@@ -29,8 +29,11 @@ api.interceptors.response.use(
       // Extrai mensagem de erro do backend
       const backendMessage =
         error.response?.data?.message ?? error.response?.data?.error;
+      const backendCode = error.response?.data?.code as string | undefined;
       if (backendMessage) {
-        return Promise.reject(new Error(backendMessage));
+        const e = new Error(backendMessage) as Error & { code?: string };
+        if (backendCode) e.code = backendCode;
+        return Promise.reject(e);
       }
     }
 

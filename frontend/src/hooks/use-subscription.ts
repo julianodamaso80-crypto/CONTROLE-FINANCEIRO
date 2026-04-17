@@ -79,23 +79,41 @@ export function useRefreshPaymentUrl() {
   });
 }
 
+export class CpfCnpjRequiredError extends Error {
+  constructor() {
+    super('CPF ou CNPJ obrigatório');
+    this.name = 'CpfCnpjRequiredError';
+  }
+}
+
 export function useCheckoutUrl() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (
-      plan: Exclude<SubscriptionPlan, 'LIFETIME'>,
-    ): Promise<string | null> => {
-      const res = await api.post<{
-        success: boolean;
-        data: { url: string | null };
-      }>('/subscriptions/checkout-url', { plan });
-      return res.data.data.url;
+    mutationFn: async (input: {
+      plan: Exclude<SubscriptionPlan, 'LIFETIME'>;
+      cpfCnpj?: string;
+    }): Promise<string | null> => {
+      try {
+        const res = await api.post<{
+          success: boolean;
+          data: { url: string | null };
+        }>('/subscriptions/checkout-url', input);
+        return res.data.data.url;
+      } catch (err) {
+        const code = (err as { code?: string }).code;
+        if (code === 'CPF_OR_CNPJ_REQUIRED') {
+          throw new CpfCnpjRequiredError();
+        }
+        throw err;
+      }
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['subscription'] });
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      if (!(error instanceof CpfCnpjRequiredError)) {
+        toast.error(error.message);
+      }
     },
   });
 }

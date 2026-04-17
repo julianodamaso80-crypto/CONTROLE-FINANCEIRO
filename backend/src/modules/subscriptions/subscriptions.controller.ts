@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Post } from '@nestjs/common';
 import { SubscriptionPlan } from '@prisma/client';
-import { IsEnum } from 'class-validator';
+import { IsEnum, IsOptional, IsString, Matches } from 'class-validator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SkipSubscriptionCheck } from '../../common/decorators/skip-subscription-check.decorator';
 import { RequestUser } from '../../common/types/request-user.type';
@@ -11,6 +11,20 @@ class ChangePlanDto {
     message: 'Plano inválido. Use MONTHLY ou ANNUAL.',
   })
   plan!: SubscriptionPlan;
+}
+
+class CheckoutUrlDto {
+  @IsEnum(SubscriptionPlan, {
+    message: 'Plano inválido. Use MONTHLY ou ANNUAL.',
+  })
+  plan!: SubscriptionPlan;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{11}$|^\d{14}$/, {
+    message: 'CPF (11 dígitos) ou CNPJ (14 dígitos) inválido.',
+  })
+  cpfCnpj?: string;
 }
 
 @Controller('subscriptions')
@@ -51,9 +65,13 @@ export class SubscriptionsController {
   @Post('checkout-url')
   async getCheckoutUrl(
     @CurrentUser() user: RequestUser,
-    @Body() dto: ChangePlanDto,
+    @Body() dto: CheckoutUrlDto,
   ) {
-    const url = await this.service.getCheckoutUrl(user.companyId, dto.plan);
+    const url = await this.service.getCheckoutUrl(
+      user.companyId,
+      dto.plan,
+      dto.cpfCnpj,
+    );
     return { url };
   }
 }

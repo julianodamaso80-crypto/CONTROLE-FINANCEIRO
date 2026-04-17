@@ -7,6 +7,7 @@ import {
   useSubscription,
   useCancelSubscription,
   useCheckoutUrl,
+  CpfCnpjRequiredError,
   type SubscriptionPlan,
 } from '@/hooks/use-subscription';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,32 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/shared/page-header';
+
+function formatCpfCnpj(raw: string): string {
+  const d = raw.replace(/\D/g, '').slice(0, 14);
+  if (d.length <= 11) {
+    return d
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  }
+  return d
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+}
 
 function fmtBRL(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -44,6 +70,10 @@ export default function PlanoPage() {
   const cancel = useCancelSubscription();
   const checkout = useCheckoutUrl();
   const [openingPlan, setOpeningPlan] = useState<SubscriptionPlan | null>(null);
+  const [cpfCnpjModal, setCpfCnpjModal] = useState<{
+    plan: 'MONTHLY' | 'ANNUAL';
+  } | null>(null);
+  const [cpfCnpjInput, setCpfCnpjInput] = useState('');
 
   if (isLoading) {
     return (
@@ -110,20 +140,41 @@ export default function PlanoPage() {
     );
   }
 
-  const handlePay = async (plan: 'MONTHLY' | 'ANNUAL') => {
+  const doCheckout = async (
+    plan: 'MONTHLY' | 'ANNUAL',
+    cpfCnpj?: string,
+  ) => {
     setOpeningPlan(plan);
     try {
-      const url = await checkout.mutateAsync(plan);
+      const url = await checkout.mutateAsync({ plan, cpfCnpj });
       if (url) {
         window.open(url, '_blank');
+        setCpfCnpjModal(null);
+        setCpfCnpjInput('');
       } else {
         toast.error(
           'Link de pagamento ainda não disponível. Aguarde alguns segundos e tente de novo.',
         );
       }
+    } catch (err) {
+      if (err instanceof CpfCnpjRequiredError) {
+        setCpfCnpjModal({ plan });
+      }
     } finally {
       setOpeningPlan(null);
     }
+  };
+
+  const handlePay = (plan: 'MONTHLY' | 'ANNUAL') => doCheckout(plan);
+
+  const handleSubmitCpfCnpj = () => {
+    if (!cpfCnpjModal) return;
+    const digits = cpfCnpjInput.replace(/\D/g, '');
+    if (digits.length !== 11 && digits.length !== 14) {
+      toast.error('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.');
+      return;
+    }
+    void doCheckout(cpfCnpjModal.plan, digits);
   };
 
   const handleCancel = async () => {
@@ -322,6 +373,62 @@ export default function PlanoPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        open={cpfCnpjModal !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCpfCnpjModal(null);
+            setCpfCnpjInput('');
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>CPF ou CNPJ pra emitir a cobrança</DialogTitle>
+            <DialogDescription>
+              O Asaas (gateway de pagamento) exige o CPF ou CNPJ pra emitir
+              o boleto/cartão. A gente guarda só pra isso, não aparece em
+              nenhum outro lugar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="cpfCnpj">CPF ou CNPJ</Label>
+            <Input
+              id="cpfCnpj"
+              autoFocus
+              placeholder="000.000.000-00 ou 00.000.000/0000-00"
+              value={cpfCnpjInput}
+              onChange={(e) => setCpfCnpjInput(formatCpfCnpj(e.target.value))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSubmitCpfCnpj();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCpfCnpjModal(null);
+                setCpfCnpjInput('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmitCpfCnpj}
+              disabled={openingPlan !== null}
+            >
+              {openingPlan ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ExternalLink className="mr-2 h-4 w-4" />
+              )}
+              Continuar pro pagamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

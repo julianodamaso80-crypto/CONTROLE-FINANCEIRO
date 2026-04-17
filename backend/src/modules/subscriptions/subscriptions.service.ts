@@ -302,6 +302,8 @@ export class SubscriptionsService {
 
   /**
    * Pega (ou cria) o link de checkout pra um plano específico.
+   * - Exige CPF ou CNPJ (Asaas não cria cobrança sem isso). Se já está
+   *   salvo em Company.document, usa esse. Senão, exige no parâmetro.
    * - Se a sub não tem customer/asaasSubscriptionId, cria no Asaas on-demand.
    * - Se o plano pedido é diferente do atual, troca no Asaas + DB.
    * - Retorna sempre o link de pagamento mais atual.
@@ -309,6 +311,7 @@ export class SubscriptionsService {
   async getCheckoutUrl(
     companyId: string,
     plan: SubscriptionPlan,
+    cpfCnpjInput?: string,
   ): Promise<string | null> {
     if (!this.appConfig.isAsaasConfigured()) {
       throw new BadRequestException('Asaas não configurado no ambiente');
@@ -320,27 +323,56 @@ export class SubscriptionsService {
     }
     if (!sub) throw new NotFoundException('Assinatura não encontrada');
 
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      include: {
+        users: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+        },
+      },
+    });
+    if (!company) throw new NotFoundException('Empresa não encontrada');
+
+    // Asaas exige CPF/CNPJ pra gerar a cobrança. Pega o salvo ou o que
+    // veio agora; se nenhum, devolve erro com code pro frontend abrir o modal.
+    const cpfCnpj = cpfCnpjInput?.replace(/\D/g, '') || company.document;
+    if (!cpfCnpj) {
+      throw new BadRequestException({
+        code: 'CPF_OR_CNPJ_REQUIRED',
+        message:
+          'Informe seu CPF ou CNPJ pra gerar a cobrança (exigido pelo Asaas).',
+      });
+    }
+    // Se veio um novo (ou ainda não tinha salvo), persiste
+    if (cpfCnpj !== company.document) {
+      await this.prisma.company.update({
+        where: { id: companyId },
+        data: { document: cpfCnpj },
+      });
+    }
+
     // Se ainda não tem customer/sub no Asaas, cria agora
     if (!sub.asaasSubscriptionId || !sub.asaasCustomerId) {
-      const company = await this.prisma.company.findUnique({
-        where: { id: companyId },
-        include: {
-          users: {
-            where: { isActive: true },
-            orderBy: { createdAt: 'asc' },
-            take: 1,
-          },
-        },
-      });
-      const user = company?.users[0];
+      const user = company.users[0];
       if (!user) throw new NotFoundException('Usuário ativo não encontrado');
 
-      const customer = await this.asaas.createCustomer({
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        externalReference: companyId,
-      });
+      // Reusa customer se já existe; senão cria novo já com cpfCnpj
+      let customerId = sub.asaasCustomerId;
+      if (!customerId) {
+        const customer = await this.asaas.createCustomer({
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          cpfCnpj,
+          externalReference: companyId,
+        });
+        customerId = customer.id;
+      } else {
+        // Customer existe mas sub não — atualiza cpfCnpj caso falte
+        await this.asaas.updateCustomer(customerId, { cpfCnpj });
+      }
 
       const nextDueDate = (sub.trialEndsAt > new Date()
         ? sub.trialEndsAt
@@ -350,7 +382,7 @@ export class SubscriptionsService {
         .slice(0, 10);
 
       const asaasSub = await this.asaas.createSubscription({
-        customerId: customer.id,
+        customerId,
         value: PLAN_VALUES[plan],
         cycle: PLAN_CYCLE[plan],
         nextDueDate,
@@ -362,7 +394,7 @@ export class SubscriptionsService {
         where: { id: sub.id },
         data: {
           plan,
-          asaasCustomerId: customer.id,
+          asaasCustomerId: customerId,
           asaasSubscriptionId: asaasSub.id,
           lastError: null,
         },
