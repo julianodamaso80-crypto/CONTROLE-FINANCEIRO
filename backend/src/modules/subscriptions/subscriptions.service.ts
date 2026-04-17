@@ -300,6 +300,95 @@ export class SubscriptionsService {
     return url;
   }
 
+  /**
+   * Pega (ou cria) o link de checkout pra um plano específico.
+   * - Se a sub não tem customer/asaasSubscriptionId, cria no Asaas on-demand.
+   * - Se o plano pedido é diferente do atual, troca no Asaas + DB.
+   * - Retorna sempre o link de pagamento mais atual.
+   */
+  async getCheckoutUrl(
+    companyId: string,
+    plan: SubscriptionPlan,
+  ): Promise<string | null> {
+    if (!this.appConfig.isAsaasConfigured()) {
+      throw new BadRequestException('Asaas não configurado no ambiente');
+    }
+
+    let sub = await this.getByCompanyId(companyId);
+    if (!sub) {
+      sub = await this.autoProvisionTrial(companyId);
+    }
+    if (!sub) throw new NotFoundException('Assinatura não encontrada');
+
+    // Se ainda não tem customer/sub no Asaas, cria agora
+    if (!sub.asaasSubscriptionId || !sub.asaasCustomerId) {
+      const company = await this.prisma.company.findUnique({
+        where: { id: companyId },
+        include: {
+          users: {
+            where: { isActive: true },
+            orderBy: { createdAt: 'asc' },
+            take: 1,
+          },
+        },
+      });
+      const user = company?.users[0];
+      if (!user) throw new NotFoundException('Usuário ativo não encontrado');
+
+      const customer = await this.asaas.createCustomer({
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        externalReference: companyId,
+      });
+
+      const nextDueDate = (sub.trialEndsAt > new Date()
+        ? sub.trialEndsAt
+        : new Date()
+      )
+        .toISOString()
+        .slice(0, 10);
+
+      const asaasSub = await this.asaas.createSubscription({
+        customerId: customer.id,
+        value: PLAN_VALUES[plan],
+        cycle: PLAN_CYCLE[plan],
+        nextDueDate,
+        billingType: 'UNDEFINED',
+        externalReference: companyId,
+      });
+
+      sub = await this.prisma.subscription.update({
+        where: { id: sub.id },
+        data: {
+          plan,
+          asaasCustomerId: customer.id,
+          asaasSubscriptionId: asaasSub.id,
+          lastError: null,
+        },
+      });
+    } else if (sub.plan !== plan) {
+      // Troca de plano no Asaas
+      await this.asaas.updateSubscription(sub.asaasSubscriptionId, {
+        value: PLAN_VALUES[plan],
+        cycle: PLAN_CYCLE[plan],
+      });
+      sub = await this.prisma.subscription.update({
+        where: { id: sub.id },
+        data: { plan },
+      });
+    }
+
+    const url = await this.asaas.getNextPaymentUrl(sub.asaasSubscriptionId!);
+    if (url && url !== sub.asaasPaymentUrl) {
+      await this.prisma.subscription.update({
+        where: { id: sub.id },
+        data: { asaasPaymentUrl: url },
+      });
+    }
+    return url;
+  }
+
   /** Retorna todos os valores dos planos (pra mostrar no frontend). */
   getPlanValues() {
     return PLAN_VALUES;

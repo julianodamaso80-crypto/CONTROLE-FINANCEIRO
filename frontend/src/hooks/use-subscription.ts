@@ -78,3 +78,24 @@ export function useRefreshPaymentUrl() {
     },
   });
 }
+
+export function useCheckoutUrl() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      plan: Exclude<SubscriptionPlan, 'LIFETIME'>,
+    ): Promise<string | null> => {
+      const res = await api.post<{
+        success: boolean;
+        data: { url: string | null };
+      }>('/subscriptions/checkout-url', { plan });
+      return res.data.data.url;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['subscription'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}

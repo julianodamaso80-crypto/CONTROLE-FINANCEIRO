@@ -162,11 +162,12 @@ export class AsaasService {
     }
   }
 
-  /** Retorna o link de checkout/invoice do próximo pagamento pendente. */
+  /** Retorna o link de checkout/invoice do próximo pagamento que ainda
+   * pode ser pago. Aceita PENDING, OVERDUE e AWAITING_RISK_ANALYSIS. */
   async getNextPaymentUrl(subscriptionId: string): Promise<string | null> {
     const payments = await this.findSubscriptionPayments(subscriptionId);
-    const pending = payments.find(
-      (p) => p.status === 'PENDING' || p.status === 'OVERDUE',
+    const pending = payments.find((p) =>
+      ['PENDING', 'OVERDUE', 'AWAITING_RISK_ANALYSIS'].includes(p.status),
     );
     return pending?.invoiceUrl ?? null;
   }

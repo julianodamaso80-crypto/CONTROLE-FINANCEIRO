@@ -5,9 +5,8 @@ import { Check, ExternalLink, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   useSubscription,
-  useChangePlan,
   useCancelSubscription,
-  useRefreshPaymentUrl,
+  useCheckoutUrl,
   type SubscriptionPlan,
 } from '@/hooks/use-subscription';
 import { Button } from '@/components/ui/button';
@@ -42,10 +41,9 @@ function statusLabel(status: string, blocked: boolean, trialActive: boolean) {
 
 export default function PlanoPage() {
   const { data: sub, isLoading } = useSubscription();
-  const changePlan = useChangePlan();
   const cancel = useCancelSubscription();
-  const refresh = useRefreshPaymentUrl();
-  const [openingPayment, setOpeningPayment] = useState(false);
+  const checkout = useCheckoutUrl();
+  const [openingPlan, setOpeningPlan] = useState<SubscriptionPlan | null>(null);
 
   if (isLoading) {
     return (
@@ -112,32 +110,20 @@ export default function PlanoPage() {
     );
   }
 
-  const openPayment = async () => {
-    setOpeningPayment(true);
+  const handlePay = async (plan: 'MONTHLY' | 'ANNUAL') => {
+    setOpeningPlan(plan);
     try {
-      let url = sub.paymentUrl;
-      if (!url) {
-        url = await refresh.mutateAsync();
-      }
+      const url = await checkout.mutateAsync(plan);
       if (url) {
         window.open(url, '_blank');
       } else {
-        toast.error('Link de pagamento indisponível. Tente novamente em alguns segundos.');
+        toast.error(
+          'Link de pagamento ainda não disponível. Aguarde alguns segundos e tente de novo.',
+        );
       }
     } finally {
-      setOpeningPayment(false);
+      setOpeningPlan(null);
     }
-  };
-
-  const handleChangePlan = async (plan: SubscriptionPlan) => {
-    if (plan === sub.plan) return;
-    if (
-      !confirm(
-        `Mudar para o plano ${plan === 'MONTHLY' ? 'Mensal' : 'Anual'}?`,
-      )
-    )
-      return;
-    await changePlan.mutateAsync(plan);
   };
 
   const handleCancel = async () => {
@@ -165,10 +151,11 @@ export default function PlanoPage() {
               ~16%).
             </p>
             <p className="pt-1">
-              <strong>Como pagar</strong>: clique em{' '}
-              <em>Pagar agora</em> — você é levado pro checkout seguro do
-              Asaas onde pode pagar com cartão de crédito ou Pix. O
-              pagamento cai na hora e libera seu acesso automaticamente.
+              <strong>Como pagar</strong>: clique em <em>Pagar mensal</em>{' '}
+              ou <em>Pagar anual</em> no card do plano que você quer — você é
+              levado direto pro checkout seguro do Asaas, onde paga com cartão
+              de crédito ou Pix. O pagamento cai na hora e libera seu acesso
+              automaticamente.
             </p>
             <p>
               <strong>Cobrança recorrente</strong>: depois do primeiro
@@ -227,21 +214,13 @@ export default function PlanoPage() {
             </p>
           )}
 
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Button onClick={openPayment} disabled={openingPayment}>
-              {openingPayment ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <ExternalLink className="mr-2 h-4 w-4" />
-              )}
-              Pagar agora
-            </Button>
-            {sub.status !== 'CANCELED' && (
+          {sub.status !== 'CANCELED' && (
+            <div className="flex flex-wrap gap-2 pt-2">
               <Button variant="outline" onClick={handleCancel} disabled={cancel.isPending}>
                 Cancelar assinatura
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -275,16 +254,19 @@ export default function PlanoPage() {
               <Feature text="Relatórios e análises" />
               <Feature text="Cancele quando quiser" />
             </ul>
-            {sub.plan !== 'MONTHLY' && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => handleChangePlan('MONTHLY')}
-                disabled={changePlan.isPending}
-              >
-                Mudar para mensal
-              </Button>
-            )}
+            <Button
+              variant={sub.plan === 'MONTHLY' ? 'default' : 'outline'}
+              className="w-full"
+              onClick={() => handlePay('MONTHLY')}
+              disabled={openingPlan !== null}
+            >
+              {openingPlan === 'MONTHLY' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ExternalLink className="mr-2 h-4 w-4" />
+              )}
+              Pagar mensal
+            </Button>
           </CardContent>
         </Card>
 
@@ -324,15 +306,19 @@ export default function PlanoPage() {
               <Feature text="Um pagamento só" />
               <Feature text="Cancele quando quiser" />
             </ul>
-            {sub.plan !== 'ANNUAL' && (
-              <Button
-                className="w-full"
-                onClick={() => handleChangePlan('ANNUAL')}
-                disabled={changePlan.isPending}
-              >
-                Mudar para anual (economizar)
-              </Button>
-            )}
+            <Button
+              variant={sub.plan === 'ANNUAL' ? 'default' : 'outline'}
+              className="w-full"
+              onClick={() => handlePay('ANNUAL')}
+              disabled={openingPlan !== null}
+            >
+              {openingPlan === 'ANNUAL' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ExternalLink className="mr-2 h-4 w-4" />
+              )}
+              Pagar anual (economizar)
+            </Button>
           </CardContent>
         </Card>
       </div>

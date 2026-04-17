@@ -46,4 +46,14 @@ export class SubscriptionsController {
     const url = await this.service.refreshPaymentUrl(user.companyId);
     return { url };
   }
+
+  @SkipSubscriptionCheck()
+  @Post('checkout-url')
+  async getCheckoutUrl(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: ChangePlanDto,
+  ) {
+    const url = await this.service.getCheckoutUrl(user.companyId, dto.plan);
+    return { url };
+  }
 }
