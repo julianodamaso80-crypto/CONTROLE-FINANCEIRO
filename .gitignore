@@ -37,3 +37,15 @@ coverage/
 *.tsbuildinfo
 
 .vercel
+
+# Deploy/test helpers
+deploy_backend.py
+test_reports.py
+test_pdf_e2e.py
+test_ai_pdf_intent.py
+test_whatsapp_pdf.py
+fetch_pdf.py
+test-report.pdf
+
+# Source assets (não versionar logomarcas baixadas)
+frontend/logomarca/
