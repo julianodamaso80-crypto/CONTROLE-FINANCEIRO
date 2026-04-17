@@ -6,6 +6,7 @@ import { SegmentsModule } from '../segments/segments.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { BankAccountsModule } from '../bank-accounts/bank-accounts.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { ReportsModule } from '../reports/reports.module';
 import { WhatsAppService } from './whatsapp.service';
 import { WhatsAppController } from './whatsapp.controller';
 
@@ -17,6 +18,7 @@ import { WhatsAppController } from './whatsapp.controller';
     SegmentsModule,
     CategoriesModule,
     BankAccountsModule,
+    ReportsModule,
     forwardRef(() => SubscriptionsModule),
   ],
   controllers: [WhatsAppController],

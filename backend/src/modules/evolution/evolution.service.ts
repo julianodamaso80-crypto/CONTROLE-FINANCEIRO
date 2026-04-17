@@ -222,6 +222,38 @@ export class EvolutionService {
     }
   }
 
+  async sendDocumentMessage(
+    instanceName: string,
+    number: string,
+    params: {
+      base64: string;
+      fileName: string;
+      mimetype: string;
+      caption?: string;
+    },
+  ): Promise<void> {
+    const cleanNumber = number.includes('@')
+      ? number.split('@')[0] ?? number
+      : number;
+
+    try {
+      await this.http.post(`/message/sendMedia/${instanceName}`, {
+        number: cleanNumber,
+        mediatype: 'document',
+        mimetype: params.mimetype,
+        media: params.base64,
+        fileName: params.fileName,
+        caption: params.caption,
+        delay: 1000,
+      });
+    } catch (error) {
+      this.logError('sendDocumentMessage', error);
+      throw new BadGatewayException(
+        'Erro ao enviar documento WhatsApp. Tente novamente.',
+      );
+    }
+  }
+
   private logError(method: string, error: unknown): void {
     if (axios.isAxiosError(error)) {
       this.logger.error(

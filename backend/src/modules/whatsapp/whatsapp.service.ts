@@ -16,6 +16,7 @@ import { SegmentsService } from '../segments/segments.service';
 import { CategoriesService } from '../categories/categories.service';
 import { BankAccountsService } from '../bank-accounts/bank-accounts.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { ReportsService } from '../reports/reports.service';
 import type { BotInterpretation } from '../ai/ai.types';
 
 interface WebhookPayload {
@@ -51,6 +52,12 @@ interface HandlerResult {
   responseText: string;
   actionTaken: string;
   relatedTransactionId: string | null;
+  mediaAttachment?: {
+    base64: string;
+    fileName: string;
+    mimetype: string;
+    caption?: string;
+  } | null;
 }
 
 @Injectable()
@@ -66,6 +73,7 @@ export class WhatsAppService {
     private readonly segments: SegmentsService,
     private readonly categories: CategoriesService,
     private readonly bankAccounts: BankAccountsService,
+    private readonly reports: ReportsService,
     @Inject(forwardRef(() => SubscriptionsService))
     private readonly subscriptions: SubscriptionsService,
   ) {}
@@ -733,14 +741,27 @@ export class WhatsAppService {
       return;
     }
 
-    const result = await this.executeIntent(companyId, interpretation);
+    const result = await this.executeIntent(companyId, sender.id, interpretation);
 
     try {
-      await this.evolution.sendTextMessage(
-        instanceName,
-        senderNumber,
-        result.responseText,
-      );
+      if (result.mediaAttachment) {
+        await this.evolution.sendDocumentMessage(
+          instanceName,
+          senderNumber,
+          {
+            base64: result.mediaAttachment.base64,
+            fileName: result.mediaAttachment.fileName,
+            mimetype: result.mediaAttachment.mimetype,
+            caption: result.responseText,
+          },
+        );
+      } else {
+        await this.evolution.sendTextMessage(
+          instanceName,
+          senderNumber,
+          result.responseText,
+        );
+      }
     } catch (error) {
       this.logger.error(
         `Falha ao enviar resposta: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
@@ -768,6 +789,7 @@ export class WhatsAppService {
 
   private async executeIntent(
     companyId: string,
+    userId: string,
     interpretation: BotInterpretation,
   ): Promise<HandlerResult> {
     switch (interpretation.intent) {
@@ -790,7 +812,7 @@ export class WhatsAppService {
       case 'query_upcoming':
         return this.executeQueryUpcoming(companyId);
       case 'query_report':
-        return this.executeQueryReport(companyId, interpretation);
+        return this.executeQueryReport(companyId, userId, interpretation);
       case 'delete_last':
         return this.executeDeleteLast(companyId);
       case 'update_last':
@@ -1185,6 +1207,7 @@ export class WhatsAppService {
 
   private async executeQueryReport(
     companyId: string,
+    userId: string,
     interpretation: BotInterpretation,
   ): Promise<HandlerResult> {
     const range = this.resolveReportRange(interpretation.data);
@@ -1195,6 +1218,10 @@ export class WhatsAppService {
         actionTaken: 'report_invalid_period',
         relatedTransactionId: null,
       };
+    }
+
+    if (interpretation.data.format === 'pdf') {
+      return this.executeQueryReportPdf(companyId, userId, range);
     }
 
     const reportType = interpretation.data.reportType ?? 'all';
@@ -1296,6 +1323,65 @@ export class WhatsAppService {
       actionTaken: 'query_report',
       relatedTransactionId: null,
     };
+  }
+
+  private async executeQueryReportPdf(
+    companyId: string,
+    userId: string,
+    range: { start: Date; end: Date; label: string },
+  ): Promise<HandlerResult> {
+    const usage = await this.reports.getUsage(companyId);
+    if (usage.used >= usage.limit) {
+      const resets = new Date(usage.resetsAt).toLocaleDateString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+      });
+      return {
+        responseText:
+          `📄 Você já usou os *${usage.limit} PDFs* deste mês.\n` +
+          `Libera em *${resets}*.\n\n` +
+          `Se quiser, posso te enviar o resumo em *texto* agora — é só pedir "relatório do mês".`,
+        actionTaken: 'report_pdf_rate_limited',
+        relatedTransactionId: null,
+      };
+    }
+
+    const toIso = (d: Date) => d.toISOString().slice(0, 10);
+    const from = toIso(range.start);
+    const to = toIso(range.end);
+
+    try {
+      const { pdf, filename } = await this.reports.generate({
+        companyId,
+        userId,
+        from,
+        to,
+        source: 'WHATSAPP',
+      });
+
+      const caption =
+        `📄 *Relatório em PDF — ${range.label}*\n\n` +
+        `Usei ${usage.used + 1}/${usage.limit} PDFs deste mês.`;
+
+      return {
+        responseText: caption,
+        actionTaken: 'report_pdf_sent',
+        relatedTransactionId: null,
+        mediaAttachment: {
+          base64: pdf.toString('base64'),
+          fileName: filename,
+          mimetype: 'application/pdf',
+        },
+      };
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : 'Erro ao gerar PDF';
+      this.logger.error(`executeQueryReportPdf: ${msg}`);
+      return {
+        responseText: `❌ Não consegui gerar o PDF: ${msg}`,
+        actionTaken: 'report_pdf_error',
+        relatedTransactionId: null,
+      };
+    }
   }
 
   private async resolveGroupName(

@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { AppConfigService } from '../../common/config/app.config';
-import type { BotInterpretation, ReportPeriod, ReportType } from './ai.types';
+import type {
+  BotInterpretation,
+  ReportFormat,
+  ReportPeriod,
+  ReportType,
+} from './ai.types';
 
 const VALID_PERIODS: ReportPeriod[] = [
   'today',
@@ -25,6 +30,8 @@ const VALID_REPORT_TYPES: ReportType[] = [
 ];
 
 const VALID_GROUP_BY = ['category', 'segment', 'none'] as const;
+
+const VALID_FORMATS: ReportFormat[] = ['text', 'pdf'];
 
 // Tipagem da resposta OpenRouter/OpenAI
 interface ChatCompletionResponse {
@@ -368,7 +375,8 @@ FORMATO DE SAÍDA — APENAS JSON válido, sem markdown, sem backticks, sem expl
     "n": number|null,
     "startDate": string|null,
     "endDate": string|null,
-    "groupBy": string|null
+    "groupBy": string|null,
+    "format": string|null
   },
   "reasoning": string
 }
@@ -386,6 +394,7 @@ INTENTS VÁLIDAS (qualquer outra coisa = "unknown"):
   * n quando period="last_n_months" ou "last_n_days"
   * startDate e endDate (ISO YYYY-MM-DD) quando period="custom"
   * groupBy: "category" | "segment" | "none" (padrão "category")
+  * format: "pdf" QUANDO o cliente pedir explicitamente em PDF ("manda em pdf", "quero o pdf", "relatório em pdf", "gera o pdf", "arquivo pdf", "documento pdf"). "text" no caso padrão (resumo no chat). LIMITE: só 4 PDFs por mês por empresa — mesmo assim sempre respeite o pedido do cliente, o backend controla o rate limit.
 - "delete_last": apagar último lançamento
 - "update_last": atualizar último lançamento
 - "help": pediu ajuda sobre comandos do Meu Caixa
@@ -427,6 +436,9 @@ EXEMPLOS:
 13. "resumo de hoje" → {"intent":"query_report","confidence":0.95,"data":{"period":"today","reportType":"all","groupBy":"category"}}
 14. "quanto ganhei semana passada" → {"intent":"query_report","confidence":0.95,"data":{"period":"last_week","reportType":"income","groupBy":"category"}}
 15. "faturamento esse ano" → {"intent":"query_report","confidence":0.9,"data":{"period":"this_year","reportType":"income","groupBy":"none"}}
+15a. "me manda o pdf do mês" → {"intent":"query_report","confidence":0.95,"data":{"period":"this_month","reportType":"all","groupBy":"category","format":"pdf"}}
+15b. "quero o relatório em pdf de janeiro" → {"intent":"query_report","confidence":0.95,"data":{"period":"specific_month","monthNumber":1,"year":2026,"reportType":"all","groupBy":"category","format":"pdf"}}
+15c. "gera o pdf dos últimos 30 dias" → {"intent":"query_report","confidence":0.95,"data":{"period":"last_n_days","n":30,"reportType":"all","groupBy":"category","format":"pdf"}}
 16. "oi" → {"intent":"greeting","confidence":1,"data":{}}
 17. "oie" → {"intent":"greeting","confidence":1,"data":{}}
 18. "bom dia" → {"intent":"greeting","confidence":1,"data":{}}
@@ -535,6 +547,9 @@ EXEMPLOS:
           rawData['groupBy'] as (typeof VALID_GROUP_BY)[number],
         )
           ? (rawData['groupBy'] as 'category' | 'segment' | 'none')
+          : undefined,
+        format: VALID_FORMATS.includes(rawData['format'] as ReportFormat)
+          ? (rawData['format'] as ReportFormat)
           : undefined,
       },
       reasoning:

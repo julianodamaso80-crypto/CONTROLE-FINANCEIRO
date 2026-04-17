@@ -26,6 +26,8 @@ export type ReportPeriod =
 
 export type ReportType = 'income' | 'expense' | 'profit' | 'all';
 
+export type ReportFormat = 'text' | 'pdf';
+
 export interface BotInterpretation {
   intent: BotIntent;
   confidence: number;
@@ -46,6 +48,7 @@ export interface BotInterpretation {
     startDate?: string;
     endDate?: string;
     groupBy?: 'category' | 'segment' | 'none';
+    format?: ReportFormat;
   };
   reasoning?: string;
 }
