@@ -83,8 +83,8 @@ export class AsaasService {
 
   /**
    * Cria uma assinatura recorrente (monthly ou yearly) no Asaas.
-   * nextDueDate é a data do PRIMEIRO pagamento. Setar para daqui 1 dia
-   * pra dar o trial de 1 dia.
+   * nextDueDate é a data do PRIMEIRO pagamento. Setar para daqui 3 dias
+   * pra dar o trial de 3 dias.
    */
   async createSubscription(input: {
     customerId: string;

@@ -20,6 +20,7 @@ import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
     AdminModule,
     SubscriptionsModule,
     WebhooksModule,
+    HealthModule,
   ],
   providers: [
     // Ordem importa: Throttler → JWT → Subscription

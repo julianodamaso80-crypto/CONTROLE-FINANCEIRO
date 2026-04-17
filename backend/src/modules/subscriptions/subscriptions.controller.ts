@@ -20,6 +20,8 @@ export class SubscriptionsController {
   @SkipSubscriptionCheck()
   @Get('me')
   async getMe(@CurrentUser() user: RequestUser) {
+    // Admin da plataforma não tem plano próprio
+    if (user.role === 'ADMIN') return null;
     return this.service.getStatusDto(user.companyId);
   }
 

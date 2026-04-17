@@ -166,7 +166,7 @@ export default function LandingPage() {
             <div className="mt-10 flex items-center gap-6 text-sm font-bold text-[#90ff6b]">
               <div className="flex items-center gap-2">
                 <Check className="h-5 w-5" strokeWidth={3} />
-                14 dias grátis
+                3 dias grátis
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-5 w-5" strokeWidth={3} />
@@ -566,7 +566,7 @@ export default function LandingPage() {
             <span className="text-stroke">Comece</span> a controlar.
           </h2>
           <p className="mx-auto mt-8 max-w-2xl text-xl font-medium text-black/80">
-            14 dias grátis. Sem cartão. Setup em 3 minutos. Cancela quando
+            3 dias grátis. Sem cartão. Setup em 3 minutos. Cancela quando
             quiser e leva seus dados.
           </p>
           <div className="mt-12 flex flex-wrap justify-center gap-5">

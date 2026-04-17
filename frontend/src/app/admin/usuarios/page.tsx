@@ -437,7 +437,7 @@ export default function AdminUsuariosPage() {
                 disabled={actionLoading}
               >
                 <Clock className="h-4 w-4 text-emerald-400" />
-                Trial (7 dias)
+                Trial (3 dias)
               </Button>
               <Button
                 variant="outline"

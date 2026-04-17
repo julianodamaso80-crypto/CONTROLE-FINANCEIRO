@@ -85,7 +85,7 @@ export class AuthService {
         ),
     );
 
-    // Cria subscription com trial de 1 dia (cria customer + subscription no Asaas)
+    // Cria subscription com trial de 3 dias (cria customer + subscription no Asaas)
     await this.subscriptions
       .createInitialSubscription({
         companyId: result.company.id,

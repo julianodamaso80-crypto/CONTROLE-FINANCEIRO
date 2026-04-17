@@ -13,7 +13,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { AppConfigService } from '../../common/config/app.config';
 import { AsaasService } from '../asaas/asaas.service';
 
-const TRIAL_DAYS = 1;
+const TRIAL_DAYS = 3;
 const PLAN_VALUES: Record<SubscriptionPlan, number> = {
   MONTHLY: 19.9,
   ANNUAL: 199.9,
@@ -76,7 +76,7 @@ export class SubscriptionsService {
         externalReference: input.companyId,
       });
 
-      // Primeiro pagamento = amanhã (trial de 1 dia)
+      // Primeiro pagamento = fim do trial de 3 dias
       const nextDueDate = trialEndsAt.toISOString().slice(0, 10);
 
       const asaasSub = await this.asaas.createSubscription({
@@ -176,7 +176,7 @@ export class SubscriptionsService {
     if (!company || company.users.length === 0) return null;
 
     const user = company.users[0]!;
-    const LEGACY_TRIAL_DAYS = 7;
+    const LEGACY_TRIAL_DAYS = 3;
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + LEGACY_TRIAL_DAYS);
 
@@ -390,8 +390,33 @@ export class SubscriptionsService {
     this.logger.log(`Sub ${sub.id} → EXPIRED (asaas inactivated)`);
   }
 
-  /** Retorna status útil pro frontend. Auto-provisiona se não existe. */
+  /** Retorna status útil pro frontend. Auto-provisiona se não existe.
+   * Empresas com plano BUSINESS (vitalício / sócio) retornam status especial. */
   async getStatusDto(companyId: string) {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { plan: true },
+    });
+
+    if (company?.plan === 'BUSINESS') {
+      return {
+        id: null,
+        plan: 'LIFETIME' as const,
+        status: 'LIFETIME' as const,
+        trialing: false,
+        trialActive: false,
+        trialDaysLeft: 0,
+        trialEndsAt: null,
+        currentPeriodEnd: null,
+        nextPaymentAt: null,
+        lastPaymentAt: null,
+        paymentUrl: null,
+        blocked: false,
+        lifetime: true,
+        planValues: PLAN_VALUES,
+      };
+    }
+
     let sub = await this.getByCompanyId(companyId);
     if (!sub) {
       sub = await this.autoProvisionTrial(companyId);
@@ -423,6 +448,7 @@ export class SubscriptionsService {
       lastPaymentAt: sub.lastPaymentAt?.toISOString() ?? null,
       paymentUrl: sub.asaasPaymentUrl,
       blocked: !(sub.status === 'ACTIVE' || trialActive),
+      lifetime: false,
       planValues: PLAN_VALUES,
     };
   }

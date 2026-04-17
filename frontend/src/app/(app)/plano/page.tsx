@@ -25,6 +25,8 @@ function fmtBRL(n: number) {
 }
 
 function statusLabel(status: string, blocked: boolean, trialActive: boolean) {
+  if (status === 'LIFETIME')
+    return { label: 'Vitalício', color: 'text-purple-400' };
   if (status === 'ACTIVE') return { label: 'Ativo', color: 'text-green-500' };
   if (trialActive)
     return { label: 'Período gratuito', color: 'text-emerald-400' };
@@ -74,6 +76,42 @@ export default function PlanoPage() {
   const annualMonthly = annualValue / 12;
   const annualSavePct = Math.round((1 - annualMonthly / monthlyValue) * 100);
 
+  // Plano vitalício: sem cobrança, sem ações de pagamento
+  if (sub.lifetime) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader
+          title="Meu Plano"
+          subtitle="Sua assinatura Meu Caixa"
+          helpTitle="Acesso vitalício"
+          helpBody={
+            <p>
+              Você tem acesso completo ao Meu Caixa, liberado permanentemente,
+              sem cobrança recorrente. Todos os recursos (despesas, receitas,
+              relatórios, WhatsApp bot) estão disponíveis.
+            </p>
+          }
+        />
+        <Card className="border-purple-500/30 bg-purple-500/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span className="text-purple-400">★</span>
+              Acesso Vitalício
+            </CardTitle>
+            <CardDescription>
+              Você tem acesso completo ao Meu Caixa, sem cobrança recorrente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Todos os recursos liberados. Nenhuma ação necessária.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const openPayment = async () => {
     setOpeningPayment(true);
     try {
@@ -122,7 +160,7 @@ export default function PlanoPage() {
           <>
             <p>
               O Meu Caixa trabalha com <strong>assinatura recorrente</strong>.
-              Você tem 1 dia grátis pra testar, e depois continua com o
+              Você tem 3 dias grátis pra testar, e depois continua com o
               plano Mensal (R$ 19,90/mês) ou Anual (R$ 199,90/ano — economiza
               ~16%).
             </p>
@@ -167,7 +205,7 @@ export default function PlanoPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {sub.trialing && sub.trialActive && (
+          {sub.trialing && sub.trialActive && sub.trialEndsAt && (
             <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
               🎁 <strong>{sub.trialDaysLeft} dia{sub.trialDaysLeft !== 1 ? 's' : ''}</strong>{' '}
               de período gratuito restante. Termina em{' '}

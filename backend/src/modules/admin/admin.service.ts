@@ -134,11 +134,20 @@ export class AdminService {
       this.prisma.subscription.count({ where: { status: 'CANCELED' } }),
       this.prisma.company.count({ where: { plan: 'BUSINESS' } }),
     ]);
+    // Vitalício (BUSINESS) não paga — excluir do MRR
     const monthly = await this.prisma.subscription.count({
-      where: { status: 'ACTIVE', plan: 'MONTHLY' },
+      where: {
+        status: 'ACTIVE',
+        plan: 'MONTHLY',
+        company: { plan: { not: 'BUSINESS' } },
+      },
     });
     const annual = await this.prisma.subscription.count({
-      where: { status: 'ACTIVE', plan: 'ANNUAL' },
+      where: {
+        status: 'ACTIVE',
+        plan: 'ANNUAL',
+        company: { plan: { not: 'BUSINESS' } },
+      },
     });
 
     return { trialing, active, pastDue, canceled, lifetime, monthly, annual };
@@ -298,9 +307,9 @@ export class AdminService {
     }
 
     if (accessType === 'TRIAL') {
-      // Reset trial: 7 days
+      // Reset trial: 3 days
       const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + 7);
+      trialEnd.setDate(trialEnd.getDate() + 3);
 
       await this.prisma.company.update({
         where: { id: user.companyId },
@@ -326,7 +335,7 @@ export class AdminService {
           },
         });
       }
-      return { message: 'Trial de 7 dias concedido' };
+      return { message: 'Trial de 3 dias concedido' };
     }
 
     // MONTHLY or ANNUAL — activate subscription

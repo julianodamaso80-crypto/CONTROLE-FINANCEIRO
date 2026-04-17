@@ -2,27 +2,29 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import api, { apiGet } from '@/lib/api';
 
-export type SubscriptionPlan = 'MONTHLY' | 'ANNUAL';
+export type SubscriptionPlan = 'MONTHLY' | 'ANNUAL' | 'LIFETIME';
 export type SubscriptionStatus =
   | 'TRIALING'
   | 'ACTIVE'
   | 'PAST_DUE'
   | 'CANCELED'
-  | 'EXPIRED';
+  | 'EXPIRED'
+  | 'LIFETIME';
 
 export interface SubscriptionDto {
-  id: string;
+  id: string | null;
   plan: SubscriptionPlan;
   status: SubscriptionStatus;
   trialing: boolean;
   trialActive: boolean;
   trialDaysLeft: number;
-  trialEndsAt: string;
+  trialEndsAt: string | null;
   currentPeriodEnd: string | null;
   nextPaymentAt: string | null;
   lastPaymentAt: string | null;
   paymentUrl: string | null;
   blocked: boolean;
+  lifetime?: boolean;
   planValues: { MONTHLY: number; ANNUAL: number };
 }
 
