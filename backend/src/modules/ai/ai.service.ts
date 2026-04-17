@@ -233,6 +233,7 @@ export class AiService {
       context.categories.length > 0
         ? context.categories.join(', ')
         : 'nenhuma cadastrada';
+    const now = this.getNowInBrazil();
 
     return `Você é o analisador de imagens financeiras do Meu Caixa. O cliente enviou uma foto que pode ser: cupom fiscal, nota fiscal, comprovante de pagamento, print de extrato bancário, recibo, ou similar.
 
@@ -249,6 +250,8 @@ Regras de extração:
 - segment: match com um dos segmentos cadastrados abaixo, senão null
 - Se a imagem NÃO for de transação financeira (ex: foto aleatória, meme, selfie), retorne intent "unknown"
 - Se a imagem tiver MÚLTIPLAS transações (um extrato cheio), retorne só a MAIS RECENTE e mencione isso no reasoning
+
+DATA DE REFERÊNCIA (America/Sao_Paulo): hoje é ${now.weekday}, ${now.br} (ISO ${now.iso}). Se a data da imagem não for legível, retorne date=null.
 
 Categorias cadastradas: ${categorias}
 Segmentos cadastrados: ${segmentos}
@@ -336,6 +339,7 @@ FORMATO DE SAÍDA — APENAS JSON válido:
       context.categories.length > 0
         ? context.categories.join(', ')
         : 'nenhuma cadastrada';
+    const now = this.getNowInBrazil();
 
     return `Você é o classificador de mensagens do Meu Caixa, um sistema de controle financeiro empresarial.
 
@@ -401,6 +405,8 @@ INTENTS VÁLIDAS (qualquer outra coisa = "unknown"):
 - "greeting": saudação curta sem pedido específico (oi, ola, bom dia, boa tarde, boa noite, tudo bem, tudo certo, eai, blz, opa, salve)
 - "unknown": qualquer mensagem fora do escopo (perguntas gerais, conselhos, escrita, traduções, outros temas)
 
+DATA DE REFERÊNCIA (America/Sao_Paulo): hoje é ${now.weekday}, ${now.br} (ISO ${now.iso}). Use SEMPRE esta data pra resolver "hoje", "ontem", "anteontem", "segunda passada", etc. NUNCA invente data — se o cliente não mencionar, retorne date=null (o backend preenche com a data de hoje em Brasília).
+
 CONTEXTO DA EMPRESA (use SOMENTE estes valores para matchear category/segment):
 - Segmentos cadastrados: ${segmentos}
 - Categorias cadastradas (formato "Pai > Sub1, Sub2"): ${categorias}
@@ -448,6 +454,23 @@ EXEMPLOS:
 22. "me dá uma dica de investimento" → {"intent":"unknown","confidence":1,"data":{}}
 23. "escreve um e-mail pra mim" → {"intent":"unknown","confidence":1,"data":{}}
 24. "qual a melhor ação pra comprar" → {"intent":"unknown","confidence":1,"data":{}}`;
+  }
+
+  /** Data atual em São Paulo pra IA resolver "hoje", "ontem", "segunda" corretamente */
+  private getNowInBrazil(): { iso: string; br: string; weekday: string } {
+    const now = new Date();
+    const iso = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(now);
+    const [y, m, d] = iso.split('-');
+    const weekday = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      weekday: 'long',
+    }).format(now);
+    return { iso, br: `${d}/${m}/${y}`, weekday };
   }
 
   /** Valida e normaliza a resposta da IA */

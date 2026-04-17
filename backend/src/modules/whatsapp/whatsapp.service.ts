@@ -913,8 +913,14 @@ export class WhatsAppService {
         ? 'Despesa via WhatsApp'
         : 'Receita via WhatsApp');
 
-    const transactionDate =
-      intentData.date ?? new Date().toISOString().slice(0, 10);
+    // Data "de hoje" sempre no timezone de São Paulo (YYYY-MM-DD)
+    const todaySP = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+    const transactionDate = intentData.date ?? todaySP;
 
     const transaction = await this.transactions.create(
       companyId,
@@ -943,12 +949,16 @@ export class WhatsAppService {
       currency: 'BRL',
     });
 
+    // Converte YYYY-MM-DD → DD/MM/YYYY pra exibir pro usuário
+    const [ty, tm, td] = transactionDate.split('-');
+    const transactionDateBR = `${td}/${tm}/${ty}`;
+
     let response = `${emoji} *${label} registrada!*\n\n`;
     response += `• Valor: *${formattedAmount}*\n`;
     response += `• Descrição: ${description}\n`;
     if (categoryName) response += `• Categoria: ${categoryName}\n`;
     if (segmentName) response += `• Segmento: ${segmentName}\n`;
-    response += `• Data: ${transactionDate}\n`;
+    response += `• Data: ${transactionDateBR}\n`;
     response += '• Status: Pago ✅';
 
     return {
