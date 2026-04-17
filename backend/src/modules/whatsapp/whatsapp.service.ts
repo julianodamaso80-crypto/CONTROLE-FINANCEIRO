@@ -920,7 +920,13 @@ export class WhatsAppService {
       month: '2-digit',
       day: '2-digit',
     }).format(new Date());
-    const transactionDate = intentData.date ?? todaySP;
+
+    const isPending =
+      intentData.status === 'PENDING' && !!intentData.dueDate;
+    const dueDate = intentData.dueDate;
+    const transactionDate = isPending
+      ? (dueDate as string)
+      : (intentData.date ?? todaySP);
 
     const transaction = await this.transactions.create(
       companyId,
@@ -930,8 +936,10 @@ export class WhatsAppService {
         amount,
         description,
         date: transactionDate,
-        status: 'PAID',
-        paymentDate: transactionDate,
+        status: isPending ? 'PENDING' : 'PAID',
+        ...(isPending
+          ? { dueDate: dueDate as string }
+          : { paymentDate: transactionDate }),
         categoryId,
         segmentId,
       },
@@ -953,17 +961,31 @@ export class WhatsAppService {
     const [ty, tm, td] = transactionDate.split('-');
     const transactionDateBR = `${td}/${tm}/${ty}`;
 
-    let response = `${emoji} *${label} registrada!*\n\n`;
-    response += `• Valor: *${formattedAmount}*\n`;
-    response += `• Descrição: ${description}\n`;
-    if (categoryName) response += `• Categoria: ${categoryName}\n`;
-    if (segmentName) response += `• Segmento: ${segmentName}\n`;
-    response += `• Data: ${transactionDateBR}\n`;
-    response += '• Status: Pago ✅';
+    let response: string;
+    if (isPending) {
+      response = `🔔 *Boleto registrado!*\n\n`;
+      response += `• Valor: *${formattedAmount}*\n`;
+      response += `• Descrição: ${description}\n`;
+      if (categoryName) response += `• Categoria: ${categoryName}\n`;
+      if (segmentName) response += `• Segmento: ${segmentName}\n`;
+      response += `• Vencimento: ${transactionDateBR}\n`;
+      response += `• Status: Pendente ⏳\n\n`;
+      response += `Vou te lembrar às *9h da manhã* no dia do vencimento. ✅`;
+    } else {
+      response = `${emoji} *${label} registrada!*\n\n`;
+      response += `• Valor: *${formattedAmount}*\n`;
+      response += `• Descrição: ${description}\n`;
+      if (categoryName) response += `• Categoria: ${categoryName}\n`;
+      if (segmentName) response += `• Segmento: ${segmentName}\n`;
+      response += `• Data: ${transactionDateBR}\n`;
+      response += '• Status: Pago ✅';
+    }
 
     return {
       responseText: response,
-      actionTaken: `registered_${type.toLowerCase()}`,
+      actionTaken: isPending
+        ? `registered_pending_${type.toLowerCase()}`
+        : `registered_${type.toLowerCase()}`,
       relatedTransactionId: transaction.id,
     };
   }

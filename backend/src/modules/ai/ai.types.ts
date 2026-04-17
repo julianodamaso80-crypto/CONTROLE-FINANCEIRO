@@ -28,6 +28,8 @@ export type ReportType = 'income' | 'expense' | 'profit' | 'all';
 
 export type ReportFormat = 'text' | 'pdf';
 
+export type TransactionStatusIntent = 'PAID' | 'PENDING';
+
 export interface BotInterpretation {
   intent: BotIntent;
   confidence: number;
@@ -39,6 +41,8 @@ export interface BotInterpretation {
     supplier?: string;
     client?: string;
     date?: string;
+    dueDate?: string;
+    status?: TransactionStatusIntent;
     newAmount?: number;
     period?: ReportPeriod;
     reportType?: ReportType;

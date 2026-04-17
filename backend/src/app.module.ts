@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './common/prisma/prisma.module';
 import { AppConfigModule } from './common/config/app-config.module';
@@ -22,10 +23,12 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { HealthModule } from './modules/health/health.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { RemindersModule } from './modules/reminders/reminders.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     // Rate limiting global com três janelas de proteção
     ThrottlerModule.forRoot([
       { name: 'short', ttl: 1000, limit: 3 },
@@ -50,6 +53,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     WebhooksModule,
     HealthModule,
     ReportsModule,
+    RemindersModule,
   ],
   providers: [
     // Ordem importa: Throttler → JWT → Subscription

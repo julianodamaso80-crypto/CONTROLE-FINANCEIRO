@@ -371,6 +371,8 @@ FORMATO DE SAÍDA — APENAS JSON válido, sem markdown, sem backticks, sem expl
     "supplier": string|null,
     "client": string|null,
     "date": string|null,
+    "dueDate": string|null,
+    "status": string|null,
     "newAmount": number|null,
     "period": string|null,
     "reportType": string|null,
@@ -386,8 +388,12 @@ FORMATO DE SAÍDA — APENAS JSON válido, sem markdown, sem backticks, sem expl
 }
 
 INTENTS VÁLIDAS (qualquer outra coisa = "unknown"):
-- "register_expense": registrar despesa (gatilhos: paguei, gastei, comprei, saiu, saída, pagar, despesa, débito)
-- "register_income": registrar receita (gatilhos: recebi, entrada, ganhei, vendeu, venda, faturei, crédito)
+- "register_expense": registrar despesa. DOIS SUB-CASOS — preencha SEMPRE o campo "status":
+  * "status": "PAID" → gasto já pago (gatilhos: "paguei", "gastei", "comprei", "saiu", "débito"). O backend vai usar a data mencionada (ou hoje) como dataDePagamento.
+  * "status": "PENDING" → boleto/conta a pagar no futuro (gatilhos: "tenho um boleto", "vai vencer", "vence dia X", "conta a pagar", "pra pagar dia X", "lembra dia X", "me avisa dia X"). NESTE CASO, preencha "dueDate" (ISO YYYY-MM-DD) com o vencimento. O backend envia lembrete automático às 9h do dia do vencimento.
+- "register_income": registrar receita. Mesmos dois sub-casos via "status":
+  * "status": "PAID" → recebimento já entrou (gatilhos: "recebi", "entrou", "ganhei", "venda", "faturei").
+  * "status": "PENDING" → previsão de recebimento ("cliente vai pagar dia X", "nota a receber vence dia X"). Preencha "dueDate".
 - "query_balance": consultar saldo atual
 - "query_expenses_month": ver despesas do mês corrente (atalho)
 - "query_upcoming": ver vencimentos próximos (contas a pagar/receber)
@@ -445,6 +451,10 @@ EXEMPLOS:
 15a. "me manda o pdf do mês" → {"intent":"query_report","confidence":0.95,"data":{"period":"this_month","reportType":"all","groupBy":"category","format":"pdf"}}
 15b. "quero o relatório em pdf de janeiro" → {"intent":"query_report","confidence":0.95,"data":{"period":"specific_month","monthNumber":1,"year":2026,"reportType":"all","groupBy":"category","format":"pdf"}}
 15c. "gera o pdf dos últimos 30 dias" → {"intent":"query_report","confidence":0.95,"data":{"period":"last_n_days","n":30,"reportType":"all","groupBy":"category","format":"pdf"}}
+15d. "tenho um boleto de 500 de energia que vai vencer dia 30" → {"intent":"register_expense","confidence":0.95,"data":{"amount":500,"description":"Boleto energia","status":"PENDING","dueDate":"2026-04-30"}}
+15e. "me lembra dia 20 do mês que vem do boleto do aluguel, 2500" → {"intent":"register_expense","confidence":0.9,"data":{"amount":2500,"description":"Aluguel","status":"PENDING","dueDate":"2026-05-20"}}
+15f. "cliente vai pagar 3mil dia 25" → {"intent":"register_income","confidence":0.9,"data":{"amount":3000,"description":"Receita cliente","status":"PENDING","dueDate":"2026-04-25"}}
+15g. "paguei 80 de uber" → {"intent":"register_expense","confidence":0.95,"data":{"amount":80,"description":"Uber","status":"PAID"}}
 16. "oi" → {"intent":"greeting","confidence":1,"data":{}}
 17. "oie" → {"intent":"greeting","confidence":1,"data":{}}
 18. "bom dia" → {"intent":"greeting","confidence":1,"data":{}}
@@ -539,6 +549,14 @@ EXEMPLOS:
             : undefined,
         date:
           typeof rawData['date'] === 'string' ? rawData['date'] : undefined,
+        dueDate:
+          typeof rawData['dueDate'] === 'string'
+            ? rawData['dueDate']
+            : undefined,
+        status:
+          rawData['status'] === 'PAID' || rawData['status'] === 'PENDING'
+            ? (rawData['status'] as 'PAID' | 'PENDING')
+            : undefined,
         newAmount:
           typeof rawData['newAmount'] === 'number'
             ? rawData['newAmount']
