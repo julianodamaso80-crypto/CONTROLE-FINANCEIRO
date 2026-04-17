@@ -33,45 +33,46 @@ export const metadata = {
 const capabilities = [
   { icon: Mic, label: 'ÁUDIO NO WHATSAPP' },
   { icon: ImageIcon, label: 'FOTO DA NOTA' },
+  { icon: FileText, label: 'PDF DE BOLETO/EXTRATO' },
   { icon: Type, label: 'TEXTO LIVRE' },
   { icon: Brain, label: 'IA CLASSIFICADORA' },
   { icon: Receipt, label: 'LANÇAMENTO AUTOMÁTICO' },
   { icon: BarChart3, label: 'DASHBOARD EM TEMPO REAL' },
-  { icon: FileText, label: 'RELATÓRIO PRONTO' },
+  { icon: FileText, label: 'RELATÓRIO MENSAL EM PDF' },
   { icon: Bot, label: 'BOT 24/7' },
   { icon: Sparkles, label: 'ZERO PLANILHA' },
 ];
 
 const features = [
   {
-    icon: MessageCircle,
-    title: 'Lançamento por WhatsApp',
-    text: 'Mande "almoço cliente 87 reais" no WhatsApp. A IA categoriza, salva e te devolve o saldo do dia.',
+    icon: Type,
+    title: 'Texto livre no WhatsApp',
+    text: 'Mande "almoço cliente 87 reais". A IA entende português informal, gírias e abreviações — categoriza, salva e devolve o saldo.',
   },
   {
-    icon: Brain,
-    title: 'IA que entende contabilidade',
-    text: 'Classificação automática de receitas e despesas em segmentos e categorias do seu negócio.',
+    icon: Mic,
+    title: 'Áudio também funciona',
+    text: 'Sem tempo pra digitar? Manda um áudio de 5 segundos. O bot transcreve, classifica e lança na hora.',
+  },
+  {
+    icon: ImageIcon,
+    title: 'Foto da nota fiscal',
+    text: 'Tirou foto do comprovante? Manda. O bot lê valor, data, descrição e já registra a despesa.',
+  },
+  {
+    icon: FileText,
+    title: 'PDF de boleto ou extrato',
+    text: 'Recebeu um boleto, nota fiscal eletrônica ou extrato em PDF? Encaminha pro bot — ele extrai tudo.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Relatório mensal em PDF',
+    text: 'Peça "relatório do mês" no WhatsApp e receba um PDF profissional pronto pra mandar pro contador. Até 4 por mês.',
   },
   {
     icon: PieChart,
     title: 'Dashboards em tempo real',
-    text: 'Fluxo de caixa, DRE simplificado e gráficos que abrem na hora — sem fechar mês manualmente.',
-  },
-  {
-    icon: Receipt,
-    title: 'Comprovantes e fotos',
-    text: 'Mande a foto da nota fiscal pelo WhatsApp. O bot extrai valor, data e categoria.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Multi-empresa, multi-acesso',
-    text: 'Gerencie várias empresas em uma conta. Permissões por usuário e log de auditoria completo.',
-  },
-  {
-    icon: Zap,
-    title: 'Setup em 3 minutos',
-    text: 'Conecte WhatsApp, importe categorias prontas pro seu segmento e comece a lançar agora.',
+    text: 'Fluxo de caixa, gráficos por categoria e saldo atualizado na hora — sem fechar mês manualmente.',
   },
 ];
 
@@ -97,8 +98,8 @@ export default function LandingPage() {
             <a href="#how" className="font-bold hover:underline">
               Como funciona
             </a>
-            <a href="#personas" className="font-bold hover:underline">
-              Para quem
+            <a href="#planos" className="font-bold hover:underline">
+              Planos
             </a>
             <a href="#depoimentos" className="font-bold hover:underline">
               Depoimentos
@@ -140,9 +141,9 @@ export default function LandingPage() {
             </h1>
 
             <p className="mt-8 max-w-xl text-balance text-xl font-medium text-white/70">
-              Lance despesas e receitas mandando mensagem. A IA categoriza,
-              o dashboard atualiza e o seu contador sorri. Zero planilha,
-              zero atraso.
+              Lance despesas e receitas por <strong className="text-white">texto, áudio, foto da nota ou PDF de boleto</strong>.
+              A IA categoriza tudo e ainda gera seu <strong className="text-white">relatório mensal em PDF</strong> —
+              direto no WhatsApp.
             </p>
 
             <div className="mt-10 flex flex-wrap justify-center gap-5">
@@ -182,9 +183,27 @@ export default function LandingPage() {
           {/* Right — Browser mockup */}
           <div className="relative flex items-center justify-center">
             <div
-              className="w-full max-w-xl rounded-2xl border-2 border-black bg-white"
+              className="relative w-full max-w-xl rounded-2xl border-2 border-black bg-white"
               style={{ boxShadow: '12px 12px 0px 0px #000000' }}
             >
+              {/* Floating stamp — Relatório mensal em PDF */}
+              <div className="pointer-events-none absolute -right-6 -top-8 z-20 rotate-[-10deg] sm:-right-10 sm:-top-10">
+                <div
+                  className="flex flex-col items-center justify-center rounded-2xl border-[3px] border-black bg-[#90ff6b] px-5 py-3 font-cabinet"
+                  style={{ boxShadow: '4px 4px 0px 0px #000000' }}
+                >
+                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest">
+                    <FileText className="h-3 w-3" strokeWidth={3} />
+                    Novo
+                  </div>
+                  <div className="text-center text-sm font-extrabold uppercase leading-tight">
+                    Relatório mensal
+                    <br />
+                    em PDF
+                  </div>
+                </div>
+              </div>
+
               {/* browser header */}
               <div className="flex items-center gap-2 rounded-t-2xl border-b-2 border-black bg-black px-4 py-3">
                 <div className="h-3 w-3 rounded-full bg-[#ff5f57]" />
@@ -492,6 +511,129 @@ export default function LandingPage() {
               </p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ============ PLANOS ============ */}
+      <section id="planos" className="border-b-2 border-black bg-white py-24">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mx-auto mb-16 max-w-3xl text-center">
+            <span className="inline-block rounded-full border-2 border-black bg-[#90ff6b] px-4 py-1 font-cabinet text-sm font-extrabold">
+              PLANOS
+            </span>
+            <h2 className="mt-6 text-balance font-cabinet text-5xl font-extrabold tracking-tighter sm:text-6xl">
+              Um preço <span className="text-stroke">justo</span>. Zero
+              pegadinha.
+            </h2>
+            <p className="mx-auto mt-6 max-w-2xl text-lg font-medium text-black/70">
+              3 dias grátis pra testar. Depois escolhe mensal ou anual.
+              Cancela quando quiser e leva seus dados.
+            </p>
+          </div>
+
+          <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2">
+            {/* Mensal */}
+            <div className="rounded-2xl border-2 border-black bg-white p-10">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="font-cabinet text-3xl font-extrabold">Mensal</h3>
+                <span className="rounded-full border-2 border-black bg-[#b7c6c2] px-3 py-1 font-cabinet text-xs font-extrabold">
+                  FLEXÍVEL
+                </span>
+              </div>
+              <p className="mb-6 font-medium text-black/60">
+                Sem compromisso. Pague mês a mês.
+              </p>
+              <div className="mb-2 flex items-baseline gap-2">
+                <span className="font-cabinet text-6xl font-extrabold tracking-tighter">
+                  R$ 19,90
+                </span>
+                <span className="font-bold text-black/60">/mês</span>
+              </div>
+              <p className="mb-8 text-sm font-medium text-black/60">
+                Começa com 3 dias grátis.
+              </p>
+              <ul className="mb-8 space-y-3">
+                {[
+                  'Despesas e receitas ilimitadas',
+                  'WhatsApp: texto, áudio, foto e PDF',
+                  'Até 4 relatórios em PDF por mês',
+                  'Dashboards em tempo real',
+                  'Cancele a qualquer momento',
+                ].map((t) => (
+                  <li key={t} className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-black bg-white">
+                      <Check className="h-3 w-3" strokeWidth={4} />
+                    </div>
+                    <span className="font-medium">{t}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/register"
+                className="brutal-btn brutal-shadow-sm flex items-center justify-center gap-2 rounded-xl border-2 border-black bg-white px-6 py-4 font-cabinet font-extrabold"
+              >
+                Começar grátis
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            {/* Anual — destaque */}
+            <div
+              className="relative rounded-2xl border-2 border-black bg-[#90ff6b] p-10"
+              style={{ boxShadow: '8px 8px 0px 0px #000000' }}
+            >
+              <span className="absolute -top-3 right-6 rounded-full border-2 border-black bg-black px-3 py-1 font-cabinet text-xs font-extrabold text-[#90ff6b]">
+                ECONOMIZE ~16%
+              </span>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="font-cabinet text-3xl font-extrabold">Anual</h3>
+                <span className="rounded-full border-2 border-black bg-white px-3 py-1 font-cabinet text-xs font-extrabold">
+                  MELHOR VALOR
+                </span>
+              </div>
+              <p className="mb-6 font-bold">
+                O melhor custo-benefício. Um pagamento só.
+              </p>
+              <div className="mb-2 flex items-baseline gap-2">
+                <span className="font-cabinet text-6xl font-extrabold tracking-tighter">
+                  R$ 199,90
+                </span>
+                <span className="font-bold">/ano</span>
+              </div>
+              <p className="mb-8 text-sm font-bold text-black/70">
+                equivalente a R$ 16,66/mês
+              </p>
+              <ul className="mb-8 space-y-3">
+                {[
+                  'Tudo do plano mensal',
+                  'Economize ~16% pagando no ano',
+                  'Um pagamento só — sem boletos todo mês',
+                  'Até 4 relatórios em PDF por mês',
+                  'Cancele a qualquer momento',
+                ].map((t) => (
+                  <li key={t} className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-black bg-white">
+                      <Check className="h-3 w-3" strokeWidth={4} />
+                    </div>
+                    <span className="font-bold">{t}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/register"
+                className="brutal-btn flex items-center justify-center gap-2 rounded-xl border-2 border-black bg-black px-6 py-4 font-cabinet font-extrabold text-white"
+                style={{ boxShadow: '4px 4px 0px 0px #000000' }}
+              >
+                Começar grátis
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+
+          <p className="mx-auto mt-10 max-w-2xl text-center text-sm font-medium text-black/60">
+            Pagamento seguro via Asaas (cartão ou Pix). Se cancelar, seu
+            acesso continua até o fim do período pago.
+          </p>
         </div>
       </section>
 
