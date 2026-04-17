@@ -81,7 +81,7 @@ export default function LandingPage() {
   return (
     <div className="font-satoshi text-black bg-white min-h-screen">
       {/* ============ NAV ============ */}
-      <header className="sticky top-0 z-50 h-20 border-b-2 border-black bg-[#90ff6b]">
+      <header className="sticky top-0 z-50 h-20 border-b-2 border-[#90ff6b] bg-black">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
           <Link href="/" className="flex items-center">
             <Image
@@ -95,16 +95,16 @@ export default function LandingPage() {
           </Link>
 
           <nav className="hidden items-center gap-10 md:flex">
-            <a href="#features" className="font-bold hover:underline">
+            <a href="#features" className="font-bold text-[#90ff6b] hover:underline">
               Recursos
             </a>
-            <a href="#how" className="font-bold hover:underline">
+            <a href="#how" className="font-bold text-[#90ff6b] hover:underline">
               Como funciona
             </a>
-            <a href="#planos" className="font-bold hover:underline">
+            <a href="#planos" className="font-bold text-[#90ff6b] hover:underline">
               Planos
             </a>
-            <a href="#depoimentos" className="font-bold hover:underline">
+            <a href="#depoimentos" className="font-bold text-[#90ff6b] hover:underline">
               Depoimentos
             </a>
           </nav>
@@ -112,13 +112,13 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className="hidden font-bold hover:underline sm:inline"
+              className="hidden font-bold text-[#90ff6b] hover:underline sm:inline"
             >
               Entrar
             </Link>
             <Link
               href="/register"
-              className="brutal-btn brutal-shadow-sm inline-flex items-center gap-2 rounded-xl border-2 border-black bg-black px-5 py-3 font-cabinet font-extrabold text-white"
+              className="brutal-btn inline-flex items-center gap-2 rounded-xl border-2 border-[#90ff6b] bg-[#90ff6b] px-5 py-3 font-cabinet font-extrabold text-black"
             >
               Começar grátis
               <ArrowRight className="h-4 w-4" />
