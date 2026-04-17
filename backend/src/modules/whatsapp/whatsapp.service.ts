@@ -880,12 +880,14 @@ export class WhatsAppService {
     let categoryId: string | undefined;
     let categoryName: string | undefined;
     if (intentData.category) {
-      const match = await this.prisma.category.findFirst({
-        where: {
-          companyId,
-          name: { equals: intentData.category, mode: 'insensitive' },
-        },
+      const norm = (s: string) =>
+        s.trim().toLowerCase().replace(/\s+/g, ' ');
+      const target = norm(intentData.category);
+      const allCats = await this.prisma.category.findMany({
+        where: { companyId },
+        select: { id: true, name: true },
       });
+      const match = allCats.find((c) => norm(c.name) === target);
       if (match) {
         categoryId = match.id;
         categoryName = match.name;

@@ -68,14 +68,14 @@ export class SegmentsService {
     return { message: 'Segmento desativado com sucesso' };
   }
 
-  /** Busca segmento por nome (case-insensitive) — usado pelo módulo WhatsApp no futuro */
+  /** Busca segmento por nome — case-insensitive + tolerante a espaços extras */
   async findByName(companyId: string, name: string) {
-    return this.prisma.segment.findFirst({
-      where: {
-        companyId,
-        name: { equals: name, mode: 'insensitive' },
-        isActive: true,
-      },
+    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+    const target = norm(name);
+    const all = await this.prisma.segment.findMany({
+      where: { companyId, isActive: true },
+      select: { id: true, name: true, color: true, description: true, companyId: true, isActive: true, createdAt: true, updatedAt: true },
     });
+    return all.find((s) => norm(s.name) === target) ?? null;
   }
 }
