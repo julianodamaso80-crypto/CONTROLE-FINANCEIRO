@@ -277,11 +277,7 @@ export default function PlanoPage() {
 
       {/* Planos */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card
-          className={
-            sub.plan === 'MONTHLY' ? 'border-primary bg-primary/5' : ''
-          }
-        >
+        <Card className="border-primary bg-primary/5">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Mensal
@@ -306,7 +302,6 @@ export default function PlanoPage() {
               <Feature text="Cancele quando quiser" />
             </ul>
             <Button
-              variant={sub.plan === 'MONTHLY' ? 'default' : 'outline'}
               className="w-full"
               onClick={() => handlePay('MONTHLY')}
               disabled={openingPlan !== null}
@@ -321,11 +316,7 @@ export default function PlanoPage() {
           </CardContent>
         </Card>
 
-        <Card
-          className={
-            sub.plan === 'ANNUAL' ? 'border-primary bg-primary/5' : ''
-          }
-        >
+        <Card className="border-primary bg-primary/5">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Anual
@@ -358,7 +349,6 @@ export default function PlanoPage() {
               <Feature text="Cancele quando quiser" />
             </ul>
             <Button
-              variant={sub.plan === 'ANNUAL' ? 'default' : 'outline'}
               className="w-full"
               onClick={() => handlePay('ANNUAL')}
               disabled={openingPlan !== null}
