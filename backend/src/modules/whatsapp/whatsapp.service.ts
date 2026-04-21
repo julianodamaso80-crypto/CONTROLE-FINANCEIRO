@@ -437,7 +437,7 @@ export class WhatsAppService {
       select: { id: true, name: true, companyId: true, isActive: true },
     });
 
-    await this.prisma.whatsAppMessage.create({
+    const inboundMessage = await this.prisma.whatsAppMessage.create({
       data: {
         companyId: sender?.companyId ?? null,
         userId: sender?.id ?? null,
@@ -446,6 +446,7 @@ export class WhatsAppService {
         messageText,
         externalMessageId,
       },
+      select: { id: true },
     });
 
     if (!sender || !sender.isActive) {
@@ -540,6 +541,16 @@ export class WhatsAppService {
         audioMedia.mimetype,
       );
       transcribedText = transcribeResult.text;
+      if (transcribedText) {
+        // Substitui o placeholder "[áudio enviado]" pelo texto transcrito
+        // pra facilitar debug e histórico auditável.
+        await this.prisma.whatsAppMessage
+          .update({
+            where: { id: inboundMessage.id },
+            data: { messageText: `🎤 ${transcribedText}` },
+          })
+          .catch(() => undefined);
+      }
       if (!transcribedText) {
         const reply =
           '❌ Não consegui entender o áudio. Fale um pouco mais claro ou envie em texto, por favor.';
@@ -803,6 +814,17 @@ export class WhatsAppService {
       interpretation,
       rawInputText,
     );
+
+    // Quando a mensagem veio por áudio, prepende o que foi transcrito para
+    // o usuário ver o que o bot ouviu. Se a transcrição estiver errada,
+    // ele corrige na hora com update_last ou delete_last.
+    if (transcribedText) {
+      const preview =
+        transcribedText.length > 200
+          ? transcribedText.slice(0, 200) + '…'
+          : transcribedText;
+      result.responseText = `🎤 _Ouvi: "${preview}"_\n\n${result.responseText}`;
+    }
 
     try {
       if (result.mediaAttachment) {
