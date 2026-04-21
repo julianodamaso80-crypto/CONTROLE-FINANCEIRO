@@ -417,6 +417,13 @@ INTENTS VÁLIDAS (qualquer outra coisa = "unknown"):
 - "create_segment": criar um novo segmento. Preencha:
   * newName: nome do segmento
   * Gatilhos: "cria segmento X", "adiciona segmento X", "cadastra segmento X", "novo segmento X".
+- "delete_category": excluir uma categoria existente. Preencha:
+  * newName: nome da categoria a excluir (apenas o nome, sem "categoria" antes).
+  * categoryType: "EXPENSE" ou "INCOME" se o cliente deixar explícito ("exclui categoria X de despesa"). Se não falar, deixe null — o backend busca em ambos os tipos.
+  * Gatilhos: "exclui categoria X", "apaga categoria X", "deleta categoria X", "remove categoria X", "tira a categoria X".
+- "delete_segment": excluir um segmento. Preencha:
+  * newName: nome do segmento.
+  * Gatilhos: "exclui segmento X", "apaga segmento X", "deleta segmento X", "remove segmento X".
 - "help": pediu ajuda sobre comandos do Meu Caixa
 - "greeting": saudação curta sem pedido específico (oi, ola, bom dia, boa tarde, boa noite, tudo bem, tudo certo, eai, blz, opa, salve)
 - "unknown": qualquer mensagem fora do escopo (perguntas gerais, conselhos, escrita, traduções, outros temas)
@@ -461,8 +468,8 @@ O cliente do Meu Caixa pede relatório o tempo inteiro — é o segundo uso mais
 - Se o cliente NÃO especificar o período, assuma period="this_month", reportType="all", groupBy="category" (default razoável: mês corrente agrupado por categoria).
 - Se o cliente disser "em pdf", "manda o pdf", "gera o pdf", acrescente format="pdf". Caso contrário format="text".
 
-REGRA DE CRIAÇÃO DE CATEGORIA/SEGMENTO:
-Quando o cliente quer CRIAR uma nova categoria ou segmento, a intent é "create_category" ou "create_segment" — NÃO "register_expense" ou "register_income". NÃO invente valor, NÃO classifique como lançamento.
+REGRA DE CRIAÇÃO/EXCLUSÃO DE CATEGORIA/SEGMENTO:
+Quando o cliente quer CRIAR uma nova categoria ou segmento, a intent é "create_category" ou "create_segment". Quando quer EXCLUIR, é "delete_category" ou "delete_segment". Nunca classifique como "register_expense"/"register_income"/"unknown". NÃO invente valor.
 - O nome fica em "newName" (limpo, sem prefixo "cria categoria", sem "de despesa", sem "em receita" — só o nome puro que o cliente quer dar).
 - Para create_category, SEMPRE preencha "categoryType" seguindo a regra do intent.
 - Se o nome vier depois de "pra", "para", "chamada", "com nome", "de", "chamado": extraia só a parte final que é o nome.
@@ -516,6 +523,10 @@ EXEMPLOS:
 15w. "nova categoria marketing pros dois tipos" → {"intent":"create_category","confidence":0.9,"data":{"newName":"Marketing","categoryType":"BOTH"}}
 15x. "cria segmento loja física" → {"intent":"create_segment","confidence":0.95,"data":{"newName":"Loja Física"}}
 15y. "adiciona um segmento chamado delivery" → {"intent":"create_segment","confidence":0.95,"data":{"newName":"Delivery"}}
+15z. "exclui categoria alimentação" → {"intent":"delete_category","confidence":0.95,"data":{"newName":"Alimentação"}}
+15aa. "apaga categoria uber de despesa" → {"intent":"delete_category","confidence":0.95,"data":{"newName":"Uber","categoryType":"EXPENSE"}}
+15ab. "deleta o segmento loja física" → {"intent":"delete_segment","confidence":0.95,"data":{"newName":"Loja Física"}}
+15ac. "remove categoria comissões de receita" → {"intent":"delete_category","confidence":0.95,"data":{"newName":"Comissões","categoryType":"INCOME"}}
 16. "oi" → {"intent":"greeting","confidence":1,"data":{}}
 17. "oie" → {"intent":"greeting","confidence":1,"data":{}}
 18. "bom dia" → {"intent":"greeting","confidence":1,"data":{}}
@@ -563,6 +574,8 @@ EXEMPLOS:
       'update_last',
       'create_category',
       'create_segment',
+      'delete_category',
+      'delete_segment',
       'help',
       'greeting',
       'unknown',

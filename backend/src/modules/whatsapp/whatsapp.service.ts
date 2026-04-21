@@ -713,6 +713,49 @@ export class WhatsAppService {
       // Texto normal OU áudio já transcrito
       rawInputText = pdfExtractedText ?? transcribedText ?? messageText;
 
+      // Confirmação de exclusão pendente: se o bot acabou de perguntar
+      // "confirma? SIM/NÃO" e o cliente respondeu algo afirmativo/negativo,
+      // trata a resposta SEM chamar a IA. Janela de 10min.
+      const pending = await this.getPendingConfirmation(companyId, senderNumber);
+      if (pending) {
+        if (this.isConfirmYes(rawInputText)) {
+          const result = await this.applyPendingDelete(companyId, pending);
+          await this.evolution
+            .sendTextMessage(instanceName, senderNumber, result.responseText)
+            .catch(() => {});
+          await this.prisma.whatsAppMessage.create({
+            data: {
+              companyId,
+              userId: sender.id,
+              phoneNumber: senderNumber,
+              direction: 'OUTBOUND',
+              messageText: result.responseText,
+              actionTaken: result.actionTaken,
+              relatedTransactionId: result.relatedTransactionId,
+            },
+          });
+          return;
+        }
+        if (this.isConfirmNo(rawInputText)) {
+          const reply = '👍 Ok, cancelado. Nada foi excluído.';
+          await this.evolution
+            .sendTextMessage(instanceName, senderNumber, reply)
+            .catch(() => {});
+          await this.prisma.whatsAppMessage.create({
+            data: {
+              companyId,
+              userId: sender.id,
+              phoneNumber: senderNumber,
+              direction: 'OUTBOUND',
+              messageText: reply,
+              actionTaken: `delete_${pending.kind}_cancelled`,
+            },
+          });
+          return;
+        }
+        // Qualquer outra coisa: descarta a pendência e segue o fluxo normal
+      }
+
       // Short-circuit: se o cliente manda uma palavra-chave clara de relatório
       // sem especificar período, geramos a intent direto — sem custo de IA e
       // sem risco do modelo cair em "unknown" por mensagem curta.
@@ -967,6 +1010,10 @@ export class WhatsAppService {
         return this.executeCreateCategory(companyId, interpretation);
       case 'create_segment':
         return this.executeCreateSegment(companyId, interpretation);
+      case 'delete_category':
+        return this.executeDeleteCategory(companyId, interpretation);
+      case 'delete_segment':
+        return this.executeDeleteSegment(companyId, interpretation);
       case 'help':
         return {
           responseText: this.buildHelpMessage(),
@@ -1919,6 +1966,276 @@ export class WhatsAppService {
     };
   }
 
+  /**
+   * Procura a categoria pelo nome (normalizado) — opcionalmente restringindo
+   * por tipo. Retorna TODAS as correspondências pra o handler decidir se é
+   * ambígua (existe em despesa E receita com mesmo nome).
+   */
+  private async findCategoriesByName(
+    companyId: string,
+    name: string,
+    type?: 'INCOME' | 'EXPENSE' | 'BOTH',
+  ): Promise<Array<{ id: string; name: string; type: string }>> {
+    const all = await this.prisma.category.findMany({
+      where: { companyId, ...(type ? { type } : {}) },
+      select: { id: true, name: true, type: true },
+    });
+    const target = this.normalize(name);
+    return all.filter((c) => this.normalize(c.name) === target);
+  }
+
+  private async executeDeleteCategory(
+    companyId: string,
+    interpretation: BotInterpretation,
+  ): Promise<HandlerResult> {
+    const { data: d } = interpretation;
+    const rawName = (d.newName ?? '').trim();
+
+    if (!rawName) {
+      return {
+        responseText:
+          '❌ Não entendi qual categoria excluir. Tente: _"exclui categoria Aluguel"_',
+        actionTaken: 'delete_category_no_name',
+        relatedTransactionId: null,
+      };
+    }
+
+    const matches = await this.findCategoriesByName(
+      companyId,
+      rawName,
+      d.categoryType,
+    );
+
+    if (matches.length === 0) {
+      return {
+        responseText:
+          `❌ Não encontrei a categoria *${rawName}*. ` +
+          `Verifique o nome ou liste no painel web.`,
+        actionTaken: 'delete_category_not_found',
+        relatedTransactionId: null,
+      };
+    }
+
+    if (matches.length > 1) {
+      const opts = matches
+        .map((c) => `• *${c.name}* (${c.type === 'EXPENSE' ? 'despesa' : c.type === 'INCOME' ? 'receita' : 'ambos'})`)
+        .join('\n');
+      return {
+        responseText:
+          `⚠️ Encontrei *${matches.length}* categorias com nome "${rawName}":\n\n${opts}\n\n` +
+          `Especifique o tipo: _"exclui categoria ${rawName} de despesa"_`,
+        actionTaken: 'delete_category_ambiguous',
+        relatedTransactionId: null,
+      };
+    }
+
+    const target = matches[0]!;
+    const txCount = await this.prisma.transaction.count({
+      where: { companyId, categoryId: target.id },
+    });
+    const childCount = await this.prisma.category.count({
+      where: { companyId, parentCategoryId: target.id },
+    });
+
+    // Se tem dependências, já avisa — não deixa nem chegar na confirmação
+    if (txCount > 0) {
+      return {
+        responseText:
+          `🚫 Não dá pra excluir *${target.name}*: existem *${txCount}* transações usando essa categoria. ` +
+          `Mova ou apague as transações primeiro.`,
+        actionTaken: 'delete_category_has_transactions',
+        relatedTransactionId: null,
+      };
+    }
+    if (childCount > 0) {
+      return {
+        responseText:
+          `🚫 Não dá pra excluir *${target.name}*: existem *${childCount}* subcategorias. ` +
+          `Exclua as subcategorias primeiro.`,
+        actionTaken: 'delete_category_has_children',
+        relatedTransactionId: null,
+      };
+    }
+
+    const typeLabel =
+      target.type === 'EXPENSE'
+        ? 'despesa'
+        : target.type === 'INCOME'
+          ? 'receita'
+          : 'ambos';
+
+    return {
+      responseText:
+        `⚠️ Confirma a exclusão da categoria *${target.name}* (${typeLabel})?\n\n` +
+        `Responda *SIM* para confirmar ou *NÃO* para cancelar.`,
+      actionTaken: `awaiting_delete_category_confirm:${target.id}`,
+      relatedTransactionId: null,
+    };
+  }
+
+  private async executeDeleteSegment(
+    companyId: string,
+    interpretation: BotInterpretation,
+  ): Promise<HandlerResult> {
+    const { data: d } = interpretation;
+    const rawName = (d.newName ?? '').trim();
+
+    if (!rawName) {
+      return {
+        responseText:
+          '❌ Não entendi qual segmento excluir. Tente: _"exclui segmento Loja Física"_',
+        actionTaken: 'delete_segment_no_name',
+        relatedTransactionId: null,
+      };
+    }
+
+    const target = await this.segments.findByName(companyId, rawName);
+    if (!target) {
+      return {
+        responseText: `❌ Não encontrei o segmento *${rawName}*.`,
+        actionTaken: 'delete_segment_not_found',
+        relatedTransactionId: null,
+      };
+    }
+
+    return {
+      responseText:
+        `⚠️ Confirma a exclusão do segmento *${target.name}*?\n\n` +
+        `Responda *SIM* para confirmar ou *NÃO* para cancelar.\n\n` +
+        `_(Segmentos são desativados — as transações antigas continuam intactas.)_`,
+      actionTaken: `awaiting_delete_segment_confirm:${target.id}`,
+      relatedTransactionId: null,
+    };
+  }
+
+  /**
+   * Checa se a última mensagem OUTBOUND pra esse telefone está aguardando
+   * um SIM/NÃO de confirmação de exclusão, em até 10min.
+   * Retorna null se não há pendência.
+   */
+  private async getPendingConfirmation(
+    companyId: string,
+    phoneNumber: string,
+  ): Promise<{ kind: 'category' | 'segment'; targetId: string } | null> {
+    const last = await this.prisma.whatsAppMessage.findFirst({
+      where: {
+        companyId,
+        phoneNumber,
+        direction: 'OUTBOUND',
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { actionTaken: true, createdAt: true },
+    });
+    if (!last || !last.actionTaken) return null;
+    const ageMs = Date.now() - last.createdAt.getTime();
+    if (ageMs > 10 * 60 * 1000) return null;
+
+    const m = /^awaiting_delete_(category|segment)_confirm:([0-9a-f-]{36})$/i.exec(
+      last.actionTaken,
+    );
+    if (!m) return null;
+    return { kind: m[1] as 'category' | 'segment', targetId: m[2]! };
+  }
+
+  private isConfirmYes(text: string): boolean {
+    const t = this.normalize(text).replace(/[.!?,;:]/g, '').trim();
+    return [
+      'sim',
+      's',
+      'confirma',
+      'confirmo',
+      'confirmar',
+      'ok',
+      'pode',
+      'pode sim',
+      'pode ser',
+      'manda',
+      'manda ver',
+      'isso',
+      'yes',
+      'yep',
+      'bora',
+      'positivo',
+    ].includes(t);
+  }
+
+  private isConfirmNo(text: string): boolean {
+    const t = this.normalize(text).replace(/[.!?,;:]/g, '').trim();
+    return [
+      'nao',
+      'n',
+      'cancela',
+      'cancelar',
+      'para',
+      'deixa',
+      'deixa quieto',
+      'deixa pra la',
+      'negativo',
+      'no',
+      'nope',
+    ].includes(t);
+  }
+
+  private async applyPendingDelete(
+    companyId: string,
+    pending: { kind: 'category' | 'segment'; targetId: string },
+  ): Promise<HandlerResult> {
+    if (pending.kind === 'category') {
+      const cat = await this.prisma.category.findFirst({
+        where: { id: pending.targetId, companyId },
+        select: { id: true, name: true },
+      });
+      if (!cat) {
+        return {
+          responseText: '❌ A categoria não existe mais.',
+          actionTaken: 'delete_category_gone',
+          relatedTransactionId: null,
+        };
+      }
+      try {
+        await this.categories.remove(companyId, cat.id);
+      } catch (err) {
+        return {
+          responseText: `❌ Não consegui excluir: ${err instanceof Error ? err.message : 'erro'}`,
+          actionTaken: 'delete_category_error',
+          relatedTransactionId: null,
+        };
+      }
+      return {
+        responseText: `🗑️ Categoria *${cat.name}* excluída com sucesso.`,
+        actionTaken: 'category_deleted',
+        relatedTransactionId: null,
+      };
+    }
+
+    // segmento
+    const seg = await this.prisma.segment.findFirst({
+      where: { id: pending.targetId, companyId },
+      select: { id: true, name: true },
+    });
+    if (!seg) {
+      return {
+        responseText: '❌ O segmento não existe mais.',
+        actionTaken: 'delete_segment_gone',
+        relatedTransactionId: null,
+      };
+    }
+    try {
+      await this.segments.remove(companyId, seg.id);
+    } catch (err) {
+      return {
+        responseText: `❌ Não consegui excluir: ${err instanceof Error ? err.message : 'erro'}`,
+        actionTaken: 'delete_segment_error',
+        relatedTransactionId: null,
+      };
+    }
+    return {
+      responseText: `🗑️ Segmento *${seg.name}* desativado.`,
+      actionTaken: 'segment_deleted',
+      relatedTransactionId: null,
+    };
+  }
+
   /** Capitaliza a primeira letra de cada palavra, preservando o resto. */
   private titleCase(s: string): string {
     return s
@@ -1977,6 +2294,10 @@ Mande uma mensagem e eu cuido do resto! Exemplos:
 • "cria categoria Aluguel em despesa"
 • "cria categoria Vendas Online em receita"
 • "cria segmento Loja Física"
+
+🗑️ *Excluir categoria/segmento:* (pede confirmação)
+• "exclui categoria Aluguel"
+• "apaga segmento Loja Física"
 
 _Dica: use "k" para milhares (2k = 2.000)_`;
   }

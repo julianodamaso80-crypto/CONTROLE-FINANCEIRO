@@ -9,6 +9,8 @@ export type BotIntent =
   | 'update_last'
   | 'create_category'
   | 'create_segment'
+  | 'delete_category'
+  | 'delete_segment'
   | 'help'
   | 'greeting'
   | 'unknown';
