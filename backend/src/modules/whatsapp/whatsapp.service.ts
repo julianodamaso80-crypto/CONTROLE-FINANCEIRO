@@ -673,6 +673,9 @@ export class WhatsAppService {
 
     let interpretation;
     let llmUsage: LlmUsage | null = null;
+    // Texto cru que chegou ao classificador. Usado depois como fallback
+    // para extrair categoria por substring quando a IA esquece de retornar.
+    let rawInputText = messageText;
     if (hasImage) {
       // Baixa a imagem da Evolution e manda pro gpt-4o-mini vision
       const media = await this.evolution.getMediaBase64(instanceName, {
@@ -708,10 +711,20 @@ export class WhatsAppService {
       llmUsage = imgResult.usage;
     } else {
       // Texto normal OU áudio já transcrito
-      const inputText = pdfExtractedText ?? transcribedText ?? messageText;
-      const msgResult = await this.ai.interpretMessage(inputText, context);
-      interpretation = msgResult.interpretation;
-      llmUsage = msgResult.usage;
+      rawInputText = pdfExtractedText ?? transcribedText ?? messageText;
+
+      // Short-circuit: se o cliente manda uma palavra-chave clara de relatório
+      // sem especificar período, geramos a intent direto — sem custo de IA e
+      // sem risco do modelo cair em "unknown" por mensagem curta.
+      const quick = this.quickReportIntent(rawInputText);
+      if (quick) {
+        interpretation = quick;
+        llmUsage = null;
+      } else {
+        const msgResult = await this.ai.interpretMessage(rawInputText, context);
+        interpretation = msgResult.interpretation;
+        llmUsage = msgResult.usage;
+      }
     }
 
     // Se veio de PDF e a IA não soube classificar, pergunta ao cliente
@@ -741,7 +754,12 @@ export class WhatsAppService {
       return;
     }
 
-    const result = await this.executeIntent(companyId, sender.id, interpretation);
+    const result = await this.executeIntent(
+      companyId,
+      sender.id,
+      interpretation,
+      rawInputText,
+    );
 
     try {
       if (result.mediaAttachment) {
@@ -787,10 +805,136 @@ export class WhatsAppService {
     });
   }
 
+  /**
+   * Normaliza texto pra comparação: trim, lowercase, remove acentos,
+   * colapsa espaços múltiplos. Usado no match de categoria/segmento.
+   */
+  private normalize(s: string): string {
+    return s
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+  }
+
+  /**
+   * Curto-circuita palavras-chave isoladas de relatório ("Relatório",
+   * "Resumo", "Balanço", "Extrato", "Fechamento", "Me dê um relatório",
+   * etc) em uma intent query_report com defaults (mês corrente, tudo,
+   * agrupado por categoria). Se o cliente escreveu algo mais complexo
+   * que não bate o padrão, retorna null e deixa a IA classificar.
+   */
+  private quickReportIntent(text: string): BotInterpretation | null {
+    const norm = this.normalize(text)
+      .replace(/[.!?,;:]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!norm) return null;
+
+    // Palavras-chave puras ou precedidas por pedido curto
+    const keywords = [
+      'relatorio',
+      'relatorios',
+      'relat',
+      'resumo',
+      'resumos',
+      'balanco',
+      'balancete',
+      'extrato',
+      'fechamento',
+      'consolidado',
+      'levantamento',
+      'prestacao de contas',
+    ];
+
+    const wantsPdf = /\bpdf\b/.test(norm);
+    const isReport = keywords.some((kw) => {
+      // Palavra solta OU "me dê/manda/gera/quero/preciso + kw"
+      if (norm === kw) return true;
+      const prefix = /^(me\s+(de|da|manda|envia|envie|gera|gere|passa)\s+(um|uma|o|a)?\s*|quero\s+(um|uma|o|a)?\s*|preciso\s+(de)?\s*(um|uma|o|a)?\s*|manda\s+(um|uma|o|a)?\s*|gera\s+(um|uma|o|a)?\s*|envia\s+(um|uma|o|a)?\s*|da\s+(um|uma|o|a)?\s*)/;
+      const stripped = norm.replace(prefix, '').trim();
+      return stripped === kw || stripped === `${kw} em pdf` || stripped === `${kw} pdf`;
+    });
+
+    if (!isReport) return null;
+
+    return {
+      intent: 'query_report',
+      confidence: 0.95,
+      data: {
+        period: 'this_month',
+        reportType: 'all',
+        groupBy: 'category',
+        format: wantsPdf ? 'pdf' : 'text',
+      },
+      reasoning: 'short-circuit: palavra-chave de relatório sem período explícito',
+    };
+  }
+
+  /**
+   * Fallback robusto pra resolver o ID de uma categoria a partir de:
+   * 1) o nome exato devolvido pela IA em intentData.category (match normalizado)
+   * 2) caso a IA devolva null, tenta achar alguma categoria cujo nome
+   *    (normalizado, em palavras inteiras) apareça na descrição OU no texto
+   *    original do usuário. Isso cobre o caso em que o modelo "esquece" de
+   *    retornar a categoria mesmo com a palavra no texto.
+   */
+  private async resolveCategoryId(
+    companyId: string,
+    type: 'INCOME' | 'EXPENSE',
+    aiCategory: string | null | undefined,
+    description: string | null | undefined,
+    rawText: string | null | undefined,
+  ): Promise<{ id?: string; name?: string }> {
+    const all = await this.prisma.category.findMany({
+      where: { companyId, type },
+      select: { id: true, name: true },
+    });
+    if (all.length === 0) return {};
+
+    const normMap = all.map((c) => ({
+      id: c.id,
+      name: c.name,
+      norm: this.normalize(c.name),
+    }));
+
+    if (aiCategory) {
+      const target = this.normalize(aiCategory);
+      const exact = normMap.find((c) => c.norm === target);
+      if (exact) return { id: exact.id, name: exact.name };
+      // Tolerância: a IA pode ter plural/singular. Tenta startsWith dos dois lados.
+      const partial = normMap.find(
+        (c) => c.norm.startsWith(target) || target.startsWith(c.norm),
+      );
+      if (partial) return { id: partial.id, name: partial.name };
+    }
+
+    // Fallback por substring no texto (descrição + texto original).
+    // Procura palavras inteiras — evita que "loja" bate com "relojoaria".
+    const haystack = this.normalize(
+      [description, rawText].filter(Boolean).join(' '),
+    );
+    if (haystack) {
+      // Ordena por nome mais longo primeiro (match mais específico vence).
+      const sorted = [...normMap].sort((a, b) => b.norm.length - a.norm.length);
+      for (const c of sorted) {
+        if (!c.norm) continue;
+        // Word boundary com regex escapado
+        const escaped = c.norm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`\\b${escaped}\\b`);
+        if (re.test(haystack)) return { id: c.id, name: c.name };
+      }
+    }
+
+    return {};
+  }
+
   private async executeIntent(
     companyId: string,
     userId: string,
     interpretation: BotInterpretation,
+    rawText: string = '',
   ): Promise<HandlerResult> {
     switch (interpretation.intent) {
       case 'register_expense':
@@ -798,12 +942,14 @@ export class WhatsAppService {
           companyId,
           interpretation,
           'EXPENSE',
+          rawText,
         );
       case 'register_income':
         return this.executeRegisterTransaction(
           companyId,
           interpretation,
           'INCOME',
+          rawText,
         );
       case 'query_balance':
         return this.executeQueryBalance(companyId);
@@ -850,6 +996,7 @@ export class WhatsAppService {
     companyId: string,
     interpretation: BotInterpretation,
     type: 'INCOME' | 'EXPENSE',
+    rawText: string = '',
   ): Promise<HandlerResult> {
     const { data: intentData } = interpretation;
     const amount = intentData.amount;
@@ -877,22 +1024,19 @@ export class WhatsAppService {
       };
     }
 
-    let categoryId: string | undefined;
-    let categoryName: string | undefined;
-    if (intentData.category) {
-      const norm = (s: string) =>
-        s.trim().toLowerCase().replace(/\s+/g, ' ');
-      const target = norm(intentData.category);
-      const allCats = await this.prisma.category.findMany({
-        where: { companyId },
-        select: { id: true, name: true },
-      });
-      const match = allCats.find((c) => norm(c.name) === target);
-      if (match) {
-        categoryId = match.id;
-        categoryName = match.name;
-      }
-    }
+    // Resolve categoria: primeiro tenta match pelo que a IA retornou,
+    // cai pra substring do texto/descrição se a IA deixou null.
+    // O cadastro do cliente é a fonte da verdade — se a palavra está
+    // na mensagem e bate com uma categoria cadastrada, USA.
+    const resolvedCategory = await this.resolveCategoryId(
+      companyId,
+      type,
+      intentData.category ?? null,
+      intentData.description ?? null,
+      rawText,
+    );
+    const categoryId = resolvedCategory.id;
+    const categoryName = resolvedCategory.name;
 
     let segmentId: string | undefined;
     let segmentName: string | undefined;
@@ -904,6 +1048,31 @@ export class WhatsAppService {
       if (match) {
         segmentId = match.id;
         segmentName = match.name;
+      }
+    }
+    // Fallback segmento por substring se IA não retornou
+    if (!segmentId) {
+      const allSeg = await this.prisma.segment.findMany({
+        where: { companyId, isActive: true },
+        select: { id: true, name: true },
+      });
+      const haystack = this.normalize(
+        [intentData.description, rawText].filter(Boolean).join(' '),
+      );
+      if (haystack && allSeg.length > 0) {
+        const sorted = [...allSeg].sort(
+          (a, b) => b.name.length - a.name.length,
+        );
+        for (const s of sorted) {
+          const n = this.normalize(s.name);
+          if (!n) continue;
+          const escaped = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          if (new RegExp(`\\b${escaped}\\b`).test(haystack)) {
+            segmentId = s.id;
+            segmentName = s.name;
+            break;
+          }
+        }
       }
     }
 
@@ -1539,33 +1708,87 @@ export class WhatsAppService {
       };
     }
 
-    const newAmount = interpretation.data.newAmount;
-    if (!newAmount || newAmount <= 0) {
-      return {
-        responseText:
-          '❌ Informe o novo valor. Ex: "alterar último para 150"',
-        actionTaken: 'update_last_no_amount',
-        relatedTransactionId: null,
-      };
-    }
-
+    const { data: d } = interpretation;
+    const updateData: Prisma.TransactionUpdateInput = {};
+    const changes: string[] = [];
     const oldFormatted = Number(last.amount).toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     });
 
+    // Correção de valor
+    if (d.newAmount && d.newAmount > 0) {
+      updateData.amount = d.newAmount;
+      const newFormatted = d.newAmount.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      });
+      changes.push(`• Valor: ${oldFormatted} → *${newFormatted}*`);
+    }
+
+    // Correção de categoria
+    if (d.category) {
+      const resolved = await this.resolveCategoryId(
+        companyId,
+        last.type as 'INCOME' | 'EXPENSE',
+        d.category,
+        null,
+        null,
+      );
+      if (resolved.id) {
+        updateData.category = { connect: { id: resolved.id } };
+        changes.push(`• Categoria: *${resolved.name}*`);
+      } else {
+        return {
+          responseText:
+            `❌ A categoria "${d.category}" não existe. ` +
+            `Cadastre ela primeiro no painel ou use uma das já cadastradas.`,
+          actionTaken: 'update_last_category_not_found',
+          relatedTransactionId: last.id,
+        };
+      }
+    }
+
+    // Correção de segmento
+    if (d.segment) {
+      const seg = await this.segments.findByName(companyId, d.segment);
+      if (seg) {
+        updateData.segment = { connect: { id: seg.id } };
+        changes.push(`• Segmento: *${seg.name}*`);
+      } else {
+        return {
+          responseText:
+            `❌ O segmento "${d.segment}" não existe. ` +
+            `Cadastre ele primeiro no painel ou use um dos já cadastrados.`,
+          actionTaken: 'update_last_segment_not_found',
+          relatedTransactionId: last.id,
+        };
+      }
+    }
+
+    if (changes.length === 0) {
+      return {
+        responseText:
+          `✏️ Quer corrigir o último lançamento (_${last.description}_)?\n\n` +
+          `Me diga o que mudar:\n` +
+          `• _"muda o valor pra 150"_\n` +
+          `• _"categoria shopee"_\n` +
+          `• _"segmento loja"_`,
+        actionTaken: 'update_last_no_data',
+        relatedTransactionId: last.id,
+      };
+    }
+
     await this.prisma.transaction.update({
       where: { id: last.id },
-      data: { amount: newAmount },
-    });
-
-    const newFormatted = newAmount.toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
+      data: updateData,
     });
 
     return {
-      responseText: `✏️ *Transação atualizada!*\n\n• ${last.description}\n• Antes: ${oldFormatted}\n• Agora: *${newFormatted}*`,
+      responseText:
+        `✏️ *Lançamento atualizado!*\n\n` +
+        `_${last.description}_\n` +
+        changes.join('\n'),
       actionTaken: 'updated_last',
       relatedTransactionId: last.id,
     };

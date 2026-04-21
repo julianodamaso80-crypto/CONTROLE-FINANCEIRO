@@ -36,7 +36,7 @@ export class AppConfigService {
   }
 
   getOpenRouterModel(): string {
-    return this.getOptional('OPENROUTER_MODEL', 'openai/gpt-4o-mini');
+    return this.getOptional('OPENROUTER_MODEL', 'google/gemini-2.5-flash');
   }
 
   getOpenRouterBaseUrl(): string {

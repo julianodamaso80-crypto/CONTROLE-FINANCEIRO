@@ -421,16 +421,42 @@ REGRAS DE PARSING:
 - "k" ou "mil" = x1000 ("2k" = 2000, "1.5k" = 1500)
 - Valores aceitos: "50", "R$50", "50 reais", "50,00", "R$ 1.500,00"
 - Formato direto: "entrada 120 shopee" = receita de 120, descrição "shopee"
-- CATEGORIAS HIERÁRQUICAS: as categorias acima usam "Pai > Sub1, Sub2".
-  * Se a palavra mencionada matchear uma SUBCATEGORIA (ex: "bobina"), retorne o nome da subcategoria no campo "category" (ex: "Bobina"). O backend resolve o parentId automaticamente.
-  * Se matchear só o PAI (ex: "insumos"), retorne o nome do pai.
-  * Se não encontrar match, retorne null.
-- Matchear segmento pelo nome mais próximo dos cadastrados
-- Se não encontrar match exato, retorne null
 - Datas relativas ("hoje", "ontem", "segunda") → ISO YYYY-MM-DD
 - Sem data mencionada → null
-- NUNCA invente categoria ou segmento que não esteja na lista acima
 - TEXTO DE PDF: o input pode ser texto extraído de um PDF (nota fiscal, boleto, extrato). Nesse caso será longo e com formatação irregular. Extraia: valor total, descrição, data, e classifique como register_expense ou register_income. Se o PDF tiver múltiplas linhas de transação, extraia o TOTAL GERAL. Se não conseguir determinar se é despesa ou receita, retorne intent "unknown" com reasoning explicando a dúvida.
+
+REGRA DE CATEGORIA (CRÍTICA — leia devagar):
+Esta é uma das funções mais importantes do Meu Caixa. O cliente cadastrou categorias na ferramenta e espera que TODAS as transações sejam classificadas nelas.
+- Sua obrigação: sempre que QUALQUER palavra ou expressão da mensagem bater (mesmo que parcialmente, mesmo com acento diferente, mesmo em caixa diferente, mesmo no plural, mesmo com espaço a mais) com o NOME de uma das categorias cadastradas, você DEVE retornar o nome EXATO dessa categoria no campo "category". NUNCA retorne null se houver match.
+- Exemplos de match válido (CATEGORIA CADASTRADA → palavra na mensagem):
+  * "APLICADOR" → "aplicador", "Aplicador", "APLICADORES", "ao aplicador", "do aplicador"
+  * "BOBINA  ENVIO" (com espaço duplo) → "bobina", "bobinas", "bobina de envio", "BOBINA ENVIO"
+  * "CLIENTE FINAL" → "cliente final", "Cliente final", "clientes finais"
+  * "ESTRUTURA" → "estrutura", "estruturas", "em estrutura"
+  * "SHOPEE" → "shopee", "Shopee", "da Shopee"
+- O nome retornado em "category" deve ser COPIADO IDÊNTICO da lista de Categorias Cadastradas (preserve caixa alta, acentos, espaços duplos — o backend normaliza).
+- Se a palavra bate com UMA SUBCATEGORIA (formato "Pai > Sub"), retorne o nome da subcategoria — o backend resolve o parentId.
+- SÓ retorne category=null se REALMENTE nenhuma palavra da mensagem bate com nenhuma categoria da lista.
+- NUNCA invente categoria que não esteja na lista.
+
+REGRA DE SEGMENTO (mesma lógica da categoria):
+- Se qualquer palavra da mensagem bate com um segmento cadastrado, retorne o nome do segmento EXATO como aparece na lista.
+- Só retorne null se não tiver nenhum match.
+- NUNCA invente segmento.
+
+REGRA DE RELATÓRIO (CRÍTICA):
+O cliente do Meu Caixa pede relatório o tempo inteiro — é o segundo uso mais comum do sistema (depois de registrar transações).
+- Palavras-chave de relatório: "relatório", "relatorio", "relat", "resumo", "balanço", "balanco", "extrato", "fechamento", "prestação de contas", "levantamento", "consolidado".
+- Quando o cliente mandar QUALQUER uma dessas palavras, mesmo sozinha, mesmo sem período, a intent é SEMPRE "query_report". Nunca "unknown".
+- Se o cliente NÃO especificar o período, assuma period="this_month", reportType="all", groupBy="category" (default razoável: mês corrente agrupado por categoria).
+- Se o cliente disser "em pdf", "manda o pdf", "gera o pdf", acrescente format="pdf". Caso contrário format="text".
+
+REGRA DE CORREÇÃO DE ÚLTIMO LANÇAMENTO:
+Quando o cliente quer CORRIGIR o lançamento anterior (normalmente porque o bot errou a categoria, segmento ou valor), a intent é "update_last" — não "unknown".
+- Gatilhos de correção de categoria: "categoria X", "é categoria Y", "na categoria Z", "lança em W", "lancei em W", "era da categoria K". Retorne update_last com data.category preenchido.
+- Gatilhos de correção de segmento: "segmento Y", "no segmento Z", "era do segmento K". Retorne update_last com data.segment.
+- Gatilhos de correção de valor: "era 80", "muda pra 120", "corrige pra 200". Retorne update_last com data.newAmount.
+- Gatilhos de correção genérica: "errado", "erro", "não foi isso", "tá errado". Retorne update_last sem dados adicionais (o backend pede os detalhes).
 
 EXEMPLOS:
 1. "gastei 50 no uber" → {"intent":"register_expense","confidence":0.95,"data":{"amount":50,"description":"Uber"}}
@@ -455,6 +481,17 @@ EXEMPLOS:
 15e. "me lembra dia 20 do mês que vem do boleto do aluguel, 2500" → {"intent":"register_expense","confidence":0.9,"data":{"amount":2500,"description":"Aluguel","status":"PENDING","dueDate":"2026-05-20"}}
 15f. "cliente vai pagar 3mil dia 25" → {"intent":"register_income","confidence":0.9,"data":{"amount":3000,"description":"Receita cliente","status":"PENDING","dueDate":"2026-04-25"}}
 15g. "paguei 80 de uber" → {"intent":"register_expense","confidence":0.95,"data":{"amount":80,"description":"Uber","status":"PAID"}}
+15h. "relatório" (palavra solta) → {"intent":"query_report","confidence":0.95,"data":{"period":"this_month","reportType":"all","groupBy":"category","format":"text"}}
+15i. "resumo" (palavra solta) → {"intent":"query_report","confidence":0.95,"data":{"period":"this_month","reportType":"all","groupBy":"category","format":"text"}}
+15j. "balanço" / "extrato" / "fechamento" (palavra solta) → mesmo que 15h
+15k. "me dê um relatório" → {"intent":"query_report","confidence":0.95,"data":{"period":"this_month","reportType":"all","groupBy":"category","format":"text"}}
+15l. "paguei 1k aplicador" (categoria "APLICADOR" cadastrada) → {"intent":"register_expense","confidence":0.95,"data":{"amount":1000,"description":"Aplicador","category":"APLICADOR","status":"PAID"}}
+15m. "recebi 5k cliente final" (categoria "CLIENTE FINAL" cadastrada) → {"intent":"register_income","confidence":0.95,"data":{"amount":5000,"description":"Cliente Final","category":"CLIENTE FINAL","status":"PAID"}}
+15n. "comprei 10 bobinas supersing estrutura" (categorias "BOBINA  ENVIO" e "ESTRUTURA" cadastradas, cliente mencionou "estrutura" no fim) → {"intent":"register_expense","confidence":0.9,"data":{"amount":null,"description":"10 bobinas supersing","category":"ESTRUTURA","status":"PAID"}}
+15o. "categoria shopee" (correção do último lançamento) → {"intent":"update_last","confidence":0.95,"data":{"category":"SHOPEE"}}
+15p. "lancei em estrutura" (correção do último lançamento) → {"intent":"update_last","confidence":0.9,"data":{"category":"ESTRUTURA"}}
+15q. "errado" ou "tá errado" (correção genérica) → {"intent":"update_last","confidence":0.85,"data":{}}
+15r. "conta a pagar" ou "lança em conta a pagar" (gatilho PENDING sem detalhes) → {"intent":"unknown","confidence":0.6,"data":{},"reasoning":"Cliente pediu pra lançar conta a pagar mas não informou valor, descrição ou vencimento. Backend deve orientar."}
 16. "oi" → {"intent":"greeting","confidence":1,"data":{}}
 17. "oie" → {"intent":"greeting","confidence":1,"data":{}}
 18. "bom dia" → {"intent":"greeting","confidence":1,"data":{}}
