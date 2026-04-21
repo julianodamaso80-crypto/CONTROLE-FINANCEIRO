@@ -963,6 +963,10 @@ export class WhatsAppService {
         return this.executeDeleteLast(companyId);
       case 'update_last':
         return this.executeUpdateLast(companyId, interpretation);
+      case 'create_category':
+        return this.executeCreateCategory(companyId, interpretation);
+      case 'create_segment':
+        return this.executeCreateSegment(companyId, interpretation);
       case 'help':
         return {
           responseText: this.buildHelpMessage(),
@@ -1794,6 +1798,146 @@ export class WhatsAppService {
     };
   }
 
+  private async executeCreateCategory(
+    companyId: string,
+    interpretation: BotInterpretation,
+  ): Promise<HandlerResult> {
+    const { data: d } = interpretation;
+    const rawName = (d.newName ?? '').trim();
+
+    if (!rawName) {
+      return {
+        responseText:
+          '❌ Não entendi o nome da categoria. Tente: _"cria categoria Aluguel em despesa"_',
+        actionTaken: 'create_category_no_name',
+        relatedTransactionId: null,
+      };
+    }
+
+    const type = d.categoryType ?? 'EXPENSE';
+
+    // Verifica duplicata (case-insensitive + sem acento)
+    const existing = await this.prisma.category.findMany({
+      where: { companyId, type },
+      select: { id: true, name: true },
+    });
+    const target = this.normalize(rawName);
+    const dup = existing.find((c) => this.normalize(c.name) === target);
+    if (dup) {
+      const typeLabel =
+        type === 'EXPENSE' ? 'despesa' : type === 'INCOME' ? 'receita' : 'ambos';
+      return {
+        responseText:
+          `ℹ️ A categoria *${dup.name}* já existe em ${typeLabel}. Nada pra criar.`,
+        actionTaken: 'create_category_duplicate',
+        relatedTransactionId: null,
+      };
+    }
+
+    const name = this.titleCase(rawName);
+    const color = this.pickDefaultColor(type);
+    const icon = type === 'INCOME' ? 'trending-up' : 'tag';
+
+    try {
+      await this.categories.create(companyId, { name, type, color, icon });
+    } catch (err) {
+      this.logger.error(
+        `Falha ao criar categoria via WhatsApp: ${err instanceof Error ? err.message : 'erro'}`,
+      );
+      return {
+        responseText:
+          '❌ Não consegui criar a categoria agora. Tenta de novo em instantes.',
+        actionTaken: 'create_category_error',
+        relatedTransactionId: null,
+      };
+    }
+
+    const typeLabel =
+      type === 'EXPENSE'
+        ? 'despesa'
+        : type === 'INCOME'
+          ? 'receita'
+          : 'despesa e receita';
+    const emoji = type === 'INCOME' ? '💰' : type === 'BOTH' ? '🔁' : '💸';
+
+    return {
+      responseText:
+        `✅ Categoria criada!\n\n${emoji} *${name}* (${typeLabel})\n\n` +
+        `Agora você pode usar ela nos seus lançamentos.`,
+      actionTaken: 'category_created',
+      relatedTransactionId: null,
+    };
+  }
+
+  private async executeCreateSegment(
+    companyId: string,
+    interpretation: BotInterpretation,
+  ): Promise<HandlerResult> {
+    const { data: d } = interpretation;
+    const rawName = (d.newName ?? '').trim();
+
+    if (!rawName) {
+      return {
+        responseText:
+          '❌ Não entendi o nome do segmento. Tente: _"cria segmento Loja Física"_',
+        actionTaken: 'create_segment_no_name',
+        relatedTransactionId: null,
+      };
+    }
+
+    const existing = await this.segments.findByName(companyId, rawName);
+    if (existing) {
+      return {
+        responseText: `ℹ️ O segmento *${existing.name}* já existe. Nada pra criar.`,
+        actionTaken: 'create_segment_duplicate',
+        relatedTransactionId: null,
+      };
+    }
+
+    const name = this.titleCase(rawName);
+
+    try {
+      await this.segments.create(companyId, { name });
+    } catch (err) {
+      this.logger.error(
+        `Falha ao criar segmento via WhatsApp: ${err instanceof Error ? err.message : 'erro'}`,
+      );
+      return {
+        responseText:
+          '❌ Não consegui criar o segmento agora. Tenta de novo em instantes.',
+        actionTaken: 'create_segment_error',
+        relatedTransactionId: null,
+      };
+    }
+
+    return {
+      responseText:
+        `✅ Segmento criado!\n\n🏷️ *${name}*\n\n` +
+        `Agora você pode usar ele nos seus lançamentos.`,
+      actionTaken: 'segment_created',
+      relatedTransactionId: null,
+    };
+  }
+
+  /** Capitaliza a primeira letra de cada palavra, preservando o resto. */
+  private titleCase(s: string): string {
+    return s
+      .trim()
+      .replace(/\s+/g, ' ')
+      .split(' ')
+      .map((w) =>
+        w.length > 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w,
+      )
+      .join(' ');
+  }
+
+  /** Cor default alinhada com o tipo (reutiliza verde/vermelho do tema). */
+  private pickDefaultColor(type: 'INCOME' | 'EXPENSE' | 'BOTH'): string {
+    if (type === 'INCOME') return '#8DFF6B';
+    if (type === 'EXPENSE') return '#FF6B6B';
+    return '#8DFF6B';
+  }
+
   private buildHelpMessage(): string {
     return `🤖 *Meu Caixa — Assistente Financeiro*
 
@@ -1828,6 +1972,11 @@ Mande uma mensagem e eu cuido do resto! Exemplos:
 ✏️ *Atualizar valor do último:*
 • "alterar último para 150"
 • "corrigir valor para 2k"
+
+🏷️ *Criar categoria/segmento:*
+• "cria categoria Aluguel em despesa"
+• "cria categoria Vendas Online em receita"
+• "cria segmento Loja Física"
 
 _Dica: use "k" para milhares (2k = 2.000)_`;
   }

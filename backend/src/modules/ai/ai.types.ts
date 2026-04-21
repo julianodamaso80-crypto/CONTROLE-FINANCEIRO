@@ -7,6 +7,8 @@ export type BotIntent =
   | 'query_report'
   | 'delete_last'
   | 'update_last'
+  | 'create_category'
+  | 'create_segment'
   | 'help'
   | 'greeting'
   | 'unknown';
@@ -29,6 +31,8 @@ export type ReportType = 'income' | 'expense' | 'profit' | 'all';
 export type ReportFormat = 'text' | 'pdf';
 
 export type TransactionStatusIntent = 'PAID' | 'PENDING';
+
+export type NewCategoryType = 'INCOME' | 'EXPENSE' | 'BOTH';
 
 export interface BotInterpretation {
   intent: BotIntent;
@@ -53,6 +57,8 @@ export interface BotInterpretation {
     endDate?: string;
     groupBy?: 'category' | 'segment' | 'none';
     format?: ReportFormat;
+    newName?: string;
+    categoryType?: NewCategoryType;
   };
   reasoning?: string;
 }
