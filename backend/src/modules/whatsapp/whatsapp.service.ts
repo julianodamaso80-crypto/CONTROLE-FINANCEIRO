@@ -731,6 +731,65 @@ export class WhatsAppService {
       // Texto normal OU áudio já transcrito
       rawInputText = pdfExtractedText ?? transcribedText ?? messageText;
 
+      // Pendência de escolha de formato de relatório (PDF vs texto).
+      // Trata 1/2/pdf/texto sem chamar a IA. Janela de 10min.
+      const pendingReport = await this.getPendingReportFormat(companyId, senderNumber);
+      if (pendingReport) {
+        const choice = this.classifyReportFormatChoice(
+          rawInputText,
+          pendingReport.remaining > 0,
+        );
+        if (choice === 'pdf') {
+          const result = await this.executeQueryReportPdf(
+            companyId,
+            sender.id,
+            pendingReport.range,
+          );
+          await this.deliverResult(
+            instanceName,
+            senderNumber,
+            companyId,
+            sender.id,
+            result,
+          );
+          return;
+        }
+        if (choice === 'text') {
+          const result = await this.renderReportText(
+            companyId,
+            pendingReport.range,
+            pendingReport.reportType,
+            pendingReport.groupBy,
+          );
+          await this.deliverResult(
+            instanceName,
+            senderNumber,
+            companyId,
+            sender.id,
+            result,
+          );
+          return;
+        }
+        if (choice === 'cancel') {
+          const reply = '👍 Ok, deixei pra lá. Quando quiser, é só pedir de novo.';
+          await this.evolution
+            .sendTextMessage(instanceName, senderNumber, reply)
+            .catch(() => {});
+          await this.prisma.whatsAppMessage.create({
+            data: {
+              companyId,
+              userId: sender.id,
+              phoneNumber: senderNumber,
+              direction: 'OUTBOUND',
+              messageText: reply,
+              actionTaken: 'report_format_cancelled',
+            },
+          });
+          return;
+        }
+        // Resposta não classificada — descarta a pendência e segue fluxo normal
+      }
+
       // Confirmação de exclusão pendente: se o bot acabou de perguntar
       // "confirma? SIM/NÃO" e o cliente respondeu algo afirmativo/negativo,
       // trata a resposta SEM chamar a IA. Janela de 10min.
@@ -873,6 +932,53 @@ export class WhatsAppService {
         promptTokens: llmUsage?.promptTokens ?? null,
         completionTokens: llmUsage?.completionTokens ?? null,
         llmCostUsd: llmUsage?.costUsd ?? null,
+      },
+    });
+  }
+
+  /**
+   * Envia o HandlerResult pro cliente (texto ou documento) e persiste a
+   * mensagem outbound. Usado quando o handler não passa pelo fluxo padrão
+   * de processIncomingMessage — por ex, quando a resposta é resgatada de
+   * uma pendência (escolha de formato de relatório).
+   */
+  private async deliverResult(
+    instanceName: string,
+    senderNumber: string,
+    companyId: string,
+    userId: string,
+    result: HandlerResult,
+  ): Promise<void> {
+    try {
+      if (result.mediaAttachment) {
+        await this.evolution.sendDocumentMessage(instanceName, senderNumber, {
+          base64: result.mediaAttachment.base64,
+          fileName: result.mediaAttachment.fileName,
+          mimetype: result.mediaAttachment.mimetype,
+          caption: result.responseText,
+        });
+      } else {
+        await this.evolution.sendTextMessage(
+          instanceName,
+          senderNumber,
+          result.responseText,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Falha ao enviar resposta: ${error instanceof Error ? error.message : 'erro desconhecido'}`,
+      );
+    }
+
+    await this.prisma.whatsAppMessage.create({
+      data: {
+        companyId,
+        userId,
+        phoneNumber: senderNumber,
+        direction: 'OUTBOUND',
+        messageText: result.responseText,
+        actionTaken: result.actionTaken,
+        relatedTransactionId: result.relatedTransactionId,
       },
     });
   }
@@ -1519,6 +1625,19 @@ export class WhatsAppService {
 
     const reportType = interpretation.data.reportType ?? 'all';
     const groupBy = interpretation.data.groupBy ?? 'category';
+
+    // Em vez de mandar texto direto, pergunta o formato e mostra quota.
+    // O cliente responde "1"/"pdf" pra PDF ou "2"/"texto" pra WhatsApp.
+    return this.askReportFormat(companyId, range, reportType, groupBy);
+  }
+
+  /** Renderiza o relatório em texto puro pro WhatsApp (chamado depois da escolha). */
+  private async renderReportText(
+    companyId: string,
+    range: { start: Date; end: Date; label: string },
+    reportType: string,
+    groupBy: string,
+  ): Promise<HandlerResult> {
     const showIncome = reportType === 'income' || reportType === 'all' || reportType === 'profit';
     const showExpense = reportType === 'expense' || reportType === 'all' || reportType === 'profit';
 
@@ -1580,7 +1699,7 @@ export class WhatsAppService {
         for (const item of incomeByGroup) {
           const amount = Number(item._sum.amount ?? 0);
           const id = item[groupField];
-          const name = id ? await this.resolveGroupName(groupBy, id) : 'Sem categoria';
+          const name = id ? await this.resolveGroupName(groupBy as 'category' | 'segment' | 'none', id) : 'Sem categoria';
           response += `\n   ▫️ ${name}: ${fmt(amount)}`;
         }
       }
@@ -1599,7 +1718,7 @@ export class WhatsAppService {
         for (const item of expenseByGroup) {
           const amount = Number(item._sum.amount ?? 0);
           const id = item[groupField];
-          const name = id ? await this.resolveGroupName(groupBy, id) : 'Sem categoria';
+          const name = id ? await this.resolveGroupName(groupBy as 'category' | 'segment' | 'none', id) : 'Sem categoria';
           response += `\n   ▫️ ${name}: ${fmt(amount)}`;
         }
       }
@@ -1618,6 +1737,150 @@ export class WhatsAppService {
       actionTaken: 'query_report',
       relatedTransactionId: null,
     };
+  }
+
+  /**
+   * Pergunta ao cliente se ele quer o relatório em PDF ou no WhatsApp,
+   * mostrando quantos PDFs ele ainda tem disponível no mês.
+   * Salva o estado em actionTaken pra ser resgatado quando ele responder.
+   */
+  private async askReportFormat(
+    companyId: string,
+    range: { start: Date; end: Date; label: string },
+    reportType: string,
+    groupBy: string,
+  ): Promise<HandlerResult> {
+    const usage = await this.reports.getUsage(companyId);
+    const remaining = Math.max(0, usage.limit - usage.used);
+
+    let msg = `📊 *Relatório — ${range.label}*\n`;
+    msg += `━━━━━━━━━━━━━━━\n\n`;
+
+    if (remaining > 0) {
+      msg += `Como você prefere receber?\n\n`;
+      msg += `📄 *1* — Em PDF formatado\n`;
+      msg += `💬 *2* — Aqui no WhatsApp (texto)\n\n`;
+      msg += `━━━━━━━━━━━━━━━\n`;
+      msg += `📊 *Sua quota de PDFs:*\n`;
+      if (usage.used === 0) {
+        msg += `✅ Você tem direito a *${usage.limit} PDFs* este mês\n\n`;
+      } else {
+        msg += `✅ Restam *${remaining} ${remaining === 1 ? 'PDF' : 'PDFs'}* este mês\n`;
+        msg += `   _(usou ${usage.used} de ${usage.limit})_\n\n`;
+      }
+      msg += `_Responda *1* ou *2*_`;
+    } else {
+      const resets = new Date(usage.resetsAt).toLocaleDateString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+      });
+      msg += `📊 *Sua quota de PDFs:*\n`;
+      msg += `⛔ Você usou os *${usage.limit} PDFs* deste mês\n`;
+      msg += `🔄 _Libera em ${resets}_\n\n`;
+      msg += `━━━━━━━━━━━━━━━\n`;
+      msg += `💬 Te mando o resumo aqui no WhatsApp mesmo?\n\n`;
+      msg += `_Responda *SIM* ou *NÃO*_`;
+    }
+
+    // Estado: prefixo + 5 campos separados por |
+    // pdfsRemaining é 0 quando estourou — usamos isso pra interpretar SIM/NÃO
+    const start = range.start.toISOString();
+    const end = range.end.toISOString();
+    const safeLabel = range.label.replace(/\|/g, '/');
+    const state = `awaiting_report_format|${start}|${end}|${reportType}|${groupBy}|${safeLabel}|${remaining}`;
+
+    return {
+      responseText: msg,
+      actionTaken: state,
+      relatedTransactionId: null,
+    };
+  }
+
+  /** Detecta se a última outbound estava esperando escolha de formato de relatório. */
+  private async getPendingReportFormat(
+    companyId: string,
+    phoneNumber: string,
+  ): Promise<{
+    range: { start: Date; end: Date; label: string };
+    reportType: string;
+    groupBy: string;
+    remaining: number;
+  } | null> {
+    const last = await this.prisma.whatsAppMessage.findFirst({
+      where: { companyId, phoneNumber, direction: 'OUTBOUND' },
+      orderBy: { createdAt: 'desc' },
+      select: { actionTaken: true, createdAt: true },
+    });
+    if (!last || !last.actionTaken) return null;
+    const ageMs = Date.now() - last.createdAt.getTime();
+    if (ageMs > 10 * 60 * 1000) return null;
+
+    if (!last.actionTaken.startsWith('awaiting_report_format|')) return null;
+    const parts = last.actionTaken.split('|');
+    if (parts.length < 7) return null;
+    const [, startIso, endIso, reportType, groupBy, label, remaining] = parts;
+    const start = new Date(startIso!);
+    const end = new Date(endIso!);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+
+    return {
+      range: { start, end, label: label ?? 'período' },
+      reportType: reportType ?? 'all',
+      groupBy: groupBy ?? 'category',
+      remaining: parseInt(remaining ?? '0', 10) || 0,
+    };
+  }
+
+  /** Interpreta a resposta do cliente como PDF, texto, cancelar ou nada. */
+  private classifyReportFormatChoice(
+    text: string,
+    hasPdfQuota: boolean,
+  ): 'pdf' | 'text' | 'cancel' | null {
+    const t = this.normalize(text).replace(/[.!?,;:]/g, '').trim();
+    if (!t) return null;
+
+    // Quando estourou cota: SIM/NÃO viram texto/cancelar
+    if (!hasPdfQuota) {
+      if (this.isConfirmYes(t)) return 'text';
+      if (this.isConfirmNo(t)) return 'cancel';
+    }
+
+    // PDF
+    if (
+      t === '1' ||
+      t === 'pdf' ||
+      t === 'em pdf' ||
+      t === 'no pdf' ||
+      t === 'opcao 1' ||
+      t === '1pdf' ||
+      t.includes('pdf')
+    ) {
+      return hasPdfQuota ? 'pdf' : 'cancel';
+    }
+
+    // Texto / WhatsApp
+    if (
+      t === '2' ||
+      t === 'texto' ||
+      t === 'em texto' ||
+      t === 'wpp' ||
+      t === 'whatsapp' ||
+      t === 'no whatsapp' ||
+      t === 'no zap' ||
+      t === 'aqui' ||
+      t === 'aqui mesmo' ||
+      t === 'manda aqui' ||
+      t === 'no chat' ||
+      t === 'opcao 2' ||
+      t === 'normal'
+    ) {
+      return 'text';
+    }
+
+    if (t === 'cancela' || t === 'cancelar' || t === 'deixa' || t === 'deixa pra la') {
+      return 'cancel';
+    }
+
+    return null;
   }
 
   private async executeQueryReportPdf(
