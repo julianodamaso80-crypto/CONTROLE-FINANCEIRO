@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { Inter_Tight, Fraunces } from 'next/font/google';
 import { QueryProvider } from '@/providers/query-provider';
 import { AuthProvider } from '@/providers/auth-provider';
-import { Toaster } from 'sonner';
+import { ThemeProvider } from '@/providers/theme-provider';
+import { AppToaster } from '@/components/shared/app-toaster';
 import './globals.css';
 
 const interTight = Inter_Tight({
@@ -23,6 +24,8 @@ export const metadata: Metadata = {
     'SaaS de controle financeiro empresarial com bot WhatsApp e IA',
 };
 
+const themeInitScript = `(function(){try{var t=localStorage.getItem('meucaixa-theme')||'dark';var r=document.documentElement;if(t==='dark'){r.classList.add('dark')}else{r.classList.remove('dark')}r.style.colorScheme=t;}catch(e){document.documentElement.classList.add('dark')}})();`;
+
 export default function RootLayout({
   children,
 }: {
@@ -31,15 +34,21 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${interTight.variable} ${fraunces.variable} dark`}
+      className={`${interTight.variable} ${fraunces.variable}`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="font-sans bg-background text-foreground antialiased">
-        <QueryProvider>
-          <AuthProvider>
-            {children}
-            <Toaster position="top-right" theme="dark" richColors />
-          </AuthProvider>
-        </QueryProvider>
+        <ThemeProvider>
+          <QueryProvider>
+            <AuthProvider>
+              {children}
+              <AppToaster />
+            </AuthProvider>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

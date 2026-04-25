@@ -9,6 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TransactionFilters } from '@/components/transactions/transaction-filters';
 import { TransactionTable } from '@/components/transactions/transaction-table';
 import { TransactionFormDialog } from '@/components/transactions/transaction-form-dialog';
+import { ExportCsvButton } from '@/components/transactions/export-csv-button';
+import { ImportOfxDialog } from '@/components/transactions/import-ofx-dialog';
 import { PageHeader } from '@/components/shared/page-header';
 
 interface Filters {
@@ -81,10 +83,14 @@ export default function TransactionsPage() {
           </>
         }
         actions={
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Transação
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <ImportOfxDialog />
+            <ExportCsvButton />
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Transação
+            </Button>
+          </div>
         }
       />
 

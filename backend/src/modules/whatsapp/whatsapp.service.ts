@@ -451,8 +451,13 @@ export class WhatsAppService {
 
     if (!sender || !sender.isActive) {
       const reply =
-        '👋 Olá! Esse número ainda não está cadastrado no Meu Caixa.\n\n' +
-        'Crie sua conta em https://meucaixa.store e cadastre este mesmo WhatsApp para começar a usar.';
+        '👋 *Olá!*\n' +
+        '━━━━━━━━━━━━━━━\n\n' +
+        '🤖 Sou o assistente do *Meu Caixa*\n\n' +
+        '❌ Esse número ainda não está cadastrado.\n\n' +
+        '🌐 Crie sua conta em:\n' +
+        '   https://meucaixa.store\n\n' +
+        '💡 _Cadastre este mesmo WhatsApp pra começar_';
       await this.evolution
         .sendTextMessage(instanceName, senderNumber, reply)
         .catch(() => {});
@@ -476,12 +481,14 @@ export class WhatsAppService {
       await this.subscriptions.isAccessAllowed(companyId);
     if (!accessAllowed) {
       const reply =
-        '🔒 Seu acesso ao *Meu Caixa* está suspenso.\n\n' +
-        'O período gratuito acabou ou sua assinatura está pendente.\n\n' +
-        'Renove agora em: https://meucaixa.store/plano\n\n' +
-        'Planos:\n' +
-        '• Mensal: R$ 19,90/mês\n' +
-        '• Anual: R$ 199,90/ano (economize ~16%)';
+        '🔒 *Acesso suspenso*\n' +
+        '━━━━━━━━━━━━━━━\n\n' +
+        '😕 O período gratuito acabou ou sua assinatura está pendente.\n\n' +
+        '🌐 Renove agora em:\n' +
+        '   https://meucaixa.store/plano\n\n' +
+        '💎 *Planos:*\n' +
+        '📅 Mensal — R$ 19,90/mês\n' +
+        '📆 Anual — R$ 199,90/ano _(economize ~16%)_';
       await this.evolution
         .sendTextMessage(instanceName, senderNumber, reply)
         .catch(() => {});
@@ -1205,22 +1212,24 @@ export class WhatsAppService {
 
     let response: string;
     if (isPending) {
-      response = `🔔 *Boleto registrado!*\n\n`;
-      response += `• Valor: *${formattedAmount}*\n`;
-      response += `• Descrição: ${description}\n`;
-      if (categoryName) response += `• Categoria: ${categoryName}\n`;
-      if (segmentName) response += `• Segmento: ${segmentName}\n`;
-      response += `• Vencimento: ${transactionDateBR}\n`;
-      response += `• Status: Pendente ⏳\n\n`;
-      response += `Vou te lembrar às *9h da manhã* no dia do vencimento. ✅`;
+      response = `🔔 *Boleto registrado!*\n`;
+      response += `━━━━━━━━━━━━━━━\n\n`;
+      response += `💵 *${formattedAmount}*\n`;
+      response += `📝 ${description}\n`;
+      if (categoryName) response += `🏷️ ${categoryName}\n`;
+      if (segmentName) response += `🎯 ${segmentName}\n`;
+      response += `📅 Vence em ${transactionDateBR}\n`;
+      response += `⏳ Status: pendente\n\n`;
+      response += `🔔 _Te aviso às 9h no dia do vencimento_`;
     } else {
-      response = `${emoji} *${label} registrada!*\n\n`;
-      response += `• Valor: *${formattedAmount}*\n`;
-      response += `• Descrição: ${description}\n`;
-      if (categoryName) response += `• Categoria: ${categoryName}\n`;
-      if (segmentName) response += `• Segmento: ${segmentName}\n`;
-      response += `• Data: ${transactionDateBR}\n`;
-      response += '• Status: Pago ✅';
+      response = `${emoji} *${label} registrada!*\n`;
+      response += `━━━━━━━━━━━━━━━\n\n`;
+      response += `💵 *${formattedAmount}*\n`;
+      response += `📝 ${description}\n`;
+      if (categoryName) response += `🏷️ ${categoryName}\n`;
+      if (segmentName) response += `🎯 ${segmentName}\n`;
+      response += `📅 ${transactionDateBR}\n`;
+      response += `✅ Status: pago`;
     }
 
     return {
@@ -1247,7 +1256,8 @@ export class WhatsAppService {
     }
 
     let totalBalance = 0;
-    let response = '🏦 *Saldo das suas contas:*\n\n';
+    let response = '🏦 *Saldo das suas contas*\n';
+    response += '━━━━━━━━━━━━━━━\n\n';
 
     for (const acc of accounts) {
       const balance = Number(acc.currentBalance);
@@ -1256,14 +1266,16 @@ export class WhatsAppService {
         style: 'currency',
         currency: 'BRL',
       });
-      response += `• ${acc.name}: *${formatted}*\n`;
+      const dot = balance >= 0 ? '🟢' : '🔴';
+      response += `${dot} ${acc.name}\n   *${formatted}*\n`;
     }
 
     const totalFormatted = totalBalance.toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     });
-    response += `\n📊 *Total: ${totalFormatted}*`;
+    response += `\n━━━━━━━━━━━━━━━\n`;
+    response += `💰 *Total: ${totalFormatted}*`;
 
     return {
       responseText: response,
@@ -1313,24 +1325,29 @@ export class WhatsAppService {
 
     const monthName = now.toLocaleDateString('pt-BR', { month: 'long', timeZone: 'America/Sao_Paulo' });
 
-    let response = `📊 *Despesas de ${monthName}:*\n\n`;
-    response += `• Total: *${totalFormatted}* (${String(count)} transações)\n`;
+    let response = `📊 *Despesas de ${monthName}*\n`;
+    response += '━━━━━━━━━━━━━━━\n\n';
+    response += `💸 *${totalFormatted}*\n`;
+    response += `🧾 ${String(count)} ${count === 1 ? 'transação' : 'transações'}\n`;
 
     if (byCategory.length > 0) {
       response += '\n🏷️ *Top categorias:*\n';
-      for (const item of byCategory) {
+      const medals = ['🥇', '🥈', '🥉'];
+      for (let i = 0; i < byCategory.length; i++) {
+        const item = byCategory[i]!;
         const catAmount = Number(item._sum.amount ?? 0);
         const catFormatted = catAmount.toLocaleString('pt-BR', {
           style: 'currency',
           currency: 'BRL',
         });
+        const medal = medals[i] ?? '▫️';
         if (item.categoryId) {
           const cat = await this.prisma.category.findUnique({
             where: { id: item.categoryId },
           });
-          response += `• ${cat?.name ?? 'Sem categoria'}: ${catFormatted}\n`;
+          response += `${medal} ${cat?.name ?? 'Sem categoria'} — *${catFormatted}*\n`;
         } else {
-          response += `• Sem categoria: ${catFormatted}\n`;
+          response += `${medal} Sem categoria — *${catFormatted}*\n`;
         }
       }
     }
@@ -1549,9 +1566,10 @@ export class WhatsAppService {
     const shouldGroup = groupBy !== 'none';
 
     let response = `📊 *Relatório — ${range.label}*\n`;
+    response += '━━━━━━━━━━━━━━━\n';
 
     if (showIncome && incomeCount > 0) {
-      response += `\n💰 *Receitas:* ${fmt(incomeTotal)} (${incomeCount})`;
+      response += `\n💰 *Receitas:* ${fmt(incomeTotal)} _(${incomeCount})_`;
       if (shouldGroup) {
         const incomeByGroup = await this.prisma.transaction.groupBy({
           by: [groupField],
@@ -1563,14 +1581,14 @@ export class WhatsAppService {
           const amount = Number(item._sum.amount ?? 0);
           const id = item[groupField];
           const name = id ? await this.resolveGroupName(groupBy, id) : 'Sem categoria';
-          response += `\n  • ${name}: ${fmt(amount)}`;
+          response += `\n   ▫️ ${name}: ${fmt(amount)}`;
         }
       }
       response += '\n';
     }
 
     if (showExpense && expenseCount > 0) {
-      response += `\n💸 *Despesas:* ${fmt(expenseTotal)} (${expenseCount})`;
+      response += `\n💸 *Despesas:* ${fmt(expenseTotal)} _(${expenseCount})_`;
       if (shouldGroup) {
         const expenseByGroup = await this.prisma.transaction.groupBy({
           by: [groupField],
@@ -1582,7 +1600,7 @@ export class WhatsAppService {
           const amount = Number(item._sum.amount ?? 0);
           const id = item[groupField];
           const name = id ? await this.resolveGroupName(groupBy, id) : 'Sem categoria';
-          response += `\n  • ${name}: ${fmt(amount)}`;
+          response += `\n   ▫️ ${name}: ${fmt(amount)}`;
         }
       }
       response += '\n';
@@ -1591,7 +1609,8 @@ export class WhatsAppService {
     if (reportType === 'all' || reportType === 'profit') {
       const profit = incomeTotal - expenseTotal;
       const icon = profit >= 0 ? '✅' : '⚠️';
-      response += `\n${icon} *${profit >= 0 ? 'Lucro' : 'Prejuízo'}:* ${fmt(profit)}`;
+      response += `\n━━━━━━━━━━━━━━━\n`;
+      response += `${icon} *${profit >= 0 ? 'Lucro' : 'Prejuízo'}:* ${fmt(profit)}`;
     }
 
     return {
@@ -1700,7 +1719,9 @@ export class WhatsAppService {
     }
 
     let totalPending = 0;
-    let response = '📅 *Próximos vencimentos (7 dias):*\n\n';
+    let response = '📅 *Próximos vencimentos*\n';
+    response += '_(próximos 7 dias)_\n';
+    response += '━━━━━━━━━━━━━━━\n\n';
 
     for (const tx of upcoming) {
       const txAmount = Number(tx.amount);
@@ -1713,14 +1734,17 @@ export class WhatsAppService {
         ? new Date(tx.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
         : '—';
       const emoji = tx.type === 'EXPENSE' ? '🔴' : '🟢';
-      response += `${emoji} ${dueFormatted} — ${tx.description}: *${formatted}*\n`;
+      response += `${emoji} *${dueFormatted}*\n`;
+      response += `   ${tx.description}\n`;
+      response += `   💵 *${formatted}*\n\n`;
     }
 
     const totalFormatted = totalPending.toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     });
-    response += `\n💰 *Total pendente: ${totalFormatted}*`;
+    response += `━━━━━━━━━━━━━━━\n`;
+    response += `💰 *Total pendente:* ${totalFormatted}`;
 
     return {
       responseText: response,
@@ -1757,7 +1781,12 @@ export class WhatsAppService {
     const label = last.type === 'EXPENSE' ? 'Despesa' : 'Receita';
 
     return {
-      responseText: `🗑️ Transação excluída!\n\n${emoji} ${last.description}: *${formatted}* (${label})`,
+      responseText:
+        `🗑️ *Transação excluída!*\n` +
+        `━━━━━━━━━━━━━━━\n\n` +
+        `${emoji} *${label}*\n` +
+        `📝 ${last.description}\n` +
+        `💵 *${formatted}*`,
       actionTaken: 'deleted_last',
       relatedTransactionId: last.id,
     };
@@ -1796,7 +1825,7 @@ export class WhatsAppService {
         style: 'currency',
         currency: 'BRL',
       });
-      changes.push(`• Valor: ${oldFormatted} → *${newFormatted}*`);
+      changes.push(`💵 Valor: ${oldFormatted} → *${newFormatted}*`);
     }
 
     // Correção de categoria
@@ -1810,7 +1839,7 @@ export class WhatsAppService {
       );
       if (resolved.id) {
         updateData.category = { connect: { id: resolved.id } };
-        changes.push(`• Categoria: *${resolved.name}*`);
+        changes.push(`🏷️ Categoria: *${resolved.name}*`);
       } else {
         return {
           responseText:
@@ -1827,7 +1856,7 @@ export class WhatsAppService {
       const seg = await this.segments.findByName(companyId, d.segment);
       if (seg) {
         updateData.segment = { connect: { id: seg.id } };
-        changes.push(`• Segmento: *${seg.name}*`);
+        changes.push(`🎯 Segmento: *${seg.name}*`);
       } else {
         return {
           responseText:
@@ -1842,11 +1871,13 @@ export class WhatsAppService {
     if (changes.length === 0) {
       return {
         responseText:
-          `✏️ Quer corrigir o último lançamento (_${last.description}_)?\n\n` +
-          `Me diga o que mudar:\n` +
-          `• _"muda o valor pra 150"_\n` +
-          `• _"categoria shopee"_\n` +
-          `• _"segmento loja"_`,
+          `✏️ *Corrigir último lançamento*\n` +
+          `━━━━━━━━━━━━━━━\n\n` +
+          `📝 _${last.description}_\n\n` +
+          `O que você quer mudar?\n` +
+          `💵 _"muda o valor pra 150"_\n` +
+          `🏷️ _"categoria shopee"_\n` +
+          `🎯 _"segmento loja"_`,
         actionTaken: 'update_last_no_data',
         relatedTransactionId: last.id,
       };
@@ -1859,8 +1890,9 @@ export class WhatsAppService {
 
     return {
       responseText:
-        `✏️ *Lançamento atualizado!*\n\n` +
-        `_${last.description}_\n` +
+        `✏️ *Lançamento atualizado!*\n` +
+        `━━━━━━━━━━━━━━━\n\n` +
+        `📝 _${last.description}_\n\n` +
         changes.join('\n'),
       actionTaken: 'updated_last',
       relatedTransactionId: last.id,
@@ -1931,8 +1963,11 @@ export class WhatsAppService {
 
     return {
       responseText:
-        `✅ Categoria criada!\n\n${emoji} *${name}* (${typeLabel})\n\n` +
-        `Agora você pode usar ela nos seus lançamentos.`,
+        `✅ *Categoria criada!*\n` +
+        `━━━━━━━━━━━━━━━\n\n` +
+        `${emoji} *${name}*\n` +
+        `📂 _${typeLabel}_\n\n` +
+        `💡 _Já pode usar nos seus lançamentos_`,
       actionTaken: 'category_created',
       relatedTransactionId: null,
     };
@@ -1981,8 +2016,10 @@ export class WhatsAppService {
 
     return {
       responseText:
-        `✅ Segmento criado!\n\n🏷️ *${name}*\n\n` +
-        `Agora você pode usar ele nos seus lançamentos.`,
+        `✅ *Segmento criado!*\n` +
+        `━━━━━━━━━━━━━━━\n\n` +
+        `🎯 *${name}*\n\n` +
+        `💡 _Já pode usar nos seus lançamentos_`,
       actionTaken: 'segment_created',
       relatedTransactionId: null,
     };
@@ -2224,7 +2261,10 @@ export class WhatsAppService {
         };
       }
       return {
-        responseText: `🗑️ Categoria *${cat.name}* excluída com sucesso.`,
+        responseText:
+          `🗑️ *Categoria excluída!*\n` +
+          `━━━━━━━━━━━━━━━\n\n` +
+          `🏷️ ~${cat.name}~`,
         actionTaken: 'category_deleted',
         relatedTransactionId: null,
       };
@@ -2252,7 +2292,10 @@ export class WhatsAppService {
       };
     }
     return {
-      responseText: `🗑️ Segmento *${seg.name}* desativado.`,
+      responseText:
+        `🗑️ *Segmento desativado!*\n` +
+        `━━━━━━━━━━━━━━━\n\n` +
+        `🎯 ~${seg.name}~`,
       actionTaken: 'segment_deleted',
       relatedTransactionId: null,
     };
@@ -2279,49 +2322,72 @@ export class WhatsAppService {
 
   private buildHelpMessage(): string {
     return `🤖 *Meu Caixa — Assistente Financeiro*
+━━━━━━━━━━━━━━━
 
-Mande uma mensagem e eu cuido do resto! Exemplos:
+_Mande uma mensagem e eu cuido do resto!_
 
-💸 *Registrar despesa:*
-• "gastei 50 no uber"
-• "paguei 200 de luz"
-• "saída 1.5k aluguel"
+━━━━━━━━━━━━━━━
+💸 *Registrar despesa*
+━━━━━━━━━━━━━━━
+• _"gastei 50 no uber"_
+• _"paguei 200 de luz"_
+• _"saída 1.5k aluguel"_
 
-💰 *Registrar receita:*
-• "recebi 3k do cliente silva"
-• "entrada 500 venda loja"
-• "faturei 10k projeto"
+━━━━━━━━━━━━━━━
+💰 *Registrar receita*
+━━━━━━━━━━━━━━━
+• _"recebi 3k do cliente silva"_
+• _"entrada 500 venda loja"_
+• _"faturei 10k projeto"_
 
-🏦 *Consultar saldo:*
-• "saldo"
-• "quanto tenho em caixa?"
+━━━━━━━━━━━━━━━
+🏦 *Consultar saldo*
+━━━━━━━━━━━━━━━
+• _"saldo"_
+• _"quanto tenho em caixa?"_
 
-📊 *Despesas do mês:*
-• "despesas do mês"
-• "quanto gastei esse mês?"
+━━━━━━━━━━━━━━━
+📊 *Relatórios*
+━━━━━━━━━━━━━━━
+• _"despesas do mês"_
+• _"relatório da semana"_
+• _"quanto faturei em janeiro?"_
+• _"resumo em PDF"_
 
-📅 *Próximos vencimentos:*
-• "vencimentos"
-• "o que vence essa semana?"
+━━━━━━━━━━━━━━━
+📅 *Vencimentos*
+━━━━━━━━━━━━━━━
+• _"vencimentos"_
+• _"o que vence essa semana?"_
 
-🗑️ *Apagar último lançamento:*
-• "apagar último"
-• "deletar"
+━━━━━━━━━━━━━━━
+🗑️ *Apagar último*
+━━━━━━━━━━━━━━━
+• _"apagar último"_
+• _"deletar"_
 
-✏️ *Atualizar valor do último:*
-• "alterar último para 150"
-• "corrigir valor para 2k"
+━━━━━━━━━━━━━━━
+✏️ *Corrigir último*
+━━━━━━━━━━━━━━━
+• _"alterar último para 150"_
+• _"corrigir valor para 2k"_
 
-🏷️ *Criar categoria/segmento:*
-• "cria categoria Aluguel em despesa"
-• "cria categoria Vendas Online em receita"
-• "cria segmento Loja Física"
+━━━━━━━━━━━━━━━
+🏷️ *Criar / excluir*
+━━━━━━━━━━━━━━━
+• _"cria categoria Aluguel em despesa"_
+• _"cria segmento Loja Física"_
+• _"exclui categoria Aluguel"_
+• _"apaga segmento Loja Física"_
 
-🗑️ *Excluir categoria/segmento:* (pede confirmação)
-• "exclui categoria Aluguel"
-• "apaga segmento Loja Física"
+━━━━━━━━━━━━━━━
+🎙️ *Áudio, foto e PDF*
+━━━━━━━━━━━━━━━
+🔊 Manda áudio que eu transcrevo
+📸 Manda foto do cupom que eu leio
+📄 Manda PDF de boleto que eu cadastro
 
-_Dica: use "k" para milhares (2k = 2.000)_`;
+💡 _Dica: use "k" pra milhares (2k = 2.000)_`;
   }
 
   private delay(ms: number): Promise<void> {

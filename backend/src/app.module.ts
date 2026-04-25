@@ -24,6 +24,11 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { HealthModule } from './modules/health/health.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RemindersModule } from './modules/reminders/reminders.module';
+import { BudgetsModule } from './modules/budgets/budgets.module';
+import { CreditCardsModule } from './modules/credit-cards/credit-cards.module';
+import { GoalsModule } from './modules/goals/goals.module';
+import { ImportsModule } from './modules/imports/imports.module';
+import { ExportsModule } from './modules/exports/exports.module';
 
 @Module({
   imports: [
@@ -54,6 +59,11 @@ import { RemindersModule } from './modules/reminders/reminders.module';
     HealthModule,
     ReportsModule,
     RemindersModule,
+    BudgetsModule,
+    CreditCardsModule,
+    GoalsModule,
+    ImportsModule,
+    ExportsModule,
   ],
   providers: [
     // Ordem importa: Throttler → JWT → Subscription

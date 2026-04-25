@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
 import { FinnixLogo } from '@/components/shared/finnix-logo';
+import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
@@ -59,16 +60,19 @@ export function AdminSidebar() {
 
       <div className="p-4">
         <Separator className="mb-4" />
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{user?.name}</p>
             <p className="truncate text-xs text-muted-foreground">
               {user?.email}
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={logout} title="Sair">
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <Button variant="ghost" size="icon" onClick={logout} title="Sair">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </aside>

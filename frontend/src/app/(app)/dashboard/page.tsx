@@ -16,6 +16,8 @@ import { KpiCard } from '@/components/dashboard/kpi-card';
 import { ChartBar } from '@/components/dashboard/chart-bar';
 import { ChartPie } from '@/components/dashboard/chart-pie';
 import { ChartSegment } from '@/components/dashboard/chart-segment';
+import { ChartMonthComparison } from '@/components/dashboard/chart-month-comparison';
+import { CashflowForecast } from '@/components/dashboard/cashflow-forecast';
 import { UpcomingList } from '@/components/dashboard/upcoming-list';
 import { PageHeader } from '@/components/shared/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -182,6 +184,12 @@ export default function DashboardPage() {
               icon={AlertTriangle}
               variant={data.kpis.overdueCount > 0 ? 'negative' : 'neutral'}
             />
+          </div>
+
+          {/* Comparativo + Projeção */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <ChartMonthComparison months={6} />
+            <CashflowForecast days={60} />
           </div>
 
           {/* Gráficos */}

@@ -87,6 +87,88 @@ export interface Supplier {
   phone?: string | null;
 }
 
+export type CreditCardBrand =
+  | 'VISA'
+  | 'MASTERCARD'
+  | 'ELO'
+  | 'AMEX'
+  | 'HIPERCARD'
+  | 'OUTRO';
+export type InvoiceStatus = 'OPEN' | 'CLOSED' | 'PAID' | 'OVERDUE';
+export type GoalStatus = 'ACTIVE' | 'COMPLETED' | 'PAUSED' | 'CANCELED';
+export type BudgetPeriod = 'MONTHLY' | 'YEARLY';
+
+export interface Budget {
+  id: string;
+  categoryId: string;
+  amount: number;
+  period: BudgetPeriod;
+  startDate: string;
+  endDate: string;
+  alertThreshold: number;
+  spent: number;
+  remaining: number;
+  usedPct: number;
+  alertReached: boolean;
+  exceeded: boolean;
+  category: { id: string; name: string; color: string; icon: string; type: CategoryType };
+}
+
+export interface CreditCard {
+  id: string;
+  name: string;
+  brand: CreditCardBrand;
+  lastDigits?: string | null;
+  creditLimit: number;
+  closingDay: number;
+  dueDay: number;
+  color: string;
+  isActive: boolean;
+  usedAmount?: number;
+  availableLimit?: number;
+  usagePct?: number;
+}
+
+export interface Invoice {
+  id: string;
+  creditCardId: string;
+  referenceMonth: number;
+  referenceYear: number;
+  closingDate: string;
+  dueDate: string;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  status: InvoiceStatus;
+  paidAt?: string | null;
+  creditCard?: { id: string; name: string; brand: CreditCardBrand; color: string; lastDigits?: string | null };
+  transactions?: Transaction[];
+}
+
+export interface GoalContribution {
+  id: string;
+  amount: number;
+  date: string;
+  notes?: string | null;
+}
+
+export interface Goal {
+  id: string;
+  name: string;
+  description?: string | null;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate?: string | null;
+  status: GoalStatus;
+  color: string;
+  icon: string;
+  progress: number;
+  remaining: number;
+  daysLeft: number | null;
+  contributions?: GoalContribution[];
+  _count?: { contributions: number };
+}
+
 export interface Transaction {
   id: string;
   type: TransactionType;

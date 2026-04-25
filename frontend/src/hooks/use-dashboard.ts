@@ -19,3 +19,40 @@ export function useDashboard(filters?: DashboardFilters) {
       }),
   });
 }
+
+export interface MonthComparisonItem {
+  month: string;
+  year: number;
+  monthIndex: number;
+  income: number;
+  expense: number;
+  balance: number;
+}
+
+export function useMonthComparison(months: number = 6) {
+  return useQuery({
+    queryKey: ['dashboard-month-comparison', months],
+    queryFn: () =>
+      apiGet<MonthComparisonItem[]>('/dashboard/month-comparison', {
+        months: String(months),
+      }),
+  });
+}
+
+export interface CashflowForecast {
+  initialBalance: number;
+  finalBalance: number;
+  minBalance: number;
+  minBalanceDate: string | null;
+  daily: Array<{ date: string; income: number; expense: number; balance: number }>;
+}
+
+export function useCashflowForecast(days: number = 60) {
+  return useQuery({
+    queryKey: ['dashboard-cashflow-forecast', days],
+    queryFn: () =>
+      apiGet<CashflowForecast>('/dashboard/cashflow-forecast', {
+        days: String(days),
+      }),
+  });
+}

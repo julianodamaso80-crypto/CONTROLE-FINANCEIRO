@@ -77,23 +77,26 @@ export class BillRemindersService {
           style: 'currency',
           currency: 'BRL',
         });
-        message = `🔔 *Lembrete de Boleto*\n\n`;
-        message += `Você tem um boleto que vence *hoje* (${dueDateBR}):\n\n`;
-        message += `• ${t.description}\n`;
-        message += `• Valor: *${valor}*\n\n`;
-        message += `Não esqueça de pagar! 💸`;
+        message = `🔔 *Lembrete de Boleto*\n`;
+        message += `━━━━━━━━━━━━━━━\n\n`;
+        message += `📅 *Vence hoje* (${dueDateBR})\n\n`;
+        message += `📝 ${t.description}\n`;
+        message += `💵 *${valor}*\n\n`;
+        message += `💸 _Não esqueça de pagar!_`;
       } else {
-        message = `🔔 *Lembrete de Boletos*\n\n`;
-        message += `Você tem *${pending.length} boletos* vencendo *hoje* (${dueDateBR}):\n\n`;
+        message = `🔔 *Lembrete de Boletos*\n`;
+        message += `━━━━━━━━━━━━━━━\n\n`;
+        message += `📅 *${pending.length} boletos vencem hoje* (${dueDateBR})\n\n`;
         for (const t of pending) {
           const valor = Number(t.amount).toLocaleString('pt-BR', {
             style: 'currency',
             currency: 'BRL',
           });
-          message += `• ${t.description} — *${valor}*\n`;
+          message += `▫️ ${t.description}\n   💵 *${valor}*\n`;
         }
-        message += `\nTotal: *${totalFmt}*\n\n`;
-        message += `Não esqueça de pagar! 💸`;
+        message += `\n━━━━━━━━━━━━━━━\n`;
+        message += `💰 *Total:* ${totalFmt}\n\n`;
+        message += `💸 _Não esqueça de pagar!_`;
       }
 
       try {

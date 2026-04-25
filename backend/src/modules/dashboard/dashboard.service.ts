@@ -220,6 +220,155 @@ export class DashboardService {
     };
   }
 
+  /**
+   * Comparativo dos últimos N meses: receita, despesa e saldo de cada mês.
+   * Útil pra ver tendência e responder "como tô esse mês vs o passado?".
+   */
+  async getMonthComparison(
+    companyId: string,
+    months: number = 6,
+  ): Promise<Array<{ month: string; year: number; monthIndex: number; income: number; expense: number; balance: number }>> {
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    const transactions = await this.prisma.transaction.findMany({
+      where: {
+        companyId,
+        status: 'PAID',
+        date: { gte: startDate, lte: endDate },
+      },
+      select: { date: true, type: true, amount: true },
+    });
+
+    const monthLabels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    type Bucket = { income: Decimal; expense: Decimal; year: number; monthIndex: number };
+    const buckets = new Map<string, Bucket>();
+
+    // Pré-cria todos os buckets pra retornar mesmo meses vazios
+    for (let i = 0; i < months; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`;
+      buckets.set(key, {
+        income: new Decimal(0),
+        expense: new Decimal(0),
+        year: d.getFullYear(),
+        monthIndex: d.getMonth(),
+      });
+    }
+
+    for (const tx of transactions) {
+      const key = `${tx.date.getFullYear()}-${String(tx.date.getMonth()).padStart(2, '0')}`;
+      const bucket = buckets.get(key);
+      if (!bucket) continue;
+      const amount = new Decimal(tx.amount.toString());
+      if (tx.type === 'INCOME') bucket.income = bucket.income.plus(amount);
+      else bucket.expense = bucket.expense.plus(amount);
+    }
+
+    return Array.from(buckets.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, b]) => {
+        const income = toMoney(b.income);
+        const expense = toMoney(b.expense);
+        return {
+          month: monthLabels[b.monthIndex] ?? '',
+          year: b.year,
+          monthIndex: b.monthIndex,
+          income,
+          expense,
+          balance: subtractMoney(income, expense),
+        };
+      });
+  }
+
+  /**
+   * Projeta o saldo dia-a-dia nos próximos N dias somando ao saldo atual
+   * todas as receitas pendentes (com dueDate futuro) e subtraindo despesas pendentes.
+   * Mostra "quando o saldo vai ficar negativo" antes de acontecer.
+   */
+  async getCashflowForecast(
+    companyId: string,
+    days: number = 60,
+  ): Promise<{
+    initialBalance: number;
+    finalBalance: number;
+    minBalance: number;
+    minBalanceDate: string | null;
+    daily: Array<{ date: string; income: number; expense: number; balance: number }>;
+  }> {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + days);
+
+    // Saldo inicial = soma dos current balances das contas
+    const accounts = await this.prisma.bankAccount.findMany({
+      where: { companyId, isActive: true },
+      select: { currentBalance: true },
+    });
+    let runningBalance = new Decimal(0);
+    for (const a of accounts) runningBalance = runningBalance.plus(a.currentBalance.toString());
+    const initialBalance = runningBalance.toNumber();
+
+    // Pega transações pendentes com dueDate dentro da janela
+    const pending = await this.prisma.transaction.findMany({
+      where: {
+        companyId,
+        status: { in: ['PENDING', 'OVERDUE'] },
+        dueDate: { gte: today, lte: endDate },
+      },
+      select: { dueDate: true, type: true, amount: true },
+    });
+
+    // Constrói mapa por dia
+    const dailyMap = new Map<string, { income: Decimal; expense: Decimal }>();
+    const cur = new Date(today);
+    while (cur <= endDate) {
+      const key = cur.toISOString().slice(0, 10);
+      dailyMap.set(key, { income: new Decimal(0), expense: new Decimal(0) });
+      cur.setDate(cur.getDate() + 1);
+    }
+    for (const tx of pending) {
+      if (!tx.dueDate) continue;
+      const key = tx.dueDate.toISOString().slice(0, 10);
+      const bucket = dailyMap.get(key);
+      if (!bucket) continue;
+      const amount = new Decimal(tx.amount.toString());
+      if (tx.type === 'INCOME') bucket.income = bucket.income.plus(amount);
+      else bucket.expense = bucket.expense.plus(amount);
+    }
+
+    // Calcula saldo cumulativo dia-a-dia
+    const daily: Array<{ date: string; income: number; expense: number; balance: number }> = [];
+    let minBalance = initialBalance;
+    let minBalanceDate: string | null = null;
+    runningBalance = new Decimal(initialBalance);
+
+    for (const [key, b] of Array.from(dailyMap.entries()).sort(([a], [c]) => a.localeCompare(c))) {
+      runningBalance = runningBalance.plus(b.income).minus(b.expense);
+      const balance = runningBalance.toNumber();
+      daily.push({
+        date: key,
+        income: toMoney(b.income),
+        expense: toMoney(b.expense),
+        balance: Math.round(balance * 100) / 100,
+      });
+      if (balance < minBalance) {
+        minBalance = balance;
+        minBalanceDate = key;
+      }
+    }
+
+    return {
+      initialBalance,
+      finalBalance: runningBalance.toNumber(),
+      minBalance: Math.round(minBalance * 100) / 100,
+      minBalanceDate,
+      daily,
+    };
+  }
+
   /** Constrói o array de receita/despesa por dia do período */
   private buildChartByDay(
     from: Date,

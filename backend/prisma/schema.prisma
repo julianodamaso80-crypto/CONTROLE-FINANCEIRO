@@ -111,6 +111,29 @@ enum SubscriptionStatus {
   EXPIRED
 }
 
+enum CreditCardBrand {
+  VISA
+  MASTERCARD
+  ELO
+  AMEX
+  HIPERCARD
+  OUTRO
+}
+
+enum InvoiceStatus {
+  OPEN
+  CLOSED
+  PAID
+  OVERDUE
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  CANCELED
+}
+
 // === Modelos ===
 
 model Company {
@@ -137,6 +160,8 @@ model Company {
   investments      Investment[]
   whatsappMessages WhatsAppMessage[]
   alerts           Alert[]
+  creditCards      CreditCard[]
+  goals            Goal[]
   whatsappInstance WhatsAppInstance?
   subscription     Subscription?
 
@@ -306,6 +331,9 @@ model Transaction {
   clientId           String?           @map("client_id") @db.Uuid
   supplierId         String?           @map("supplier_id") @db.Uuid
   segmentId          String?           @map("segment_id") @db.Uuid
+  creditCardId       String?           @map("credit_card_id") @db.Uuid
+  invoiceId          String?           @map("invoice_id") @db.Uuid
+  isRefund           Boolean           @default(false) @map("is_refund")
   isRecurring        Boolean           @default(false) @map("is_recurring")
   recurrenceConfig   Json?             @map("recurrence_config")
   installmentNumber  Int?              @map("installment_number")
@@ -323,6 +351,8 @@ model Transaction {
   client              Client?              @relation(fields: [clientId], references: [id])
   supplier            Supplier?            @relation(fields: [supplierId], references: [id])
   segment             Segment?             @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  creditCard          CreditCard?          @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+  invoice             Invoice?             @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   accountTransactions AccountTransaction[]
 
   @@index([companyId])
@@ -330,8 +360,93 @@ model Transaction {
   @@index([companyId, type, status])
   @@index([companyId, dueDate])
   @@index([companyId, segmentId])
+  @@index([companyId, creditCardId])
+  @@index([invoiceId])
   @@index([installmentGroupId])
   @@map("transactions")
+}
+
+model CreditCard {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String          @map("company_id") @db.Uuid
+  name            String
+  brand           CreditCardBrand @default(OUTRO)
+  lastDigits      String?         @map("last_digits") @db.VarChar(4)
+  creditLimit     Decimal         @default(0) @map("credit_limit") @db.Decimal(15, 2)
+  closingDay      Int             @map("closing_day")
+  dueDay          Int             @map("due_day")
+  color           String          @default("#0EA5E9")
+  isActive        Boolean         @default(true) @map("is_active")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoices     Invoice[]
+  transactions Transaction[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("credit_cards")
+}
+
+model Invoice {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String        @map("company_id") @db.Uuid
+  creditCardId String        @map("credit_card_id") @db.Uuid
+  referenceMonth Int         @map("reference_month")
+  referenceYear  Int         @map("reference_year")
+  closingDate  DateTime      @map("closing_date") @db.Date
+  dueDate      DateTime      @map("due_date") @db.Date
+  totalAmount  Decimal       @default(0) @map("total_amount") @db.Decimal(15, 2)
+  paidAmount   Decimal       @default(0) @map("paid_amount") @db.Decimal(15, 2)
+  status       InvoiceStatus @default(OPEN)
+  paidAt       DateTime?     @map("paid_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  creditCard   CreditCard    @relation(fields: [creditCardId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([creditCardId, referenceYear, referenceMonth])
+  @@index([companyId])
+  @@index([creditCardId, status])
+  @@map("invoices")
+}
+
+model Goal {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String     @map("company_id") @db.Uuid
+  name          String
+  description   String?
+  targetAmount  Decimal    @map("target_amount") @db.Decimal(15, 2)
+  currentAmount Decimal    @default(0) @map("current_amount") @db.Decimal(15, 2)
+  targetDate    DateTime?  @map("target_date") @db.Date
+  status        GoalStatus @default(ACTIVE)
+  color         String     @default("#22C55E")
+  icon          String     @default("target")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  company       Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contributions GoalContribution[]
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("goals")
+}
+
+model GoalContribution {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  goalId    String   @map("goal_id") @db.Uuid
+  amount    Decimal  @db.Decimal(15, 2)
+  date      DateTime @db.Date
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  goal Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+  @@map("goal_contributions")
 }
 
 model AccountTransaction {

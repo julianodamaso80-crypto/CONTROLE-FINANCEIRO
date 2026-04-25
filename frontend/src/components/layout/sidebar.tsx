@@ -13,18 +13,27 @@ import {
   LogOut,
   Menu,
   X,
+  Wallet,
+  PiggyBank,
+  Target,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
 import { FinnixLogo } from '@/components/shared/finnix-logo';
+import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transações', icon: ArrowLeftRight },
+  { href: '/credit-cards', label: 'Cartões', icon: Wallet },
+  { href: '/budgets', label: 'Orçamentos', icon: PiggyBank },
+  { href: '/goals', label: 'Metas', icon: Target },
   { href: '/segments', label: 'Segmentos', icon: Tags },
   { href: '/categories', label: 'Categorias', icon: FolderTree },
+  { href: '/team', label: 'Equipe', icon: Users },
   { href: '/plano', label: 'Meu Plano', icon: CreditCard },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];
@@ -63,21 +72,24 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="p-4">
         <Separator className="mb-4" />
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{user?.name}</p>
             <p className="truncate text-xs text-muted-foreground">
               {user?.email}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={logout}
-            title="Sair"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={logout}
+              title="Sair"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </>
@@ -106,14 +118,17 @@ export function MobileHeader() {
       {/* Barra do topo — só aparece em telas < md */}
       <header className="flex items-center justify-between border-b bg-card px-4 py-3 md:hidden">
         <FinnixLogo size="sm" />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Menu"
-        >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setOpen((v) => !v)}
+            aria-label="Menu"
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
       </header>
 
       {/* Overlay + Drawer */}
