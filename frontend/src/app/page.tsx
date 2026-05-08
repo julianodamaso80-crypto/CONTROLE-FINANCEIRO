@@ -29,6 +29,29 @@ export const metadata = {
   title: 'MeuCaixa — Controle financeiro empresarial via WhatsApp',
   description:
     'Lance receitas, despesas e categorias falando no WhatsApp. IA classifica tudo, dashboards em tempo real e zero planilha.',
+  openGraph: {
+    type: 'website',
+    url: 'https://meucaixa.store',
+    siteName: 'Meu Caixa',
+    title: 'MeuCaixa — Controle financeiro empresarial via WhatsApp',
+    description:
+      'Lance receitas, despesas e categorias falando no WhatsApp. IA classifica tudo, dashboards em tempo real e zero planilha.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Meu Caixa — Seu controle de gastos por chat',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'MeuCaixa — Controle financeiro empresarial via WhatsApp',
+    description:
+      'Lance receitas, despesas e categorias falando no WhatsApp. IA classifica tudo, dashboards em tempo real e zero planilha.',
+    images: ['/og-image.png'],
+  },
 };
 
 const capabilities = [

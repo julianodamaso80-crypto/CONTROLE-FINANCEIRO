@@ -19,9 +19,33 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://meucaixa.store'),
   title: 'Meu Caixa — Controle Financeiro Inteligente',
   description:
     'SaaS de controle financeiro empresarial com bot WhatsApp e IA',
+  openGraph: {
+    type: 'website',
+    url: 'https://meucaixa.store',
+    siteName: 'Meu Caixa',
+    title: 'Meu Caixa — Controle Financeiro Inteligente',
+    description:
+      'SaaS de controle financeiro empresarial com bot WhatsApp e IA',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Meu Caixa — Seu controle de gastos por chat',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Meu Caixa — Controle Financeiro Inteligente',
+    description:
+      'SaaS de controle financeiro empresarial com bot WhatsApp e IA',
+    images: ['/og-image.png'],
+  },
 };
 
 const themeInitScript = `(function(){try{var t=localStorage.getItem('meucaixa-theme')||'dark';var r=document.documentElement;if(t==='dark'){r.classList.add('dark')}else{r.classList.remove('dark')}r.style.colorScheme=t;}catch(e){document.documentElement.classList.add('dark')}})();`;
