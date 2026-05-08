@@ -9,6 +9,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AppConfigService } from '../../common/config/app.config';
+import { phoneVariants } from '../../common/utils/phone.util';
 import { EvolutionService } from '../evolution/evolution.service';
 import { AiService, type LlmUsage } from '../ai/ai.service';
 import { TransactionsService } from '../transactions/transactions.service';
@@ -242,6 +243,32 @@ export class WhatsAppService {
   }
 
   /**
+   * Confere se o phone tem WhatsApp ativo (usando o bot principal). Quando
+   * o WhatsApp confirma o número, retorna o JID real — que pode diferir do
+   * input se o cliente digitou com "9 extra" a mais ou a menos.
+   *
+   * Comportamento degraded: se Evolution não está configurado, sem bot
+   * conectado, ou erro de rede, retorna { ok: true } pra não bloquear signup.
+   */
+  async verifyPhoneHasWhatsApp(
+    phone: string,
+  ): Promise<{ ok: boolean; correctedPhone?: string }> {
+    if (!this.appConfig.isEvolutionConfigured()) return { ok: true };
+
+    const instance = await this.prisma.whatsAppInstance.findFirst({
+      where: { status: 'CONNECTED' },
+    });
+    if (!instance) return { ok: true };
+
+    const { exists, jid } = await this.evolution.checkNumberHasWhatsApp(
+      instance.instanceName,
+      phone,
+    );
+    if (!exists) return { ok: false };
+    return { ok: true, correctedPhone: jid !== phone ? jid : undefined };
+  }
+
+  /**
    * Envia mensagem de boas-vindas para um novo cliente recém-cadastrado.
    * Usa a primeira instância CONNECTED (o bot global do Meu Caixa).
    */
@@ -431,11 +458,35 @@ export class WhatsAppService {
     }
 
     // Roteamento: identifica o cliente pelo número do remetente.
-    // Cada usuário do Meu Caixa tem um phone único → usamos isso como chave.
-    const sender = await this.prisma.user.findUnique({
+    // Prioriza match exato; se não achar, tenta variantes do "9 extra"
+    // (alguns DDDs antigos não tem o 9 e o user pode ter cadastrado errado).
+    let sender = await this.prisma.user.findUnique({
       where: { phone: senderNumber },
-      select: { id: true, name: true, companyId: true, isActive: true },
+      select: { id: true, name: true, companyId: true, isActive: true, phone: true },
     });
+
+    if (!sender) {
+      const variants = phoneVariants(senderNumber).filter((p) => p !== senderNumber);
+      if (variants.length > 0) {
+        sender = await this.prisma.user.findFirst({
+          where: { phone: { in: variants } },
+          select: { id: true, name: true, companyId: true, isActive: true, phone: true },
+        });
+
+        // Achou via variante → normaliza pro JID real pra próximas mensagens
+        // não dependerem da busca tolerante. Catch silencioso pra não quebrar
+        // por unique constraint caso outro user já tenha esse phone.
+        if (sender) {
+          this.prisma.user
+            .update({ where: { id: sender.id }, data: { phone: senderNumber } })
+            .catch((err) =>
+              this.logger.warn(
+                `Falha ao normalizar phone ${sender?.phone}→${senderNumber}: ${err instanceof Error ? err.message : 'erro'}`,
+              ),
+            );
+        }
+      }
+    }
 
     const inboundMessage = await this.prisma.whatsAppMessage.create({
       data: {

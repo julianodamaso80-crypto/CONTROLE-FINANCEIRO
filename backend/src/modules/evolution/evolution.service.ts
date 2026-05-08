@@ -199,6 +199,34 @@ export class EvolutionService {
     }
   }
 
+  /**
+   * Confere se um número tem WhatsApp ativo. Retorna o JID real (com o "9 extra"
+   * corrigido pelo WhatsApp se aplicável) quando existe, ou null se o número
+   * não está no WhatsApp.
+   *
+   * Em caso de erro de rede/Evolution: retorna { exists: true, jid: number }
+   * (degraded mode — não bloqueia signup por instabilidade externa).
+   */
+  async checkNumberHasWhatsApp(
+    instanceName: string,
+    number: string,
+  ): Promise<{ exists: boolean; jid: string }> {
+    try {
+      const { data } = await this.http.post<
+        Array<{ exists: boolean; jid?: string; number?: string }>
+      >(`/chat/whatsappNumbers/${instanceName}`, {
+        numbers: [number],
+      });
+      const result = Array.isArray(data) ? data[0] : null;
+      if (!result) return { exists: true, jid: number }; // degraded
+      const jid = (result.jid ?? number).split('@')[0] ?? number;
+      return { exists: !!result.exists, jid };
+    } catch (error) {
+      this.logError('checkNumberHasWhatsApp', error);
+      return { exists: true, jid: number }; // degraded
+    }
+  }
+
   async sendTextMessage(
     instanceName: string,
     number: string,

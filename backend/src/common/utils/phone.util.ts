@@ -29,3 +29,29 @@ export function normalizePhone(input: string | null | undefined): string | null 
 
   return null;
 }
+
+/**
+ * Retorna as variantes de um phone JID brasileiro pra tolerar a presença
+ * ou ausência do "9 extra" do celular. Necessário porque alguns DDDs antigos
+ * ainda têm linhas com 8 dígitos pós-DDD, e o usuário pode digitar com 9 a
+ * mais (ou a menos) sem perceber.
+ *
+ * Ex: '5562998173810' (13) → ['5562998173810', '556298173810']
+ * Ex: '556298173810'  (12) → ['556298173810',  '5562998173810']
+ */
+export function phoneVariants(phone: string): string[] {
+  if (!phone) return [];
+  const variants = new Set<string>([phone]);
+
+  // 13 dígitos com '9' na posição 4 (após 55+DDD) → variante sem o 9 extra
+  if (phone.length === 13 && phone[4] === '9') {
+    variants.add(phone.slice(0, 4) + phone.slice(5));
+  }
+
+  // 12 dígitos → variante com '9' extra inserido após DDI+DDD
+  if (phone.length === 12) {
+    variants.add(phone.slice(0, 4) + '9' + phone.slice(4));
+  }
+
+  return Array.from(variants);
+}

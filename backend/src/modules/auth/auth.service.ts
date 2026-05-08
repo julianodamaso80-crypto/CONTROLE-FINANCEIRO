@@ -29,12 +29,22 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const normalizedPhone = normalizePhone(dto.phone);
-    if (!normalizedPhone) {
+    const inputPhone = normalizePhone(dto.phone);
+    if (!inputPhone) {
       throw new BadRequestException(
         'WhatsApp inválido. Use DDD + número, ex: 21 98021-4882',
       );
     }
+
+    // Valida que o número TEM WhatsApp ativo. Se o WhatsApp corrigir o "9
+    // extra" (a mais ou a menos), usa o JID real retornado.
+    const verification = await this.whatsapp.verifyPhoneHasWhatsApp(inputPhone);
+    if (!verification.ok) {
+      throw new BadRequestException(
+        'WhatsApp não encontrado nesse número. Confira se digitou certo (DDD + 9 + número do celular).',
+      );
+    }
+    const normalizedPhone = verification.correctedPhone ?? inputPhone;
 
     // Checa duplicidade por email (no user, não na company)
     const existingUser = await this.prisma.user.findFirst({
