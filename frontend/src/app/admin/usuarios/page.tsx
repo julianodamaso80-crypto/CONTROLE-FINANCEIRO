@@ -102,6 +102,46 @@ export default function AdminUsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' });
+
+  // Sincroniza form quando abre o modal
+  useEffect(() => {
+    if (editUser) {
+      setEditForm({
+        name: editUser.name,
+        email: editUser.email,
+        phone: editUser.phone ?? '',
+      });
+    }
+  }, [editUser]);
+
+  const formChanged =
+    editUser !== null &&
+    (editForm.name !== editUser.name ||
+      editForm.email !== editUser.email ||
+      editForm.phone !== (editUser.phone ?? ''));
+
+  const handleSaveData = async () => {
+    if (!editUser || !formChanged) return;
+    setActionLoading(true);
+    try {
+      const payload: { name?: string; email?: string; phone?: string } = {};
+      if (editForm.name !== editUser.name) payload.name = editForm.name;
+      if (editForm.email !== editUser.email) payload.email = editForm.email;
+      if (editForm.phone !== (editUser.phone ?? '')) payload.phone = editForm.phone;
+      await api.patch(`/admin/users/${editUser.id}`, payload);
+      toast.success('Dados atualizados');
+      await fetchUsers();
+      setEditUser(null);
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? 'Erro ao salvar';
+      toast.error(typeof msg === 'string' ? msg : 'Erro ao salvar');
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -365,23 +405,72 @@ export default function AdminUsuariosPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-xl">
             <div className="mb-6 flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-bold">{editUser.name}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {editUser.email}
-                </p>
-                {editUser.phone && (
-                  <p className="text-sm text-muted-foreground">
-                    {editUser.phone}
-                  </p>
-                )}
-              </div>
+              <h2 className="text-lg font-bold">Editar cliente</h2>
               <button
                 onClick={() => setEditUser(null)}
                 className="rounded-md p-1 hover:bg-accent"
               >
                 <X className="h-5 w-5" />
               </button>
+            </div>
+
+            {/* Editable fields */}
+            <div className="mb-6 space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Nome
+                </label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, name: e.target.value }))
+                  }
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, email: e.target.value }))
+                  }
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  WhatsApp (com DDD)
+                </label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, phone: e.target.value }))
+                  }
+                  placeholder="5562998173810 ou (62) 99817-3810"
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Aceita formato livre. Salva sempre como JID (55+DDD+número).
+                </p>
+              </div>
+              <Button
+                onClick={handleSaveData}
+                disabled={!formChanged || actionLoading}
+                className="w-full"
+                size="sm"
+              >
+                {actionLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Salvar alterações'
+                )}
+              </Button>
             </div>
 
             {/* Info cards */}

@@ -41,6 +41,14 @@ export class AdminController {
     return this.adminService.updateUserAccess(id, body.accessType);
   }
 
+  @Patch('users/:id')
+  updateUser(
+    @Param('id') id: string,
+    @Body() body: { name?: string; email?: string; phone?: string },
+  ) {
+    return this.adminService.updateUserData(id, body);
+  }
+
   @Delete('users/:id')
   deleteUser(@Param('id') id: string) {
     return this.adminService.deleteUser(id);

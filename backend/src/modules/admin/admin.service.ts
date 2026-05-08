@@ -1,5 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { normalizePhone } from '../../common/utils/phone.util';
 
 @Injectable()
 export class AdminService {
@@ -382,6 +388,68 @@ export class AdminService {
     return {
       message: `Plano ${accessType === 'MONTHLY' ? 'mensal' : 'anual'} ativado`,
     };
+  }
+
+  /**
+   * Atualiza dados básicos do user (nome, email, phone). Phone é normalizado
+   * automaticamente pro formato JID (55+DDD+número).
+   */
+  async updateUserData(
+    userId: string,
+    input: { name?: string; email?: string; phone?: string },
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
+    });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const data: { name?: string; email?: string; phone?: string } = {};
+
+    if (input.name !== undefined) {
+      const trimmed = input.name.trim();
+      if (trimmed.length < 2) {
+        throw new BadRequestException('Nome deve ter no mínimo 2 caracteres');
+      }
+      data.name = trimmed;
+    }
+
+    if (input.email !== undefined) {
+      const email = input.email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new BadRequestException('Email inválido');
+      }
+      const existing = await this.prisma.user.findFirst({
+        where: { email, id: { not: userId } },
+        select: { id: true },
+      });
+      if (existing) throw new ConflictException('Este email já está em uso');
+      data.email = email;
+    }
+
+    if (input.phone !== undefined) {
+      const normalized = normalizePhone(input.phone);
+      if (!normalized) {
+        throw new BadRequestException(
+          'WhatsApp inválido. Use DDD + número, ex: 21 98021-4882',
+        );
+      }
+      const existing = await this.prisma.user.findFirst({
+        where: { phone: normalized, id: { not: userId } },
+        select: { id: true },
+      });
+      if (existing) {
+        throw new ConflictException('Este WhatsApp já está em uso');
+      }
+      data.phone = normalized;
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('Nenhum campo enviado pra atualizar');
+    }
+
+    await this.prisma.user.update({ where: { id: userId }, data });
+    return { message: 'Dados atualizados' };
   }
 
   async deleteUser(userId: string) {
