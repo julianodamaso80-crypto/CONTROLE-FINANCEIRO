@@ -181,6 +181,12 @@ export class TransactionsService {
       (at) => at.bankAccount.id,
     );
 
+    // Se for transação de cartão e o valor mudou, ajusta o totalAmount da fatura
+    const existingFull = await this.prisma.transaction.findUnique({
+      where: { id },
+      select: { invoiceId: true, amount: true, isRefund: true },
+    });
+
     await this.prisma.$transaction(async (tx) => {
       await tx.transaction.update({
         where: { id },
@@ -200,6 +206,21 @@ export class TransactionsService {
           ...(dto.notes !== undefined && { notes: dto.notes }),
         },
       });
+
+      // Ajusta totalAmount da fatura quando o valor mudou
+      if (
+        existingFull?.invoiceId &&
+        dto.amount !== undefined &&
+        Number(dto.amount) !== Number(existingFull.amount)
+      ) {
+        const sign = existingFull.isRefund ? -1 : 1;
+        const oldVal = Number(existingFull.amount) * sign;
+        const newVal = Number(dto.amount) * sign;
+        await tx.invoice.update({
+          where: { id: existingFull.invoiceId },
+          data: { totalAmount: { increment: newVal - oldVal } },
+        });
+      }
 
       if (dto.bankAccountId !== undefined) {
         await tx.accountTransaction.deleteMany({
@@ -234,14 +255,75 @@ export class TransactionsService {
       (at) => at.bankAccount.id,
     );
 
-    await this.prisma.transaction.delete({ where: { id } });
+    // Busca a transação completa pra pegar dados de parcelamento/fatura
+    const full = await this.prisma.transaction.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        installmentGroupId: true,
+        invoiceId: true,
+        amount: true,
+        isRefund: true,
+      },
+    });
+
+    // Se faz parte de um grupo de parcelas, deleta TODAS as parcelas e
+    // ajusta o totalAmount de cada fatura impactada
+    if (full?.installmentGroupId) {
+      const siblings = await this.prisma.transaction.findMany({
+        where: {
+          companyId,
+          installmentGroupId: full.installmentGroupId,
+        },
+        select: { id: true, invoiceId: true, amount: true, isRefund: true },
+      });
+
+      await this.prisma.$transaction(async (tx) => {
+        // Decrementa o totalAmount de cada fatura envolvida
+        const byInvoice = new Map<string, number>();
+        for (const s of siblings) {
+          if (!s.invoiceId) continue;
+          const value = Number(s.amount) * (s.isRefund ? -1 : 1);
+          byInvoice.set(s.invoiceId, (byInvoice.get(s.invoiceId) ?? 0) + value);
+        }
+        for (const [invoiceId, delta] of byInvoice.entries()) {
+          await tx.invoice.update({
+            where: { id: invoiceId },
+            data: { totalAmount: { decrement: delta } },
+          });
+        }
+        await tx.transaction.deleteMany({
+          where: {
+            companyId,
+            installmentGroupId: full.installmentGroupId!,
+          },
+        });
+      });
+    } else if (full?.invoiceId) {
+      // Lançamento avulso de cartão (sem parcelas) — ajusta a fatura também
+      const delta = Number(full.amount) * (full.isRefund ? -1 : 1);
+      await this.prisma.$transaction(async (tx) => {
+        await tx.invoice.update({
+          where: { id: full.invoiceId! },
+          data: { totalAmount: { decrement: delta } },
+        });
+        await tx.transaction.delete({ where: { id } });
+      });
+    } else {
+      await this.prisma.transaction.delete({ where: { id } });
+    }
 
     // Recalcula saldo das contas que estavam vinculadas
     for (const accountId of accountIds) {
       await this.bankAccountsService.recalculateBalance(companyId, accountId);
     }
 
-    return { message: 'Transação excluída com sucesso' };
+    const wasGroup = !!full?.installmentGroupId;
+    return {
+      message: wasGroup
+        ? 'Lançamento e parcelas excluídos com sucesso'
+        : 'Transação excluída com sucesso',
+    };
   }
 
   async markAsPaid(companyId: string, id: string, dto: MarkAsPaidDto) {

@@ -94,7 +94,10 @@ function InvoiceRow({ invoice }: { invoice: import('@/types/models').Invoice }) 
     <Card>
       <CardContent className="p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <Link
+            href={`/credit-cards/invoices/${invoice.id}`}
+            className="flex-1 hover:opacity-80"
+          >
             <div className="flex items-center gap-2">
               <p className="font-medium">
                 Fatura {monthName}/{invoice.referenceYear}
@@ -107,9 +110,9 @@ function InvoiceRow({ invoice }: { invoice: import('@/types/models').Invoice }) 
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              Fechamento {formatDate(invoice.closingDate)} • Vencimento {formatDate(invoice.dueDate)}
+              Fechamento {formatDate(invoice.closingDate)} • Vencimento {formatDate(invoice.dueDate)} • Ver lançamentos →
             </p>
-          </div>
+          </Link>
           <div className="text-right">
             <p className="text-lg font-semibold">{formatCurrency(invoice.totalAmount)}</p>
             {invoice.remainingAmount > 0 ? (

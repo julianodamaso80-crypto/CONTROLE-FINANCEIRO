@@ -76,6 +76,9 @@ export function useUpdateTransaction() {
       toast.success('Transação atualizada com sucesso');
       void queryClient.invalidateQueries({ queryKey: ['transactions'] });
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['invoice'] });
+      void queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      void queryClient.invalidateQueries({ queryKey: ['credit-cards'] });
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -93,6 +96,9 @@ export function useDeleteTransaction() {
       toast.success('Transação excluída com sucesso');
       void queryClient.invalidateQueries({ queryKey: ['transactions'] });
       void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['invoice'] });
+      void queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      void queryClient.invalidateQueries({ queryKey: ['credit-cards'] });
     },
     onError: (error: Error) => {
       toast.error(error.message);

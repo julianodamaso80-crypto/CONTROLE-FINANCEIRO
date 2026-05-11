@@ -190,6 +190,12 @@ export interface Transaction {
   supplier?: Supplier | null;
   segment?: Segment | null;
   accountTransactions?: Array<{ id: string; bankAccount: BankAccount }>;
+  creditCardId?: string | null;
+  invoiceId?: string | null;
+  isRefund?: boolean;
+  installmentNumber?: number | null;
+  totalInstallments?: number | null;
+  installmentGroupId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
