@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Users,
   MessageCircle,
+  History,
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/usuarios', label: 'Usuários', icon: Users },
   { href: '/admin/whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { href: '/admin/historico', label: 'Histórico', icon: History },
 ];
 
 export function AdminSidebar() {

@@ -6,9 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { Request } from 'express';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { normalizePhone } from '../../common/utils/phone.util';
 import { seedDefaultCategories } from '../categories/categories-seed';
+import { AdminAuditService, AdminActionType } from './admin-audit.service';
 
 type AccessType = 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME';
 
@@ -16,7 +18,10 @@ type AccessType = 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME';
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AdminAuditService,
+  ) {}
 
   // Taxa USD → BRL (atualizar periodicamente)
   private readonly USD_TO_BRL = 5.5;
@@ -301,13 +306,16 @@ export class AdminService {
    * número tem WhatsApp ativo (admin é quem cadastra, pode usar número de
    * teste) e não envia mensagem de boas-vindas.
    */
-  async createUser(input: {
-    name: string;
-    email: string;
-    phone: string;
-    password: string;
-    accessType: AccessType;
-  }) {
+  async createUser(
+    input: {
+      name: string;
+      email: string;
+      phone: string;
+      password: string;
+      accessType: AccessType;
+    },
+    req: Request,
+  ) {
     const name = input.name?.trim();
     if (!name || name.length < 2) {
       throw new BadRequestException('Nome deve ter no mínimo 2 caracteres');
@@ -378,7 +386,21 @@ export class AdminService {
       ),
     );
 
-    await this.updateUserAccess(result.user.id, input.accessType);
+    await this.updateUserAccess(result.user.id, input.accessType, req);
+
+    await this.audit.log({
+      req,
+      action: 'CREATE_USER',
+      targetType: 'user',
+      targetId: result.user.id,
+      targetLabel: `${result.user.name} (${result.user.email})`,
+      description: `Criou o cliente ${result.user.name} (${result.user.email}) com acesso ${this.accessTypeLabel(input.accessType)}`,
+      metadata: {
+        accessType: input.accessType,
+        companyId: result.company.id,
+        phone: result.user.phone,
+      },
+    });
 
     return {
       message: 'Cliente criado com sucesso',
@@ -392,15 +414,38 @@ export class AdminService {
     };
   }
 
+  private accessTypeLabel(t: AccessType): string {
+    return t === 'TRIAL'
+      ? 'TRIAL (3 dias)'
+      : t === 'MONTHLY'
+        ? 'MENSAL'
+        : t === 'ANNUAL'
+          ? 'ANUAL'
+          : 'VITALÍCIO';
+  }
+
+  private accessTypeAction(t: AccessType): AdminActionType {
+    return t === 'TRIAL'
+      ? 'GRANT_TRIAL'
+      : t === 'MONTHLY'
+        ? 'GRANT_MONTHLY'
+        : t === 'ANNUAL'
+          ? 'GRANT_ANNUAL'
+          : 'GRANT_LIFETIME';
+  }
+
   async updateUserAccess(
     userId: string,
     accessType: AccessType,
+    req?: Request,
   ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, companyId: true },
+      select: { id: true, companyId: true, name: true, email: true },
     });
     if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    let resultMessage: string;
 
     if (accessType === 'LIFETIME') {
       // Set company plan to BUSINESS (used as lifetime flag)
@@ -413,10 +458,8 @@ export class AdminService {
         where: { companyId: user.companyId },
         data: { status: 'ACTIVE' },
       });
-      return { message: 'Acesso vitalício concedido' };
-    }
-
-    if (accessType === 'TRIAL') {
+      resultMessage = 'Acesso vitalício concedido';
+    } else if (accessType === 'TRIAL') {
       // Reset trial: 3 days
       const trialEnd = new Date();
       trialEnd.setDate(trialEnd.getDate() + 3);
@@ -445,53 +488,63 @@ export class AdminService {
           },
         });
       }
-      return { message: 'Trial de 3 dias concedido' };
-    }
-
-    // MONTHLY or ANNUAL — activate subscription
-    const plan = accessType === 'MONTHLY' ? 'MONTHLY' : 'ANNUAL';
-    const periodEnd = new Date();
-    if (accessType === 'MONTHLY') {
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
+      resultMessage = 'Trial de 3 dias concedido';
     } else {
-      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-    }
+      const plan = accessType === 'MONTHLY' ? 'MONTHLY' : 'ANNUAL';
+      const periodEnd = new Date();
+      if (accessType === 'MONTHLY') {
+        periodEnd.setMonth(periodEnd.getMonth() + 1);
+      } else {
+        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+      }
 
-    await this.prisma.company.update({
-      where: { id: user.companyId },
-      data: { plan: 'STARTER' },
-    });
+      await this.prisma.company.update({
+        where: { id: user.companyId },
+        data: { plan: 'STARTER' },
+      });
 
-    const existing = await this.prisma.subscription.findUnique({
-      where: { companyId: user.companyId },
-    });
-    if (existing) {
-      await this.prisma.subscription.update({
+      const existing = await this.prisma.subscription.findUnique({
         where: { companyId: user.companyId },
-        data: {
-          plan,
-          status: 'ACTIVE',
-          currentPeriodEnd: periodEnd,
-          lastPaymentAt: new Date(),
-        },
       });
-    } else {
-      await this.prisma.subscription.create({
-        data: {
-          companyId: user.companyId,
-          userId: user.id,
-          plan,
-          status: 'ACTIVE',
-          trialEndsAt: new Date(),
-          currentPeriodEnd: periodEnd,
-          lastPaymentAt: new Date(),
-        },
+      if (existing) {
+        await this.prisma.subscription.update({
+          where: { companyId: user.companyId },
+          data: {
+            plan,
+            status: 'ACTIVE',
+            currentPeriodEnd: periodEnd,
+            lastPaymentAt: new Date(),
+          },
+        });
+      } else {
+        await this.prisma.subscription.create({
+          data: {
+            companyId: user.companyId,
+            userId: user.id,
+            plan,
+            status: 'ACTIVE',
+            trialEndsAt: new Date(),
+            currentPeriodEnd: periodEnd,
+            lastPaymentAt: new Date(),
+          },
+        });
+      }
+      resultMessage = `Plano ${accessType === 'MONTHLY' ? 'mensal' : 'anual'} ativado`;
+    }
+
+    if (req) {
+      await this.audit.log({
+        req,
+        action: this.accessTypeAction(accessType),
+        targetType: 'user',
+        targetId: user.id,
+        targetLabel: `${user.name} (${user.email})`,
+        description: `Deu acesso ${this.accessTypeLabel(accessType)} pro cliente ${user.name} (${user.email})`,
+        metadata: { accessType, companyId: user.companyId },
       });
     }
 
-    return {
-      message: `Plano ${accessType === 'MONTHLY' ? 'mensal' : 'anual'} ativado`,
-    };
+    return { message: resultMessage };
   }
 
   /**
@@ -501,10 +554,11 @@ export class AdminService {
   async updateUserData(
     userId: string,
     input: { name?: string; email?: string; phone?: string },
+    req: Request,
   ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, role: true },
+      select: { id: true, role: true, name: true, email: true, phone: true },
     });
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
@@ -553,13 +607,32 @@ export class AdminService {
     }
 
     await this.prisma.user.update({ where: { id: userId }, data });
+
+    const changes: string[] = [];
+    if (data.name && data.name !== user.name) changes.push(`nome: "${user.name}" → "${data.name}"`);
+    if (data.email && data.email !== user.email) changes.push(`email: "${user.email}" → "${data.email}"`);
+    if (data.phone && data.phone !== user.phone) changes.push(`whatsapp: "${user.phone}" → "${data.phone}"`);
+
+    await this.audit.log({
+      req,
+      action: 'UPDATE_USER_DATA',
+      targetType: 'user',
+      targetId: user.id,
+      targetLabel: `${data.name ?? user.name} (${data.email ?? user.email})`,
+      description: `Editou dados do cliente ${user.name} (${user.email}) — ${changes.join(', ') || 'sem mudanças efetivas'}`,
+      metadata: {
+        before: { name: user.name, email: user.email, phone: user.phone },
+        after: data,
+      },
+    });
+
     return { message: 'Dados atualizados' };
   }
 
-  async deleteUser(userId: string) {
+  async deleteUser(userId: string, req: Request) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, companyId: true, role: true },
+      select: { id: true, companyId: true, role: true, name: true, email: true },
     });
     if (!user) throw new NotFoundException('Usuário não encontrado');
     if (user.role === 'ADMIN') {
@@ -619,6 +692,16 @@ export class AdminService {
         where: { id: user.companyId },
       }),
     ]);
+
+    await this.audit.log({
+      req,
+      action: 'DELETE_USER',
+      targetType: 'user',
+      targetId: user.id,
+      targetLabel: `${user.name} (${user.email})`,
+      description: `Excluiu o cliente ${user.name} (${user.email}) e todos os dados da empresa`,
+      metadata: { companyId: user.companyId },
+    });
 
     return { message: 'Usuário e empresa excluídos' };
   }
