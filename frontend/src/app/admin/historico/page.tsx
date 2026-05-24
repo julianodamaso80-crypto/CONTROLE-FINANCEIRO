@@ -78,8 +78,8 @@ export default function HistoricoPage() {
     try {
       const params: Record<string, string | number> = { limit, offset };
       if (actionFilter) params.action = actionFilter;
-      const res = await api.get<ActionsResponse>('/admin/actions', { params });
-      setData(res.data);
+      const res = await api.get('/admin/actions', { params });
+      setData(res.data.data ?? res.data);
     } finally {
       setLoading(false);
     }
