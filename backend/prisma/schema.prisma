@@ -591,9 +591,12 @@ model Subscription {
   userId                String             @map("user_id") @db.Uuid
   plan                  SubscriptionPlan   @default(MONTHLY)
   status                SubscriptionStatus @default(TRIALING)
+  provider              String             @default("kirvano")
   asaasCustomerId       String?            @map("asaas_customer_id")
   asaasSubscriptionId   String?            @map("asaas_subscription_id")
   asaasPaymentUrl       String?            @map("asaas_payment_url") @db.Text
+  kirvanoCheckoutId     String?            @map("kirvano_checkout_id")
+  kirvanoCustomerEmail  String?            @map("kirvano_customer_email")
   trialEndsAt           DateTime           @map("trial_ends_at")
   currentPeriodEnd      DateTime?          @map("current_period_end")
   lastPaymentAt         DateTime?          @map("last_payment_at")
@@ -606,6 +609,8 @@ model Subscription {
 
   @@index([asaasCustomerId])
   @@index([asaasSubscriptionId])
+  @@index([kirvanoCheckoutId])
+  @@index([provider])
   @@index([status])
   @@map("subscriptions")
 }

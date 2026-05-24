@@ -11,10 +11,13 @@ export type SubscriptionStatus =
   | 'EXPIRED'
   | 'LIFETIME';
 
+export type SubscriptionProvider = 'asaas' | 'kirvano';
+
 export interface SubscriptionDto {
   id: string | null;
   plan: SubscriptionPlan;
   status: SubscriptionStatus;
+  provider: SubscriptionProvider;
   trialing: boolean;
   trialActive: boolean;
   trialDaysLeft: number;

@@ -15,6 +15,7 @@ import {
   Brain,
   MessageCircle,
   ArrowLeftRight,
+  UserPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -97,12 +98,28 @@ function statusBadge(user: AdminUser) {
   };
 }
 
+type AccessType = 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME';
+
 export default function AdminUsuariosPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' });
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+    accessType: AccessType;
+  }>({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    accessType: 'TRIAL',
+  });
 
   // Sincroniza form quando abre o modal
   useEffect(() => {
@@ -177,6 +194,46 @@ export default function AdminUsuariosPage() {
     }
   };
 
+  const resetCreateForm = () =>
+    setCreateForm({
+      name: '',
+      email: '',
+      phone: '',
+      password: '',
+      accessType: 'TRIAL',
+    });
+
+  const handleCreate = async () => {
+    if (
+      !createForm.name.trim() ||
+      !createForm.email.trim() ||
+      !createForm.phone.trim() ||
+      !createForm.password
+    ) {
+      toast.error('Preencha todos os campos');
+      return;
+    }
+    if (createForm.password.length < 6) {
+      toast.error('Senha precisa ter no mínimo 6 caracteres');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await api.post('/admin/users', createForm);
+      toast.success('Cliente criado com sucesso');
+      resetCreateForm();
+      setCreateOpen(false);
+      await fetchUsers();
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? 'Erro ao criar cliente';
+      toast.error(typeof msg === 'string' ? msg : 'Erro ao criar cliente');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleDelete = async (userId: string, name: string) => {
     if (
       !confirm(
@@ -224,17 +281,23 @@ export default function AdminUsuariosPage() {
             Todos os clientes cadastrados no MeuCaixa
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setLoading(true);
-            fetchUsers();
-          }}
-        >
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setLoading(true);
+              fetchUsers();
+            }}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Atualizar
+          </Button>
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Adicionar cliente
+          </Button>
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -399,6 +462,148 @@ export default function AdminUsuariosPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ========== CREATE MODAL ========== */}
+      {createOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-xl">
+            <div className="mb-6 flex items-start justify-between">
+              <div>
+                <h2 className="text-lg font-bold">Adicionar cliente</h2>
+                <p className="text-xs text-muted-foreground">
+                  Cria empresa + usuário com plano inicial escolhido.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setCreateOpen(false);
+                  resetCreateForm();
+                }}
+                className="rounded-md p-1 hover:bg-accent"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Nome
+                </label>
+                <input
+                  type="text"
+                  value={createForm.name}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, name: e.target.value }))
+                  }
+                  placeholder="Nome completo"
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, email: e.target.value }))
+                  }
+                  placeholder="cliente@email.com"
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  WhatsApp (com DDD)
+                </label>
+                <input
+                  type="tel"
+                  value={createForm.phone}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, phone: e.target.value }))
+                  }
+                  placeholder="(21) 99999-9999"
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Salva sempre como JID (55+DDD+número).
+                </p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Senha provisória
+                </label>
+                <input
+                  type="text"
+                  value={createForm.password}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, password: e.target.value }))
+                  }
+                  placeholder="Mínimo 6 caracteres"
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Plano inicial
+                </label>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      { v: 'TRIAL', label: 'Trial (3 dias)', icon: Clock, cls: 'text-emerald-400' },
+                      { v: 'MONTHLY', label: 'Mensal', icon: CreditCard, cls: 'text-green-400' },
+                      { v: 'ANNUAL', label: 'Anual', icon: CalendarCheck, cls: 'text-blue-400' },
+                      { v: 'LIFETIME', label: 'Vitalício', icon: Infinity, cls: 'text-purple-400' },
+                    ] as const
+                  ).map((opt) => {
+                    const Icon = opt.icon;
+                    const selected = createForm.accessType === opt.v;
+                    return (
+                      <button
+                        key={opt.v}
+                        type="button"
+                        onClick={() =>
+                          setCreateForm((f) => ({ ...f, accessType: opt.v }))
+                        }
+                        className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                          selected
+                            ? 'border-primary bg-primary/10 text-foreground'
+                            : 'hover:bg-accent'
+                        }`}
+                      >
+                        <Icon className={`h-4 w-4 ${opt.cls}`} />
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCreateOpen(false);
+                  resetCreateForm();
+                }}
+                disabled={actionLoading}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleCreate} disabled={actionLoading}>
+                {actionLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Criar cliente'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========== EDIT MODAL ========== */}
       {editUser && (

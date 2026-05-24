@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Delete,
   Param,
@@ -31,6 +32,20 @@ export class AdminController {
   @Get('users')
   listUsers() {
     return this.adminService.listUsers();
+  }
+
+  @Post('users')
+  createUser(
+    @Body()
+    body: {
+      name: string;
+      email: string;
+      phone: string;
+      password: string;
+      accessType: 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME';
+    },
+  ) {
+    return this.adminService.createUser(body);
   }
 
   @Patch('users/:id/access')

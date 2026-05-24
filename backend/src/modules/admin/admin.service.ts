@@ -2,13 +2,20 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { normalizePhone } from '../../common/utils/phone.util';
+import { seedDefaultCategories } from '../categories/categories-seed';
+
+type AccessType = 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   // Taxa USD → BRL (atualizar periodicamente)
@@ -288,9 +295,106 @@ export class AdminService {
     });
   }
 
+  /**
+   * Cria um cliente manualmente pelo painel admin. Cria company + user +
+   * categorias padrão e aplica o plano inicial escolhido. Não valida se o
+   * número tem WhatsApp ativo (admin é quem cadastra, pode usar número de
+   * teste) e não envia mensagem de boas-vindas.
+   */
+  async createUser(input: {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+    accessType: AccessType;
+  }) {
+    const name = input.name?.trim();
+    if (!name || name.length < 2) {
+      throw new BadRequestException('Nome deve ter no mínimo 2 caracteres');
+    }
+
+    const email = input.email?.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestException('Email inválido');
+    }
+
+    const phone = normalizePhone(input.phone);
+    if (!phone) {
+      throw new BadRequestException(
+        'WhatsApp inválido. Use DDD + número, ex: 21 98021-4882',
+      );
+    }
+
+    if (!input.password || input.password.length < 6) {
+      throw new BadRequestException('Senha deve ter no mínimo 6 caracteres');
+    }
+
+    const validAccess: AccessType[] = ['TRIAL', 'MONTHLY', 'ANNUAL', 'LIFETIME'];
+    if (!validAccess.includes(input.accessType)) {
+      throw new BadRequestException('Tipo de acesso inválido');
+    }
+
+    const existingEmail = await this.prisma.user.findFirst({
+      where: { email },
+      select: { id: true },
+    });
+    if (existingEmail) {
+      throw new ConflictException('Este email já está cadastrado');
+    }
+
+    const existingPhone = await this.prisma.user.findUnique({
+      where: { phone },
+      select: { id: true },
+    });
+    if (existingPhone) {
+      throw new ConflictException('Este WhatsApp já está cadastrado');
+    }
+
+    const passwordHash = await bcrypt.hash(input.password, 10);
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const company = await tx.company.create({
+        data: { name, email },
+      });
+
+      const user = await tx.user.create({
+        data: {
+          companyId: company.id,
+          name,
+          email,
+          passwordHash,
+          phone,
+          role: 'USER',
+          isActive: true,
+        },
+      });
+
+      return { company, user };
+    });
+
+    seedDefaultCategories(this.prisma as never, result.company.id).catch((err) =>
+      this.logger.warn(
+        `Falha ao criar categorias padrão: ${err instanceof Error ? err.message : 'erro'}`,
+      ),
+    );
+
+    await this.updateUserAccess(result.user.id, input.accessType);
+
+    return {
+      message: 'Cliente criado com sucesso',
+      user: {
+        id: result.user.id,
+        name: result.user.name,
+        email: result.user.email,
+        phone: result.user.phone,
+        companyId: result.company.id,
+      },
+    };
+  }
+
   async updateUserAccess(
     userId: string,
-    accessType: 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME',
+    accessType: AccessType,
   ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

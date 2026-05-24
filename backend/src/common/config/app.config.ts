@@ -69,6 +69,66 @@ export class AppConfigService {
     );
   }
 
+  // ============================================================
+  // Kirvano (gateway atual pra novos cadastros)
+  // ============================================================
+
+  getKirvanoCheckoutUrlMonthly(): string {
+    return this.getRequired('KIRVANO_CHECKOUT_URL_MONTHLY');
+  }
+
+  getKirvanoCheckoutUrlAnnual(): string | undefined {
+    return this.config.get<string>('KIRVANO_CHECKOUT_URL_ANNUAL');
+  }
+
+  getKirvanoWebhookToken(): string {
+    return this.getRequired('KIRVANO_WEBHOOK_TOKEN');
+  }
+
+  isKirvanoConfigured(): boolean {
+    return (
+      !!this.config.get<string>('KIRVANO_CHECKOUT_URL_MONTHLY') &&
+      !!this.config.get<string>('KIRVANO_WEBHOOK_TOKEN')
+    );
+  }
+
+  /** Provider default pra novos cadastros. Se Kirvano configurado, usa Kirvano. */
+  getDefaultProvider(): 'asaas' | 'kirvano' {
+    return this.isKirvanoConfigured() ? 'kirvano' : 'asaas';
+  }
+
+  // ============================================================
+  // Tracking server-side (Meta CAPI + GA4 MP + Google Ads EC)
+  // ============================================================
+
+  getMetaPixelId(): string | undefined {
+    return this.config.get<string>('META_PIXEL_ID');
+  }
+
+  getMetaCapiAccessToken(): string | undefined {
+    return this.config.get<string>('META_CAPI_ACCESS_TOKEN');
+  }
+
+  getMetaTestEventCode(): string | undefined {
+    return this.config.get<string>('META_TEST_EVENT_CODE');
+  }
+
+  getGa4MeasurementId(): string | undefined {
+    return this.config.get<string>('GA4_MEASUREMENT_ID');
+  }
+
+  getGa4ApiSecret(): string | undefined {
+    return this.config.get<string>('GA4_API_SECRET');
+  }
+
+  getGoogleAdsConversionId(): string | undefined {
+    return this.config.get<string>('GOOGLE_ADS_CONVERSION_ID');
+  }
+
+  getGoogleAdsConversionLabel(): string | undefined {
+    return this.config.get<string>('GOOGLE_ADS_CONVERSION_LABEL');
+  }
+
   /**
    * Vars necessárias para conectar/desconectar o WhatsApp (Evolution API).
    * Não inclui OpenRouter — IA só é exigida para interpretar mensagens recebidas.

@@ -204,8 +204,8 @@ export default function PlanoPage() {
             <p className="pt-1">
               <strong>Como pagar</strong>: clique em <em>Pagar mensal</em>{' '}
               ou <em>Pagar anual</em> no card do plano que você quer — você é
-              levado direto pro checkout seguro do Asaas, onde paga com cartão
-              de crédito ou Pix. O pagamento cai na hora e libera seu acesso
+              levado direto pro checkout seguro, onde paga com cartão de
+              crédito ou Pix. O pagamento cai na hora e libera seu acesso
               automaticamente.
             </p>
             <p>
@@ -377,9 +377,9 @@ export default function PlanoPage() {
           <DialogHeader>
             <DialogTitle>CPF ou CNPJ pra emitir a cobrança</DialogTitle>
             <DialogDescription>
-              O Asaas (gateway de pagamento) exige o CPF ou CNPJ pra emitir
-              o boleto/cartão. A gente guarda só pra isso, não aparece em
-              nenhum outro lugar.
+              O gateway de pagamento exige o CPF ou CNPJ pra emitir a
+              cobrança. A gente guarda só pra isso, não aparece em nenhum
+              outro lugar.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">

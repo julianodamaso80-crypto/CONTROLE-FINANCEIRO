@@ -35,9 +35,12 @@ export class SubscriptionsService {
 
   /**
    * Cria a subscription inicial logo após o signup.
-   * Tenta criar customer + subscription no Asaas. Se falhar, grava no
-   * banco local com trial mesmo assim (pra não travar o signup) e deixa
-   * last_error preenchido pra retry manual.
+   *
+   * Provider default = Kirvano: só grava trial local (3 dias), sem chamar API
+   * externa. Kirvano não tem API de subscription — cliente paga no checkout
+   * dela quando trial vence e o webhook ativa a sub.
+   *
+   * Provider asaas: mantido como fallback/legado.
    */
   async createInitialSubscription(input: {
     companyId: string;
@@ -50,10 +53,28 @@ export class SubscriptionsService {
     const trialEndsAt = new Date(now);
     trialEndsAt.setDate(trialEndsAt.getDate() + TRIAL_DAYS);
 
-    // Se Asaas não tá configurado, cria só o registro local
+    const provider = this.appConfig.getDefaultProvider();
+
+    // Caminho Kirvano (atual): trial só no banco, sem API externa.
+    if (provider === 'kirvano') {
+      return this.prisma.subscription.create({
+        data: {
+          companyId: input.companyId,
+          userId: input.userId,
+          plan: 'MONTHLY',
+          status: 'TRIALING',
+          provider: 'kirvano',
+          kirvanoCustomerEmail: input.email,
+          trialEndsAt,
+          nextPaymentAt: trialEndsAt,
+        },
+      });
+    }
+
+    // Caminho Asaas (legado/fallback)
     if (!this.appConfig.isAsaasConfigured()) {
       this.logger.warn(
-        'Asaas não configurado — criando subscription local only',
+        'Nenhum gateway configurado — criando subscription local only',
       );
       return this.prisma.subscription.create({
         data: {
@@ -61,13 +82,13 @@ export class SubscriptionsService {
           userId: input.userId,
           plan: 'MONTHLY',
           status: 'TRIALING',
+          provider: 'asaas',
           trialEndsAt,
-          lastError: 'Asaas não configurado no ambiente',
+          lastError: 'Nenhum gateway configurado no ambiente',
         },
       });
     }
 
-    // Tenta criar customer + subscription no Asaas
     try {
       const customer = await this.asaas.createCustomer({
         name: input.name,
@@ -76,7 +97,6 @@ export class SubscriptionsService {
         externalReference: input.companyId,
       });
 
-      // Primeiro pagamento = fim do trial de 3 dias
       const nextDueDate = trialEndsAt.toISOString().slice(0, 10);
 
       const asaasSub = await this.asaas.createSubscription({
@@ -88,7 +108,6 @@ export class SubscriptionsService {
         externalReference: input.companyId,
       });
 
-      // Pega link de pagamento
       const paymentUrl = await this.asaas.getNextPaymentUrl(asaasSub.id);
 
       return this.prisma.subscription.create({
@@ -97,6 +116,7 @@ export class SubscriptionsService {
           userId: input.userId,
           plan: 'MONTHLY',
           status: 'TRIALING',
+          provider: 'asaas',
           asaasCustomerId: customer.id,
           asaasSubscriptionId: asaasSub.id,
           asaasPaymentUrl: paymentUrl,
@@ -107,13 +127,13 @@ export class SubscriptionsService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'erro desconhecido';
       this.logger.error(`Falha ao criar subscription Asaas: ${msg}`);
-      // Fallback: cria local com trial e lastError
       return this.prisma.subscription.create({
         data: {
           companyId: input.companyId,
           userId: input.userId,
           plan: 'MONTHLY',
           status: 'TRIALING',
+          provider: 'asaas',
           trialEndsAt,
           lastError: msg,
         },
@@ -156,9 +176,10 @@ export class SubscriptionsService {
   }
 
   /**
-   * Cria subscription com trial de 7 dias pra empresa existente que
-   * não tem registro (migração de clientes pré-planos). Tenta criar
-   * customer + subscription no Asaas se configurado.
+   * Cria subscription com trial de 3 dias pra empresa existente sem
+   * registro de subscription (migração de clientes pré-planos).
+   *
+   * Usa o provider default do ambiente (Kirvano se configurado).
    */
   private async autoProvisionTrial(
     companyId: string,
@@ -180,9 +201,28 @@ export class SubscriptionsService {
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + LEGACY_TRIAL_DAYS);
 
+    const provider = this.appConfig.getDefaultProvider();
+
     this.logger.log(
-      `Auto-provisioning subscription for legacy company ${companyId} (user ${user.name})`,
+      `Auto-provisioning subscription for legacy company ${companyId} (user ${user.name}, provider ${provider})`,
     );
+
+    if (provider === 'kirvano') {
+      return this.prisma.subscription
+        .create({
+          data: {
+            companyId,
+            userId: user.id,
+            plan: 'MONTHLY',
+            status: 'TRIALING',
+            provider: 'kirvano',
+            kirvanoCustomerEmail: user.email,
+            trialEndsAt,
+            nextPaymentAt: trialEndsAt,
+          },
+        })
+        .catch(() => null);
+    }
 
     try {
       if (this.appConfig.isAsaasConfigured()) {
@@ -211,6 +251,7 @@ export class SubscriptionsService {
             userId: user.id,
             plan: 'MONTHLY',
             status: 'TRIALING',
+            provider: 'asaas',
             asaasCustomerId: customer.id,
             asaasSubscriptionId: asaasSub.id,
             asaasPaymentUrl: paymentUrl,
@@ -226,6 +267,7 @@ export class SubscriptionsService {
           userId: user.id,
           plan: 'MONTHLY',
           status: 'TRIALING',
+          provider: 'asaas',
           trialEndsAt,
           lastError: 'Asaas não configurado — trial local',
         },
@@ -234,7 +276,6 @@ export class SubscriptionsService {
       this.logger.error(
         `Auto-provision failed: ${err instanceof Error ? err.message : 'erro'}`,
       );
-      // Cria local com trial mesmo se Asaas falhar
       return this.prisma.subscription
         .create({
           data: {
@@ -242,6 +283,7 @@ export class SubscriptionsService {
             userId: user.id,
             plan: 'MONTHLY',
             status: 'TRIALING',
+            provider: 'asaas',
             trialEndsAt,
             lastError: err instanceof Error ? err.message : 'erro',
           },
@@ -302,26 +344,61 @@ export class SubscriptionsService {
 
   /**
    * Pega (ou cria) o link de checkout pra um plano específico.
-   * - Exige CPF ou CNPJ (Asaas não cria cobrança sem isso). Se já está
-   *   salvo em Company.document, usa esse. Senão, exige no parâmetro.
-   * - Se a sub não tem customer/asaasSubscriptionId, cria no Asaas on-demand.
-   * - Se o plano pedido é diferente do atual, troca no Asaas + DB.
-   * - Retorna sempre o link de pagamento mais atual.
+   *
+   * Provider Kirvano: retorna o link configurado da Kirvano com
+   * `utm_content={companyId}` pra o webhook identificar o tenant. Não
+   * exige CPF/CNPJ — Kirvano coleta no próprio checkout.
+   *
+   * Provider Asaas (legado): exige CPF/CNPJ, cria customer + subscription
+   * on-demand, troca plano se necessário, devolve link de pagamento.
    */
   async getCheckoutUrl(
     companyId: string,
     plan: SubscriptionPlan,
     cpfCnpjInput?: string,
   ): Promise<string | null> {
-    if (!this.appConfig.isAsaasConfigured()) {
-      throw new BadRequestException('Asaas não configurado no ambiente');
-    }
-
     let sub = await this.getByCompanyId(companyId);
     if (!sub) {
       sub = await this.autoProvisionTrial(companyId);
     }
     if (!sub) throw new NotFoundException('Assinatura não encontrada');
+
+    // Provider Kirvano (atual)
+    if (sub.provider === 'kirvano') {
+      if (!this.appConfig.isKirvanoConfigured()) {
+        throw new BadRequestException('Kirvano não configurado no ambiente');
+      }
+
+      const baseUrl =
+        plan === 'ANNUAL'
+          ? this.appConfig.getKirvanoCheckoutUrlAnnual()
+          : this.appConfig.getKirvanoCheckoutUrlMonthly();
+
+      if (!baseUrl) {
+        throw new BadRequestException(
+          plan === 'ANNUAL'
+            ? 'Plano anual ainda não disponível.'
+            : 'Link de checkout mensal não configurado.',
+        );
+      }
+
+      if (sub.plan !== plan) {
+        await this.prisma.subscription.update({
+          where: { id: sub.id },
+          data: { plan },
+        });
+      }
+
+      // Anexa utm_content={companyId} pra o webhook identificar o tenant.
+      const url = new URL(baseUrl);
+      url.searchParams.set('utm_content', companyId);
+      return url.toString();
+    }
+
+    // Provider Asaas (legado)
+    if (!this.appConfig.isAsaasConfigured()) {
+      throw new BadRequestException('Asaas não configurado no ambiente');
+    }
 
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
@@ -511,6 +588,144 @@ export class SubscriptionsService {
     this.logger.log(`Sub ${sub.id} → EXPIRED (asaas inactivated)`);
   }
 
+  // ============================================================
+  // Kirvano webhook handlers
+  // ============================================================
+
+  /**
+   * Encontra a subscription Kirvano correspondente a um evento.
+   * Tenta nesta ordem: utm_content (companyId), kirvanoCheckoutId, email.
+   */
+  private async findKirvanoSubscription(lookup: {
+    companyId?: string;
+    checkoutId?: string;
+    email?: string;
+  }): Promise<Subscription | null> {
+    if (lookup.companyId) {
+      const sub = await this.prisma.subscription.findFirst({
+        where: { companyId: lookup.companyId, provider: 'kirvano' },
+      });
+      if (sub) return sub;
+    }
+    if (lookup.checkoutId) {
+      const sub = await this.prisma.subscription.findFirst({
+        where: { kirvanoCheckoutId: lookup.checkoutId },
+      });
+      if (sub) return sub;
+    }
+    if (lookup.email) {
+      const sub = await this.prisma.subscription.findFirst({
+        where: {
+          kirvanoCustomerEmail: lookup.email.toLowerCase(),
+          provider: 'kirvano',
+        },
+      });
+      if (sub) return sub;
+    }
+    return null;
+  }
+
+  /** Venda aprovada na Kirvano — ativa a subscription. */
+  async handleKirvanoSaleApproved(input: {
+    companyId?: string;
+    checkoutId: string;
+    customerEmail?: string;
+    customerName?: string;
+    nextChargeDate?: string;
+    chargeFrequency?: string;
+  }): Promise<Subscription | null> {
+    const sub = await this.findKirvanoSubscription({
+      companyId: input.companyId,
+      checkoutId: input.checkoutId,
+      email: input.customerEmail,
+    });
+    if (!sub) {
+      this.logger.warn(
+        `Kirvano SALE_APPROVED sem subscription correspondente (companyId=${input.companyId}, email=${input.customerEmail})`,
+      );
+      return null;
+    }
+
+    const now = new Date();
+    const nextPeriodEnd = input.nextChargeDate
+      ? new Date(input.nextChargeDate)
+      : (() => {
+          const d = new Date(now);
+          const isAnnual =
+            (input.chargeFrequency ?? '').toLowerCase().includes('anual') ||
+            (input.chargeFrequency ?? '').toLowerCase().includes('annual') ||
+            sub.plan === 'ANNUAL';
+          if (isAnnual) d.setFullYear(d.getFullYear() + 1);
+          else d.setMonth(d.getMonth() + 1);
+          return d;
+        })();
+
+    const updated = await this.prisma.subscription.update({
+      where: { id: sub.id },
+      data: {
+        status: 'ACTIVE',
+        kirvanoCheckoutId: input.checkoutId,
+        kirvanoCustomerEmail:
+          input.customerEmail?.toLowerCase() ?? sub.kirvanoCustomerEmail,
+        lastPaymentAt: now,
+        currentPeriodEnd: nextPeriodEnd,
+        nextPaymentAt: nextPeriodEnd,
+        lastError: null,
+      },
+    });
+    this.logger.log(`Kirvano SALE_APPROVED → sub ${sub.id} ACTIVE`);
+    return updated;
+  }
+
+  /** Venda recusada — só loga, não altera estado. */
+  async handleKirvanoSaleRefused(input: {
+    companyId?: string;
+    checkoutId: string;
+    customerEmail?: string;
+  }): Promise<void> {
+    this.logger.warn(
+      `Kirvano SALE_REFUSED checkoutId=${input.checkoutId} companyId=${input.companyId} email=${input.customerEmail}`,
+    );
+  }
+
+  /** Chargeback — cancela a subscription. */
+  async handleKirvanoChargeback(input: {
+    companyId?: string;
+    checkoutId: string;
+    customerEmail?: string;
+  }): Promise<void> {
+    const sub = await this.findKirvanoSubscription({
+      companyId: input.companyId,
+      checkoutId: input.checkoutId,
+      email: input.customerEmail,
+    });
+    if (!sub) return;
+    await this.prisma.subscription.update({
+      where: { id: sub.id },
+      data: { status: 'CANCELED', lastError: 'Chargeback Kirvano' },
+    });
+    this.logger.log(`Kirvano CHARGEBACK → sub ${sub.id} CANCELED`);
+  }
+
+  /** Assinatura cancelada manualmente na Kirvano. */
+  async handleKirvanoSubscriptionCanceled(input: {
+    companyId?: string;
+    checkoutId: string;
+    customerEmail?: string;
+  }): Promise<void> {
+    const sub = await this.findKirvanoSubscription({
+      companyId: input.companyId,
+      checkoutId: input.checkoutId,
+      email: input.customerEmail,
+    });
+    if (!sub) return;
+    await this.prisma.subscription.update({
+      where: { id: sub.id },
+      data: { status: 'CANCELED' },
+    });
+    this.logger.log(`Kirvano SUBSCRIPTION_CANCELED → sub ${sub.id} CANCELED`);
+  }
+
   /** Retorna status útil pro frontend. Auto-provisiona se não existe.
    * Empresas com plano BUSINESS (vitalício / sócio) retornam status especial. */
   async getStatusDto(companyId: string) {
@@ -524,6 +739,7 @@ export class SubscriptionsService {
         id: null,
         plan: 'LIFETIME' as const,
         status: 'LIFETIME' as const,
+        provider: 'kirvano' as const,
         trialing: false,
         trialActive: false,
         trialDaysLeft: 0,
@@ -560,6 +776,7 @@ export class SubscriptionsService {
       id: sub.id,
       plan: sub.plan,
       status: sub.status,
+      provider: (sub.provider as 'asaas' | 'kirvano') ?? 'asaas',
       trialing,
       trialActive,
       trialDaysLeft,

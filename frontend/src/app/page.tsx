@@ -657,8 +657,8 @@ export default function LandingPage() {
           </div>
 
           <p className="mx-auto mt-10 max-w-2xl text-center text-sm font-medium text-black/60">
-            Pagamento seguro via Asaas (cartão ou Pix). Se cancelar, seu
-            acesso continua até o fim do período pago.
+            Pagamento seguro (cartão ou Pix). Se cancelar, seu acesso
+            continua até o fim do período pago.
           </p>
         </div>
       </section>
