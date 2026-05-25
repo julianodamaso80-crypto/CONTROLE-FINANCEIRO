@@ -98,6 +98,14 @@ export class AppConfigService {
   }
 
   // ============================================================
+  // WhatsApp Cloud API (Meta Graph API — webhook)
+  // ============================================================
+
+  getWhatsAppCloudVerifyToken(): string {
+    return this.getRequired('WHATSAPP_CLOUD_VERIFY_TOKEN');
+  }
+
+  // ============================================================
   // Tracking server-side (Meta CAPI + GA4 MP + Google Ads EC)
   // ============================================================
 
