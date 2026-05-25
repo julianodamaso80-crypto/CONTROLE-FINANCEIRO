@@ -130,6 +130,9 @@ export default function LandingPage() {
             <a href="#depoimentos" className="font-bold text-[#90ff6b] hover:underline">
               Depoimentos
             </a>
+            <Link href="/blog" className="font-bold text-[#90ff6b] hover:underline">
+              Blog
+            </Link>
           </nav>
 
           <div className="flex items-center gap-3">
