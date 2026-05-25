@@ -101,7 +101,8 @@ export async function runLegalReviewer(articleId: string): Promise<{
   if (!checks.cta_ok) hardFails.push(`cta_count=${checks.cta_count} (mínimo 2)`);
   if (!checks.internal_links_ok) hardFails.push(`internal_links=${checks.internal_links_count} (mínimo 3)`);
   if (!checks.source_citations_ok) hardFails.push(`source_citations=${checks.source_citations} (mínimo 3)`);
-  if (!checks.has_fontes) hardFails.push('seção "## Fontes consultadas" ausente');
+  // has_fontes desabilitado: blog do MeuCaixa não tem mais seção "## Fontes consultadas" no final.
+  // As citações ficam inline no corpo do texto (validadas por source_citations_ok).
   if (!checks.has_em_resumo) hardFails.push('seção "## Em resumo" ausente');
   if (!checks.has_faq) hardFails.push('seção FAQ ausente');
 

@@ -38,8 +38,9 @@ ESTRUTURA OBRIGATÓRIA do artigo:
    - Parágrafos 2-3: aprofundamento com exemplo e/ou dado citado
 4) **## Em resumo**: 60-100 palavras com 5-7 bullets numerados
 5) **## Perguntas frequentes**: 3 perguntas com respostas de 30-50 palavras cada
-6) **## Fontes consultadas**: lista de 3-5 links externos autoritativos (BACEN, Serasa, IBGE, Anbima, Receita, CDC, Investopedia)
-7) **CTA final**: 50-80 palavras convidando pra testar o Meu Caixa
+6) **CTA final**: 50-80 palavras convidando a ver os planos do Meu Caixa
+
+ATENÇÃO — NÃO INCLUIR seção "## Fontes consultadas" no final. As citações ficam INLINE no corpo (no formato "segundo a Serasa", "de acordo com o BACEN", "dados do IBGE") — pelo menos 3 por artigo. Lista de fontes agregadas no final foi removida.
 
 OBRIGATÓRIO — 3 CTAs DISTRIBUÍDOS NO ARTIGO APONTANDO PRA /#planos (REGRA HARD):
 - **CTA #1** após o 2º H2, parágrafo curto com link [Veja os planos do Meu Caixa](/#planos) ou [Quanto custa o Meu Caixa](/#planos) — ângulo: descoberta de preço
