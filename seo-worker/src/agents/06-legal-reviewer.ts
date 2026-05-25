@@ -30,8 +30,9 @@ interface LlmJudgeOutput {
 
 function deterministicChecks(body: string): DeterministicChecks {
   const wordCount = countWords(body);
-  // Contamos APENAS links pra /register (CTAs do MeuCaixa apontam pra essa URL)
-  const ctaLinks = body.match(/\]\(\/register(?:[)/?#]|$)/gi) || [];
+  // Contamos links pra /#planos (CTAs primários do MeuCaixa apontam pra seção de planos)
+  // Aceitamos também /planos por compatibilidade futura caso vire página dedicada
+  const ctaLinks = body.match(/\]\(\/#?planos(?:[)/?#]|$)/gi) || [];
   const ctaCount = ctaLinks.length;
   const internalLinks = body.match(/\]\(\/blog\/[a-z0-9-]+\)/gi) || [];
   const sourceCitations = (body.match(/\b(segundo|de acordo com|conforme)\s+(o|a|os|as|d[oa])\s+[A-ZÁ-Ú]/g) || []).length;

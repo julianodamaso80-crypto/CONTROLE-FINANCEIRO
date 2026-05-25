@@ -41,12 +41,12 @@ ESTRUTURA OBRIGATÓRIA do artigo:
 6) **## Fontes consultadas**: lista de 3-5 links externos autoritativos (BACEN, Serasa, IBGE, Anbima, Receita, CDC, Investopedia)
 7) **CTA final**: 50-80 palavras convidando pra testar o Meu Caixa
 
-OBRIGATÓRIO — 3 CTAs DISTRIBUÍDOS NO ARTIGO (REGRA HARD):
-- **CTA #1** após o 2º H2, parágrafo curto com link [Cadastre-se grátis no Meu Caixa](/register) ou [Teste 3 dias grátis](/register) — ângulo: experimentação
-- **CTA #2** antes do "## Em resumo", parágrafo curto com link [Comece grátis pelo WhatsApp](/register) ou [Ver como funciona](/register) — ângulo: demonstração
-- **CTA #3** depois das "## Fontes consultadas", parágrafo de 50-80 palavras com link [Quero testar agora](/register) — ângulo: ação final
-- Cada CTA deve ter texto diferente e linkar pra "/register" (não use /cotacao, /protecao-veicular ou qualquer slug que não exista no MeuCaixa)
-- Se faltar QUALQUER um dos 3, o Reviewer reprovou o artigo
+OBRIGATÓRIO — 3 CTAs DISTRIBUÍDOS NO ARTIGO APONTANDO PRA /#planos (REGRA HARD):
+- **CTA #1** após o 2º H2, parágrafo curto com link [Veja os planos do Meu Caixa](/#planos) ou [Quanto custa o Meu Caixa](/#planos) — ângulo: descoberta de preço
+- **CTA #2** antes do "## Em resumo", parágrafo curto com link [Compare os planos](/#planos) ou [Conheça os planos do Meu Caixa](/#planos) — ângulo: comparação
+- **CTA #3** depois das "## Fontes consultadas", parágrafo de 50-80 palavras com link [Ver planos e preços](/#planos) — ângulo: decisão
+- Cada CTA deve ter texto diferente e linkar pra "/#planos" (NÃO use /register, /cotacao, /protecao-veicular ou qualquer outra URL)
+- Se faltar QUALQUER um dos 3, o Reviewer reprova o artigo
 
 OBRIGATÓRIO:
 - Citar 3+ dados específicos no formato "segundo a {fonte}", "de acordo com o {fonte}"

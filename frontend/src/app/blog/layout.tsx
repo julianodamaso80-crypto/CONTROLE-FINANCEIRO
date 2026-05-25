@@ -86,10 +86,10 @@ export default function BlogLayout({ children }: { children: React.ReactNode }) 
             </Link>
           </nav>
           <Link
-            href="/register"
+            href="/#planos"
             className="inline-flex items-center gap-2 rounded-xl border-2 border-[#90ff6b] bg-[#90ff6b] px-4 py-2.5 text-sm font-extrabold text-black transition hover:scale-[1.02]"
           >
-            Testar grátis
+            Ver planos
           </Link>
         </div>
       </header>

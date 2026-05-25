@@ -182,17 +182,17 @@ export default async function BlogPostPage({ params }: PageProps) {
       <section className="mt-16 rounded-3xl border-2 border-[#90ff6b]/30 bg-gradient-to-br from-[#90ff6b]/10 to-transparent p-8 text-center">
         <MessageCircle className="mx-auto mb-3 h-10 w-10 text-[#90ff6b]" strokeWidth={2.5} />
         <h2 className="font-display text-3xl font-extrabold">
-          Cansado de planilha?
+          Quer ver os planos do Meu Caixa?
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-base text-white/70">
-          Registre suas despesas mandando uma mensagem no WhatsApp. A IA categoriza, soma
-          e gera seu relatório PDF mensal — automaticamente.
+          Registre despesas pelo WhatsApp, a IA categoriza tudo e o relatório PDF mensal
+          cai automático na sua conversa. Veja qual plano cabe no seu bolso.
         </p>
         <Link
-          href="/register"
+          href="/#planos"
           className="mt-6 inline-flex items-center gap-2 rounded-xl border-2 border-[#90ff6b] bg-[#90ff6b] px-7 py-4 text-lg font-extrabold text-black transition hover:scale-[1.02]"
         >
-          Começar grátis (3 dias)
+          Ver planos e preços
         </Link>
       </section>
     </article>
