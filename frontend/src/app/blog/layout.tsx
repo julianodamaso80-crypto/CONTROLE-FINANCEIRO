@@ -48,35 +48,48 @@ export default function BlogLayout({ children }: { children: React.ReactNode }) 
 
       <header className="sticky top-0 z-50 h-20 border-b-2 border-[#90ff6b] bg-black">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center">
+          <Link href="/blog" className="flex items-center gap-3">
             <Image
               src="/logo-sem-fundo-2.png"
-              alt="MeuCaixa"
-              width={180}
-              height={48}
+              alt="Meu Caixa Blog"
+              width={140}
+              height={40}
               priority
-              className="h-12 w-auto object-contain"
+              className="h-10 w-auto object-contain"
             />
+            <span className="hidden font-display text-lg font-bold text-white/80 sm:inline">/ Blog</span>
           </Link>
-          <nav className="hidden items-center gap-8 md:flex">
-            <Link href="/" className="font-bold text-[#90ff6b] hover:underline">
-              Home
+          <nav className="hidden items-center gap-6 md:flex">
+            <Link
+              href="/blog/categoria/controle-de-gastos"
+              className="text-sm font-bold text-white/70 transition hover:text-[#90ff6b]"
+            >
+              Controle de Gastos
             </Link>
-            <Link href="/#features" className="font-bold text-[#90ff6b] hover:underline">
-              Recursos
+            <Link
+              href="/blog/categoria/orcamento-familiar"
+              className="text-sm font-bold text-white/70 transition hover:text-[#90ff6b]"
+            >
+              Orçamento Familiar
             </Link>
-            <Link href="/#planos" className="font-bold text-[#90ff6b] hover:underline">
-              Planos
+            <Link
+              href="/blog/categoria/whatsapp-financeiro"
+              className="text-sm font-bold text-white/70 transition hover:text-[#90ff6b]"
+            >
+              WhatsApp Financeiro
             </Link>
-            <Link href="/blog" className="font-bold text-[#90ff6b] hover:underline">
-              Blog
+            <Link
+              href="/blog/categoria/educacao-financeira"
+              className="text-sm font-bold text-white/70 transition hover:text-[#90ff6b]"
+            >
+              Educação Financeira
             </Link>
           </nav>
           <Link
             href="/register"
-            className="inline-flex items-center gap-2 rounded-xl border-2 border-[#90ff6b] bg-[#90ff6b] px-5 py-3 font-extrabold text-black"
+            className="inline-flex items-center gap-2 rounded-xl border-2 border-[#90ff6b] bg-[#90ff6b] px-4 py-2.5 text-sm font-extrabold text-black transition hover:scale-[1.02]"
           >
-            Começar grátis
+            Testar grátis
           </Link>
         </div>
       </header>
