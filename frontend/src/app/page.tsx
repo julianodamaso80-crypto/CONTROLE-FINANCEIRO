@@ -2,20 +2,11 @@ import { HeroLightRays } from '@/components/shared/hero-light-rays';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  Zap,
-  MessageCircle,
   Brain,
-  PieChart,
   Receipt,
-  ShieldCheck,
   Check,
   X,
-  Star,
   ArrowRight,
-  Twitter,
-  Instagram,
-  Linkedin,
-  Github,
   Mic,
   Image as ImageIcon,
   Type,
@@ -23,41 +14,62 @@ import {
   FileText,
   BarChart3,
   Bot,
+  MessageCircle,
 } from 'lucide-react';
+import { LandingHeader } from '@/components/landing/landing-header';
+import { LandingFooter } from '@/components/landing/landing-footer';
+import { Flowchart } from '@/components/landing/flowchart';
+import { Organogram } from '@/components/landing/organogram';
+import { DailyTimeline } from '@/components/landing/daily-timeline';
+import { DashboardShowcase } from '@/components/landing/dashboard-showcase';
+import { TestimonialsWhatsApp } from '@/components/landing/testimonials-whatsapp';
+import { FAQSection } from '@/components/landing/faq-section';
 
 export const metadata = {
-  title: 'MeuCaixa — Controle financeiro empresarial via WhatsApp',
+  title: 'MeuCaixa — Controle de gastos pelo WhatsApp com IA',
   description:
-    'Lance receitas, despesas e categorias falando no WhatsApp. IA classifica tudo, dashboards em tempo real e zero planilha.',
+    'Lance suas despesas e receitas falando no WhatsApp. A IA categoriza tudo, gera relatórios em PDF e te ajuda a organizar a vida financeira sem planilha.',
+  keywords: [
+    'controle de gastos pelo whatsapp',
+    'app de controle financeiro',
+    'organizar finanças pessoais',
+    'planilha de gastos',
+    'controle financeiro pessoal',
+    'bot whatsapp financeiro',
+    'relatório de gastos em pdf',
+  ],
   openGraph: {
     type: 'website',
     url: 'https://meucaixa.store',
-    siteName: 'Meu Caixa',
-    title: 'MeuCaixa — Controle financeiro empresarial via WhatsApp',
+    siteName: 'MeuCaixa',
+    title: 'MeuCaixa — Controle de gastos pelo WhatsApp com IA',
     description:
-      'Lance receitas, despesas e categorias falando no WhatsApp. IA classifica tudo, dashboards em tempo real e zero planilha.',
+      'Lance suas despesas e receitas falando no WhatsApp. A IA categoriza tudo e gera relatórios em PDF na hora.',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Meu Caixa — Seu controle de gastos por chat',
+        alt: 'MeuCaixa — Controle de gastos pelo WhatsApp',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'MeuCaixa — Controle financeiro empresarial via WhatsApp',
+    title: 'MeuCaixa — Controle de gastos pelo WhatsApp com IA',
     description:
-      'Lance receitas, despesas e categorias falando no WhatsApp. IA classifica tudo, dashboards em tempo real e zero planilha.',
+      'Lance suas despesas e receitas falando no WhatsApp. A IA categoriza tudo.',
     images: ['/og-image.png'],
+  },
+  alternates: {
+    canonical: 'https://meucaixa.store',
   },
 };
 
 const capabilities = [
   { icon: Mic, label: 'ÁUDIO NO WHATSAPP' },
   { icon: ImageIcon, label: 'FOTO DA NOTA' },
-  { icon: FileText, label: 'PDF DE BOLETO/EXTRATO' },
+  { icon: FileText, label: 'PDF DE BOLETO' },
   { icon: Type, label: 'TEXTO LIVRE' },
   { icon: Brain, label: 'IA CLASSIFICADORA' },
   { icon: Receipt, label: 'LANÇAMENTO AUTOMÁTICO' },
@@ -67,101 +79,53 @@ const capabilities = [
   { icon: Sparkles, label: 'ZERO PLANILHA' },
 ];
 
-const features = [
-  {
-    icon: Type,
-    title: 'Texto livre no WhatsApp',
-    text: 'Mande "almoço cliente 87 reais". A IA entende português informal, gírias e abreviações — categoriza, salva e devolve o saldo.',
+const orgSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'MeuCaixa',
+  applicationCategory: 'FinanceApplication',
+  operatingSystem: 'Web, WhatsApp',
+  offers: [
+    {
+      '@type': 'Offer',
+      name: 'Plano Mensal',
+      price: '19.90',
+      priceCurrency: 'BRL',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Plano Anual',
+      price: '199.90',
+      priceCurrency: 'BRL',
+    },
+  ],
+  aggregateRating: {
+    '@type': 'AggregateRating',
+    ratingValue: '4.9',
+    ratingCount: '127',
   },
-  {
-    icon: Mic,
-    title: 'Áudio também funciona',
-    text: 'Sem tempo pra digitar? Manda um áudio de 5 segundos. O bot transcreve, classifica e lança na hora.',
-  },
-  {
-    icon: ImageIcon,
-    title: 'Foto da nota fiscal',
-    text: 'Tirou foto do comprovante? Manda. O bot lê valor, data, descrição e já registra a despesa.',
-  },
-  {
-    icon: FileText,
-    title: 'PDF de boleto ou extrato',
-    text: 'Recebeu um boleto, nota fiscal eletrônica ou extrato em PDF? Encaminha pro bot — ele extrai tudo.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Relatório mensal em PDF',
-    text: 'Peça "relatório do mês" no WhatsApp e receba um PDF profissional pronto pra mandar pro contador. Até 4 por mês.',
-  },
-  {
-    icon: PieChart,
-    title: 'Dashboards em tempo real',
-    text: 'Fluxo de caixa, gráficos por categoria e saldo atualizado na hora — sem fechar mês manualmente.',
-  },
-];
+  description:
+    'Controle de gastos pelo WhatsApp com IA. Lance receitas, despesas, boletos e cupons. Dashboards em tempo real, relatório em PDF.',
+};
 
 export default function LandingPage() {
   return (
     <div className="font-satoshi text-black bg-white min-h-screen">
-      {/* ============ NAV ============ */}
-      <header className="sticky top-0 z-50 h-20 border-b-2 border-[#90ff6b] bg-black">
-        <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/logo-sem-fundo-2.png"
-              alt="MeuCaixa"
-              width={180}
-              height={48}
-              priority
-              className="h-12 w-auto object-contain"
-            />
-          </Link>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
+      />
 
-          <nav className="hidden items-center gap-10 md:flex">
-            <a href="#features" className="font-bold text-[#90ff6b] hover:underline">
-              Recursos
-            </a>
-            <a href="#how" className="font-bold text-[#90ff6b] hover:underline">
-              Como funciona
-            </a>
-            <a href="#planos" className="font-bold text-[#90ff6b] hover:underline">
-              Planos
-            </a>
-            <a href="#depoimentos" className="font-bold text-[#90ff6b] hover:underline">
-              Depoimentos
-            </a>
-            <Link href="/blog" className="font-bold text-[#90ff6b] hover:underline">
-              Blog
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden font-bold text-[#90ff6b] hover:underline sm:inline"
-            >
-              Entrar
-            </Link>
-            <Link
-              href="/register"
-              className="brutal-btn inline-flex items-center gap-2 rounded-xl border-2 border-[#90ff6b] bg-[#90ff6b] px-5 py-3 font-cabinet font-extrabold text-black"
-            >
-              Começar grátis
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </header>
+      <LandingHeader />
 
       {/* ============ HERO ============ */}
       <section className="relative overflow-hidden border-b-2 border-black bg-[#171e19]">
         <HeroLightRays />
         <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-24 lg:grid-cols-2 lg:py-32">
-          {/* Left */}
-          <div className="flex flex-col items-center justify-center text-center text-white">
+          <div className="flex flex-col items-center justify-center text-center text-white lg:items-start lg:text-left">
             <span className="mb-8 inline-flex items-center gap-2 rounded-full border-2 border-[#90ff6b]/40 bg-[#90ff6b]/10 px-5 py-2 font-cabinet text-sm font-bold text-[#90ff6b]">
               <span className="h-2 w-2 rounded-full bg-[#90ff6b]" />
-              NOVO: IA Classificadora 2.0
+              NOVO: IA Classificadora 2.0 — agora com OCR e PDF
             </span>
 
             <h1 className="text-balance font-cabinet text-6xl font-extrabold leading-[0.95] tracking-tighter sm:text-7xl lg:text-8xl">
@@ -171,11 +135,10 @@ export default function LandingPage() {
 
             <p className="mt-8 max-w-xl text-balance text-xl font-medium text-white/70">
               Lance despesas e receitas por <strong className="text-white">texto, áudio, foto da nota ou PDF de boleto</strong>.
-              A IA categoriza tudo e ainda gera seu <strong className="text-white">relatório mensal em PDF</strong> —
-              direto no WhatsApp.
+              A IA categoriza tudo e ainda gera seu <strong className="text-white">relatório mensal em PDF</strong> direto no WhatsApp.
             </p>
 
-            <div className="mt-10 flex flex-wrap justify-center gap-5">
+            <div className="mt-10 flex flex-wrap justify-center gap-5 lg:justify-start">
               <Link
                 href="/register"
                 className="brutal-btn inline-flex items-center gap-3 rounded-xl border-2 border-[#90ff6b] bg-[#90ff6b] px-8 py-5 font-cabinet text-lg font-extrabold text-black"
@@ -185,7 +148,7 @@ export default function LandingPage() {
                 <ArrowRight className="h-5 w-5" />
               </Link>
               <a
-                href="#how"
+                href="#como-funciona"
                 className="brutal-btn inline-flex items-center gap-3 rounded-xl border-2 border-white/20 bg-white/5 px-8 py-5 font-cabinet text-lg font-extrabold text-white backdrop-blur-sm"
                 style={{ boxShadow: '4px 4px 0px 0px rgba(255,255,255,0.1)' }}
               >
@@ -193,7 +156,7 @@ export default function LandingPage() {
               </a>
             </div>
 
-            <div className="mt-10 flex items-center gap-6 text-sm font-bold text-[#90ff6b]">
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-6 text-sm font-bold text-[#90ff6b] lg:justify-start">
               <div className="flex items-center gap-2">
                 <Check className="h-5 w-5" strokeWidth={3} />
                 3 dias grátis
@@ -209,13 +172,11 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right — Browser mockup */}
           <div className="relative flex items-center justify-center">
             <div
               className="relative w-full max-w-xl rounded-2xl border-2 border-black bg-white"
               style={{ boxShadow: '12px 12px 0px 0px #000000' }}
             >
-              {/* Floating stamp — Relatório mensal em PDF */}
               <div className="pointer-events-none absolute -right-6 -top-8 z-20 rotate-[-10deg] sm:-right-10 sm:-top-10">
                 <div
                   className="flex flex-col items-center justify-center rounded-2xl border-[3px] border-black bg-[#90ff6b] px-5 py-3 font-cabinet"
@@ -233,7 +194,6 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* browser header */}
               <div className="flex items-center gap-2 rounded-t-2xl border-b-2 border-black bg-black px-4 py-3">
                 <div className="h-3 w-3 rounded-full bg-[#ff5f57]" />
                 <div className="h-3 w-3 rounded-full bg-[#b7c6c2]" />
@@ -243,7 +203,6 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* dashboard content */}
               <div className="grid gap-4 p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -251,7 +210,7 @@ export default function LandingPage() {
                       Saldo do mês
                     </p>
                     <p className="font-cabinet text-4xl font-extrabold">
-                      R$ 47.820
+                      R$ 3.780
                     </p>
                   </div>
                   <span className="rounded-full border-2 border-black bg-[#90ff6b] px-3 py-1 text-xs font-extrabold">
@@ -263,7 +222,7 @@ export default function LandingPage() {
                   <div className="rounded-xl border-2 border-black bg-[#b7c6c2] p-4">
                     <p className="text-xs font-bold uppercase">Receitas</p>
                     <p className="font-cabinet text-2xl font-extrabold">
-                      R$ 82.4k
+                      R$ 5,2k
                     </p>
                   </div>
                   <div className="rounded-xl border-2 border-black bg-[#171e19] p-4 text-white">
@@ -271,12 +230,11 @@ export default function LandingPage() {
                       Despesas
                     </p>
                     <p className="font-cabinet text-2xl font-extrabold">
-                      R$ 34.6k
+                      R$ 2,8k
                     </p>
                   </div>
                 </div>
 
-                {/* fake bar chart */}
                 <div className="rounded-xl border-2 border-black bg-white p-4">
                   <p className="mb-3 text-xs font-bold uppercase text-black/60">
                     Fluxo dos últimos 7 dias
@@ -297,7 +255,7 @@ export default function LandingPage() {
                     <MessageCircle className="h-4 w-4" strokeWidth={3} />
                   </div>
                   <p className="text-sm font-bold">
-                    "almoço cliente 87" → categorizado
+                    &quot;almoço 87&quot; → categorizado
                   </p>
                 </div>
               </div>
@@ -331,23 +289,22 @@ export default function LandingPage() {
               O PROBLEMA
             </span>
             <h2 className="mx-auto mt-6 max-w-3xl text-balance font-cabinet text-5xl font-extrabold tracking-tighter sm:text-6xl">
-              Planilha não é controle. É <span className="text-stroke">caos</span>{' '}
-              organizado.
+              Você sabe pra{' '}
+              <span className="text-stroke">onde</span> foi seu salário?
             </h2>
           </div>
 
           <div className="grid gap-8 lg:grid-cols-2">
-            {/* Problem */}
             <div className="rounded-3xl border-2 border-dashed border-gray-400 bg-[#f4f4f5] p-10 opacity-70">
               <h3 className="mb-6 font-cabinet text-3xl font-extrabold">
-                Sem o MeuCaixa
+                Hoje, sem o MeuCaixa
               </h3>
               <ul className="space-y-4">
                 {[
                   'Você esquece de lançar e perde o controle no dia 10',
-                  'Planilha gigante que ninguém entende além de você',
-                  'Contador cobra extra pra organizar a bagunça',
-                  'Decide no achismo porque o número nunca está pronto',
+                  'Planilha que dá preguiça só de abrir',
+                  'Não sabe pra onde foi o salário no fim do mês',
+                  'Boleto vencido vira multa porque esqueceu',
                   'Recibos perdidos no meio das fotos do celular',
                 ].map((t, i) => (
                   <li key={i} className="flex items-start gap-3">
@@ -360,7 +317,6 @@ export default function LandingPage() {
               </ul>
             </div>
 
-            {/* Solution */}
             <div className="brutal-shadow rounded-3xl border-2 border-black bg-[#90ff6b] p-10">
               <h3 className="mb-6 font-cabinet text-3xl font-extrabold">
                 Com o MeuCaixa
@@ -368,10 +324,10 @@ export default function LandingPage() {
               <ul className="space-y-4">
                 {[
                   'Lança em 5 segundos pelo WhatsApp, mesmo no trânsito',
-                  'IA categoriza tudo e mantém o livro caixa pronto',
-                  'Contador recebe o relatório fechado todo mês',
-                  'Decisão com número real, atualizado agora',
-                  'Foto do recibo vira lançamento automático',
+                  'IA categoriza tudo, sem você abrir planilha',
+                  'Bot avisa boletos vencendo hoje às 9h da manhã',
+                  'Foto do cupom vira lançamento automático',
+                  'Saldo e gastos do mês na palma da mão, atualizados agora',
                 ].map((t, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-black bg-white">
@@ -386,162 +342,20 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ============ FEATURE GRID ============ */}
-      <section
-        id="features"
-        className="border-b-2 border-black bg-[#90ff6b] py-24"
-      >
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mx-auto mb-16 max-w-3xl text-center">
-            <span className="inline-block rounded-full border-2 border-black bg-white px-4 py-1 font-cabinet text-sm font-extrabold">
-              RECURSOS
-            </span>
-            <h2 className="mt-6 text-balance font-cabinet text-5xl font-extrabold tracking-tighter sm:text-6xl">
-              Tudo que você precisa.{' '}
-              <span className="text-stroke">Nada</span> que você não precisa.
-            </h2>
-          </div>
+      {/* ============ FLUXOGRAMA — Como funciona ============ */}
+      <Flowchart />
 
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {features.map((f, i) => (
-              <div
-                key={i}
-                className="feature-card brutal-shadow-sm rounded-2xl border-2 border-black bg-white p-7"
-              >
-                <div className="feature-icon-box mb-6 flex h-16 w-16 items-center justify-center rounded-xl border-2 border-black">
-                  <f.icon className="h-7 w-7" strokeWidth={2.5} />
-                </div>
-                <h3 className="mb-3 font-cabinet text-2xl font-extrabold">
-                  {f.title}
-                </h3>
-                <p className="font-medium text-black/70">{f.text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ============ ORGANOGRAMA — O que faz ============ */}
+      <Organogram />
 
-      {/* ============ HOW IT WORKS ============ */}
-      <section
-        id="how"
-        className="border-b-2 border-black bg-[#171e19] py-24 text-white"
-      >
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-20 text-center">
-            <span className="inline-block rounded-full border-2 border-[#b7c6c2] bg-[#171e19] px-4 py-1 font-cabinet text-sm font-extrabold text-[#b7c6c2]">
-              COMO FUNCIONA
-            </span>
-            <h2 className="mx-auto mt-6 max-w-3xl text-balance font-cabinet text-5xl font-extrabold tracking-tighter sm:text-6xl">
-              Três passos. Zero{' '}
-              <span
-                className="text-transparent"
-                style={{ WebkitTextStroke: '2px #90ff6b' }}
-              >
-                burocracia
-              </span>
-              .
-            </h2>
-          </div>
+      {/* ============ TIMELINE — Dia a dia ============ */}
+      <DailyTimeline />
 
-          <div className="relative grid gap-12 lg:grid-cols-3">
-            {/* connecting line */}
-            <div className="absolute left-0 right-0 top-12 hidden h-0.5 bg-[#272727] lg:block" />
+      {/* ============ DASHBOARD SHOWCASE ============ */}
+      <DashboardShowcase />
 
-            {[
-              {
-                n: '01',
-                color: '#b7c6c2',
-                title: 'Conecte seu WhatsApp',
-                text: 'QR code em 30 segundos. O bot já entende português, gírias e abreviações.',
-              },
-              {
-                n: '02',
-                color: '#90ff6b',
-                title: 'Lance falando',
-                text: '"Pix do fornecedor 1.200" — a IA classifica, salva e devolve confirmação.',
-              },
-              {
-                n: '03',
-                color: '#ffffff',
-                title: 'Decida com clareza',
-                text: 'Dashboard em tempo real, relatórios prontos e seu contador feliz.',
-              },
-            ].map((s, i) => (
-              <div key={i} className="relative flex flex-col items-center text-center">
-                <div
-                  className="relative z-10 mb-6 flex h-24 w-24 items-center justify-center rounded-full border-[6px] bg-[#171e19] font-cabinet text-3xl font-extrabold"
-                  style={{ borderColor: s.color, color: s.color }}
-                >
-                  {s.n}
-                </div>
-                <h3 className="mb-3 font-cabinet text-2xl font-extrabold">
-                  {s.title}
-                </h3>
-                <p className="max-w-xs font-medium text-[#b7c6c2]">{s.text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ============ PERSONAS ============ */}
-      <section id="personas" className="border-b-2 border-black bg-white py-24">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mx-auto mb-16 max-w-3xl text-center">
-            <span className="inline-block rounded-full border-2 border-black bg-[#b7c6c2] px-4 py-1 font-cabinet text-sm font-extrabold">
-              PARA QUEM
-            </span>
-            <h2 className="mt-6 text-balance font-cabinet text-5xl font-extrabold tracking-tighter sm:text-6xl">
-              Feito pra quem tem{' '}
-              <span className="text-stroke">negócio</span> pra tocar.
-            </h2>
-          </div>
-
-          <div className="grid gap-8 lg:grid-cols-3">
-            {/* Card 1 — Sage */}
-            <div className="rounded-2xl border-2 border-black bg-[#b7c6c2] p-8">
-              <span className="mb-6 inline-block rounded-full border-2 border-black bg-white px-4 py-1 font-cabinet text-xs font-extrabold">
-                PRESTADOR DE SERVIÇO
-              </span>
-              <h3 className="mb-3 font-cabinet text-3xl font-extrabold">
-                Cabeleireiro, advogado, designer
-              </h3>
-              <p className="font-medium">
-                Recebeu pix? Manda no WhatsApp. Comprou material? Mesma coisa.
-                Final do mês: relatório pronto.
-              </p>
-            </div>
-
-            {/* Card 2 — Yellow shadow */}
-            <div className="brutal-shadow rounded-2xl border-2 border-black bg-[#90ff6b] p-8">
-              <span className="mb-6 inline-block rounded-full border-2 border-black bg-white px-4 py-1 font-cabinet text-xs font-extrabold">
-                PEQUENO COMÉRCIO
-              </span>
-              <h3 className="mb-3 font-cabinet text-3xl font-extrabold">
-                Loja, mercado, restaurante
-              </h3>
-              <p className="font-medium">
-                Caixa do dia, despesas com fornecedor e DRE simplificado.
-                Vários funcionários lançando ao mesmo tempo.
-              </p>
-            </div>
-
-            {/* Card 3 — Dark */}
-            <div className="rounded-2xl border-2 border-black bg-[#272727] p-8 text-white">
-              <span className="mb-6 inline-block rounded-full border-2 border-black bg-white px-4 py-1 font-cabinet text-xs font-extrabold text-black">
-                MULTI-EMPRESA
-              </span>
-              <h3 className="mb-3 font-cabinet text-3xl font-extrabold">
-                Holding, contador, franqueado
-              </h3>
-              <p className="font-medium text-[#b7c6c2]">
-                Várias empresas em uma única conta. Permissões granulares e
-                log de auditoria pra cada lançamento.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ============ TESTIMONIALS — Prints WhatsApp ============ */}
+      <TestimonialsWhatsApp />
 
       {/* ============ PLANOS ============ */}
       <section id="planos" className="border-b-2 border-black bg-white py-24">
@@ -561,7 +375,6 @@ export default function LandingPage() {
           </div>
 
           <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2">
-            {/* Mensal */}
             <div className="rounded-2xl border-2 border-black bg-white p-10">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="font-cabinet text-3xl font-extrabold">Mensal</h3>
@@ -583,10 +396,12 @@ export default function LandingPage() {
               </p>
               <ul className="mb-8 space-y-3">
                 {[
-                  'Despesas e receitas ilimitadas',
-                  'WhatsApp: texto, áudio, foto e PDF',
-                  'Até 4 relatórios em PDF por mês',
-                  'Dashboards em tempo real',
+                  'Lançamentos ilimitados (texto, áudio, foto, PDF)',
+                  'IA classifica automático',
+                  '4 relatórios em PDF por mês',
+                  'Dashboard com 6 KPIs e 4 gráficos',
+                  'Cartão de crédito até 48x',
+                  'Multi-usuário (família, sócio, casal)',
                   'Cancele a qualquer momento',
                 ].map((t) => (
                   <li key={t} className="flex items-start gap-3">
@@ -606,7 +421,6 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            {/* Anual — destaque */}
             <div
               className="relative rounded-2xl border-2 border-black bg-[#90ff6b] p-10"
               style={{ boxShadow: '8px 8px 0px 0px #000000' }}
@@ -636,8 +450,9 @@ export default function LandingPage() {
                 {[
                   'Tudo do plano mensal',
                   'Economize ~16% pagando no ano',
-                  'Um pagamento só — sem boletos todo mês',
-                  'Até 4 relatórios em PDF por mês',
+                  'Um pagamento só, sem boletos todo mês',
+                  'Suporte prioritário no WhatsApp',
+                  'Acesso antecipado a novidades',
                   'Cancele a qualquer momento',
                 ].map((t) => (
                   <li key={t} className="flex items-start gap-3">
@@ -666,68 +481,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ============ TESTIMONIALS ============ */}
-      <section
-        id="depoimentos"
-        className="border-b-2 border-black bg-[#b7c6c2] py-24"
-      >
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="mb-16 text-center">
-            <span className="inline-block rounded-full border-2 border-black bg-white px-4 py-1 font-cabinet text-sm font-extrabold">
-              DEPOIMENTOS
-            </span>
-            <h2 className="mx-auto mt-6 max-w-3xl text-balance font-cabinet text-5xl font-extrabold tracking-tighter sm:text-6xl">
-              Quem usa, não{' '}
-              <span className="text-stroke">larga</span>.
-            </h2>
-          </div>
-
-          <div className="grid gap-8 lg:grid-cols-3">
-            {[
-              {
-                name: 'Marina S.',
-                role: 'Dona de barbearia, SP',
-                text: 'Eu odiava planilha. Agora lanço tudo no WhatsApp em 3 segundos enquanto atendo o cliente. Mudou meu mês.',
-              },
-              {
-                name: 'Rodrigo L.',
-                role: 'Restaurante, BH',
-                text: 'Meu contador implorou pra eu não cancelar. Os relatórios chegam fechados, ele só confere e bate o martelo.',
-              },
-              {
-                name: 'Camila V.',
-                role: 'Designer freelancer',
-                text: 'Foto do recibo vira lançamento. IA categoriza certinho. Pareço uma empresa séria pela primeira vez.',
-              },
-            ].map((t, i) => (
-              <div
-                key={i}
-                className="border-2 border-black bg-white p-8"
-                style={{
-                  borderRadius: '2px 1.5rem 2px 1.5rem',
-                  boxShadow: '6px 6px 0px 0px #000000',
-                }}
-              >
-                <div className="mb-4 flex gap-1">
-                  {[...Array(5)].map((_, j) => (
-                    <Star
-                      key={j}
-                      className="h-5 w-5 fill-black text-black"
-                    />
-                  ))}
-                </div>
-                <p className="mb-6 font-medium text-black">"{t.text}"</p>
-                <div className="border-t-2 border-black pt-4">
-                  <p className="font-cabinet font-extrabold">{t.name}</p>
-                  <p className="text-sm font-medium text-black/60">
-                    {t.role}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ============ FAQ ============ */}
+      <FAQSection />
 
       {/* ============ FINAL CTA ============ */}
       <section className="border-b-2 border-black bg-[#90ff6b] py-24">
@@ -758,77 +513,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ============ FOOTER ============ */}
-      <footer className="bg-[#171e19] py-16 text-white">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <Link href="/" className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center border-2 border-[#90ff6b] bg-[#90ff6b]">
-                  <Zap className="h-5 w-5 fill-black text-black" />
-                </div>
-                <span className="font-cabinet text-2xl font-extrabold">
-                  MeuCaixa
-                </span>
-              </Link>
-              <p className="mt-4 max-w-xs font-medium text-[#b7c6c2]">
-                Controle financeiro empresarial pelo WhatsApp. Feito no
-                Brasil, pra quem tem negócio pra tocar.
-              </p>
-            </div>
-
-            {[
-              {
-                title: 'Produto',
-                links: ['Recursos', 'Como funciona', 'Preços', 'Mudanças'],
-              },
-              {
-                title: 'Empresa',
-                links: ['Sobre', 'Blog', 'Contato', 'Carreiras'],
-              },
-              {
-                title: 'Legal',
-                links: ['Termos', 'Privacidade', 'LGPD', 'Cookies'],
-              },
-            ].map((col, i) => (
-              <div key={i}>
-                <h4 className="mb-4 font-cabinet text-lg font-extrabold">
-                  {col.title}
-                </h4>
-                <ul className="space-y-3">
-                  {col.links.map((l) => (
-                    <li key={l}>
-                      <a
-                        href="#"
-                        className="font-medium text-[#b7c6c2] hover:text-[#90ff6b]"
-                      >
-                        {l}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-16 flex flex-col items-start justify-between gap-6 border-t border-[#272727] pt-8 md:flex-row md:items-center">
-            <p className="text-sm font-medium text-[#b7c6c2]">
-              © 2026 MeuCaixa. Todos os direitos reservados.
-            </p>
-            <div className="flex gap-3">
-              {[Twitter, Instagram, Linkedin, Github].map((Icon, i) => (
-                <a
-                  key={i}
-                  href="#"
-                  className="flex h-10 w-10 items-center justify-center rounded-md border-2 border-[#272727] bg-[#272727] text-[#b7c6c2] transition-colors hover:border-[#90ff6b] hover:bg-[#90ff6b] hover:text-black"
-                >
-                  <Icon className="h-4 w-4" />
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }

@@ -52,6 +52,53 @@
 .feature-icon-box { background-color: #b7c6c2; transition: background-color 0.2s ease; }
 .feature-card:hover .feature-icon-box { background-color: #90ff6b; }
 
+/* === Modern effects === */
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes dash-flow {
+  to { stroke-dashoffset: -20; }
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+.animate-glow-pulse { animation: glow-pulse 2.4s ease-in-out infinite; }
+.animate-float-y { animation: float-y 3.2s ease-in-out infinite; }
+.animate-spin-slow { animation: spin-slow 18s linear infinite; }
+.animate-dash-flow { animation: dash-flow 1.4s linear infinite; }
+
+.shimmer-text {
+  background: linear-gradient(90deg, #fff 0%, #90ff6b 50%, #fff 100%);
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+}
+
+.noise-overlay {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.glow-sm { transition: filter 0.4s ease; }
+.glow-sm:hover { filter: drop-shadow(0 0 12px var(--glow, #90ff6b)); }
+
+.card-lift {
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.card-lift:hover { transform: translateY(-4px) translateX(-2px); }
+
 @layer base {
   :root {
     --background: 0 0% 100%;
