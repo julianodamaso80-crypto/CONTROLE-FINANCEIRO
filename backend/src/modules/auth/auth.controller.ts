@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Ip, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthService } from './auth.service';
@@ -15,8 +15,12 @@ export class AuthController {
   @Throttle({ short: { limit: 3, ttl: 60000 } })
   @Public()
   @Post('register')
-  async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  async register(
+    @Body() dto: RegisterDto,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent?: string,
+  ) {
+    return this.authService.register(dto, { ip, userAgent });
   }
 
   // Throttle agressivo para evitar brute force no login

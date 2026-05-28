@@ -1,9 +1,14 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
+import { Suspense } from 'react';
 import { Inter_Tight, Fraunces } from 'next/font/google';
 import { QueryProvider } from '@/providers/query-provider';
 import { AuthProvider } from '@/providers/auth-provider';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { AppToaster } from '@/components/shared/app-toaster';
+import { TrackingInit } from '@/components/tracking/TrackingInit';
+import { CtaTracker } from '@/components/tracking/CtaTracker';
+import { WhatsAppTracker } from '@/components/tracking/WhatsAppTracker';
 import './globals.css';
 
 const interTight = Inter_Tight({
@@ -19,13 +24,13 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://meucaixa.store'),
+  metadataBase: new URL('https://meucaixa.ia.br'),
   title: 'Meu Caixa — Controle Financeiro Inteligente',
   description:
     'SaaS de controle financeiro empresarial com bot WhatsApp e IA',
   openGraph: {
     type: 'website',
-    url: 'https://meucaixa.store',
+    url: 'https://meucaixa.ia.br',
     siteName: 'Meu Caixa',
     title: 'Meu Caixa — Controle Financeiro Inteligente',
     description:
@@ -50,6 +55,10 @@ export const metadata: Metadata = {
 
 const themeInitScript = `(function(){try{var t=localStorage.getItem('meucaixa-theme')||'dark';var r=document.documentElement;if(t==='dark'){r.classList.add('dark')}else{r.classList.remove('dark')}r.style.colorScheme=t;}catch(e){document.documentElement.classList.add('dark')}})();`;
 
+// Stape Custom Loader (sGTM) — carrega GTM-NG5RG625 via ss.meucaixa.ia.br
+// Atualizado: 2026-05-27 | snippet em mcp-gtm/snippet-stape-loader.html
+const stapeLoaderScript = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s);j.async=true;j.src="https://ss.meucaixa.ia.br/c67cpwbmmhn.js?"+i;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','6vjwwok1=BwxQKjY6XS0pXT8qVEVFRRhVX0NTURQNUwUIGAEWGRsPRgQMTBUC');`;
+
 export default function RootLayout({
   children,
 }: {
@@ -63,11 +72,33 @@ export default function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <Script
+          id="stape-gtm-loader"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{ __html: stapeLoaderScript }}
+        />
       </head>
       <body className="font-sans bg-background text-foreground antialiased">
+        {/* GTM noscript fallback (renderiza sem JS / com adblock pesado) */}
+        <noscript>
+          <iframe
+            src="https://ss.meucaixa.ia.br/ns.html?id=GTM-NG5RG625"
+            height="0"
+            width="0"
+            style={{ display: 'none', visibility: 'hidden' }}
+          />
+        </noscript>
+
         <ThemeProvider>
           <QueryProvider>
             <AuthProvider>
+              {/* Tracking client-side — invisíveis, montados uma vez */}
+              <Suspense fallback={null}>
+                <TrackingInit />
+              </Suspense>
+              <CtaTracker />
+              <WhatsAppTracker />
+
               {children}
               <AppToaster />
             </AuthProvider>

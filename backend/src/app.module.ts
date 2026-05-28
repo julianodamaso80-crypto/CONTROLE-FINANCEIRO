@@ -29,6 +29,7 @@ import { CreditCardsModule } from './modules/credit-cards/credit-cards.module';
 import { GoalsModule } from './modules/goals/goals.module';
 import { ImportsModule } from './modules/imports/imports.module';
 import { ExportsModule } from './modules/exports/exports.module';
+import { TrackingModule } from './modules/tracking/tracking.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { ExportsModule } from './modules/exports/exports.module';
     AdminModule,
     SubscriptionsModule,
     WebhooksModule,
+    TrackingModule,
     HealthModule,
     ReportsModule,
     RemindersModule,

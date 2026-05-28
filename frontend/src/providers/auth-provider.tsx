@@ -19,6 +19,36 @@ import {
 } from '@/lib/auth';
 import type { User } from '@/types/models';
 import type { ApiResponse, LoginResponse, RegisterData } from '@/types/api';
+import {
+  getStoredClickIds,
+  getStoredUtms,
+  getFbp,
+  getFbc,
+  getGaClientId,
+  newEventId,
+} from '@/lib/tracking';
+
+/**
+ * Constrói o payload de tracking enviado no /auth/register.
+ * Inclui UTMs, click IDs, _fbp/_fbc, GA client_id, landing, referrer.
+ * Tudo opcional — se cookies/storage estiverem bloqueados, manda só o que tiver.
+ */
+async function buildTrackingPayload() {
+  if (typeof window === 'undefined') return undefined;
+  const clickIds = getStoredClickIds();
+  const utms = getStoredUtms();
+  return {
+    event_id: newEventId(),
+    external_id: undefined as string | undefined,
+    ga_client_id: getGaClientId() || undefined,
+    fbp: getFbp() || undefined,
+    fbc: getFbc() || undefined,
+    ...clickIds,
+    ...utms,
+    landing_page: document.referrer || window.location.href,
+    page_referrer: document.referrer || undefined,
+  };
+}
 
 interface AuthContextValue {
   user: User | null;
@@ -63,9 +93,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = useCallback(
     async (data: RegisterData) => {
+      // Anexa atribuição capturada (UTMs + click IDs + cookies _fbp/_fbc/_ga + landing)
+      // Backend usa pra preencher utm_attribution + disparar lead_signup + trial_started no Meta CAPI
+      const tracking = await buildTrackingPayload();
       const response = await api.post<ApiResponse<LoginResponse>>(
         '/auth/register',
-        data,
+        { ...data, tracking },
       );
       const { accessToken, user: userData } = response.data.data;
       setToken(accessToken);

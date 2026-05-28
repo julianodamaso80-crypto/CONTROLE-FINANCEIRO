@@ -11,6 +11,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { normalizePhone } from '../../common/utils/phone.util';
 import { seedDefaultCategories } from '../categories/categories-seed';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { TrackingService } from '../tracking/tracking.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -26,9 +27,13 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly whatsapp: WhatsAppService,
     private readonly subscriptions: SubscriptionsService,
+    private readonly tracking: TrackingService,
   ) {}
 
-  async register(dto: RegisterDto) {
+  async register(
+    dto: RegisterDto,
+    requestContext?: { ip?: string; userAgent?: string },
+  ) {
     const inputPhone = normalizePhone(dto.phone);
     if (!inputPhone) {
       throw new BadRequestException(
@@ -109,6 +114,18 @@ export class AuthService {
           `Falha ao criar subscription: ${err instanceof Error ? err.message : 'erro'}`,
         ),
       );
+
+    // === TRACKING: atribuição + lead_signup + trial_started ===
+    // Persiste a atribuição do lead (first-touch) e dispara eventos pra ads.
+    // Tudo fire-and-forget — não bloqueia o response do signup.
+    void this.fireRegistrationTracking(
+      result.company.id,
+      result.user.id,
+      result.user.email,
+      normalizedPhone,
+      dto.tracking,
+      requestContext,
+    );
 
     this.whatsapp
       .sendWelcomeMessage(normalizedPhone, result.user.name)
@@ -289,5 +306,89 @@ export class AuthService {
     email: string;
   }): string {
     return this.jwtService.sign(payload);
+  }
+
+  /**
+   * Dispara tracking pós-signup:
+   *  1. Persiste atribuição (UTMs + click IDs) na tabela utm_attribution
+   *  2. Envia `lead_signup` ao Meta CAPI (com email/phone hashed)
+   *  3. Envia `trial_started` ao Meta CAPI
+   *
+   * Tudo fire-and-forget — falhas só logam, nunca quebram signup.
+   */
+  private async fireRegistrationTracking(
+    companyId: string,
+    userId: string,
+    email: string,
+    phone: string,
+    trackingData: RegisterDto['tracking'],
+    requestContext?: { ip?: string; userAgent?: string },
+  ): Promise<void> {
+    try {
+      // 1) Salva atribuição do lead (first-touch)
+      await this.tracking.upsertAttribution(companyId, userId, {
+        ...(trackingData || {}),
+        ip_address: requestContext?.ip,
+        user_agent: requestContext?.userAgent,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `upsertAttribution falhou: ${err instanceof Error ? err.message : 'erro'}`,
+      );
+    }
+
+    // 2 + 3) Dispara eventos pra Meta CAPI (e logs)
+    const emailHash = this.tracking.hashEmail(email);
+    const phoneHash = this.tracking.hashPhone(phone);
+    const baseEvent = {
+      event_id: trackingData?.event_id || `${companyId}-signup-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      email_hash: emailHash,
+      phone_hash: phoneHash,
+      external_id: companyId,
+      user_id: companyId,
+      fbp: trackingData?.fbp,
+      fbc: trackingData?.fbc,
+      ga_client_id: trackingData?.ga_client_id,
+      gclid: trackingData?.gclid,
+      fbclid: trackingData?.fbclid,
+      utm_source: trackingData?.utm_source,
+      utm_medium: trackingData?.utm_medium,
+      utm_campaign: trackingData?.utm_campaign,
+      utm_content: trackingData?.utm_content,
+      utm_term: trackingData?.utm_term,
+      page_url: trackingData?.landing_page,
+      page_referrer: trackingData?.page_referrer,
+    };
+
+    // lead_signup → Meta "Lead"
+    await this.tracking
+      .ingestClientEvent(
+        { ...baseEvent, event_name: 'lead_signup' },
+        requestContext?.ip,
+        requestContext?.userAgent,
+      )
+      .catch((err) =>
+        this.logger.warn(
+          `lead_signup CAPI falhou: ${err instanceof Error ? err.message : 'erro'}`,
+        ),
+      );
+
+    // trial_started → Meta "StartTrial"
+    await this.tracking
+      .ingestClientEvent(
+        {
+          ...baseEvent,
+          event_id: `${baseEvent.event_id}-trial`,
+          event_name: 'trial_started',
+        },
+        requestContext?.ip,
+        requestContext?.userAgent,
+      )
+      .catch((err) =>
+        this.logger.warn(
+          `trial_started CAPI falhou: ${err instanceof Error ? err.message : 'erro'}`,
+        ),
+      );
   }
 }
