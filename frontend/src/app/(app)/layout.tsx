@@ -6,6 +6,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { Sidebar, MobileHeader } from '@/components/layout/sidebar';
 import { OnboardingDialog } from '@/components/onboarding/onboarding-dialog';
 import { SubscriptionBanner } from '@/components/shared/subscription-banner';
+import { SubscribeTracker } from '@/components/tracking/SubscribeTracker';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -40,6 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
       </div>
       <OnboardingDialog />
+      <SubscribeTracker />
     </div>
   );
 }

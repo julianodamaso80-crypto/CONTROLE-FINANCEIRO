@@ -26,6 +26,8 @@ import {
   getFbc,
   getGaClientId,
   newEventId,
+  trackLeadSignup,
+  trackTrialStarted,
 } from '@/lib/tracking';
 
 /**
@@ -104,6 +106,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(accessToken);
       setUser(userData);
       setUserState(userData);
+
+      // Tracking client-side: dispara Lead + StartTrial (dual-fire com CAPI via dedup event_id)
+      // O backend já disparou os mesmos eventos via CAPI no /auth/register — o event_id passado
+      // como external_id faz Meta deduplicar em 7d.
+      try {
+        const externalId = (userData as { companyId?: string } | null)?.companyId;
+        trackLeadSignup({ external_id: externalId, user_id: externalId });
+        trackTrialStarted({ external_id: externalId, user_id: externalId });
+      } catch {
+        // tracking nunca pode quebrar UX
+      }
+
       return userData;
     },
     [],

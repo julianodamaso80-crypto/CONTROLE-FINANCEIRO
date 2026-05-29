@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { trackCheckoutInitiated } from '@/lib/tracking';
 import { PageHeader } from '@/components/shared/page-header';
 
 function formatCpfCnpj(raw: string): string {
@@ -145,6 +146,16 @@ export default function PlanoPage() {
     cpfCnpj?: string,
   ) => {
     setOpeningPlan(plan);
+
+    // Tracking: dispara InitiateCheckout pro Meta Pixel + GA4 + backend CAPI
+    // Valor padrão por plano (alinhado com Conversion Action default value no Google Ads)
+    const value = plan === 'ANNUAL' ? 199 : 19.9;
+    try {
+      trackCheckoutInitiated({ plan_type: plan, value, currency: 'BRL' });
+    } catch {
+      // tracking nunca pode bloquear o checkout
+    }
+
     try {
       const url = await checkout.mutateAsync({ plan, cpfCnpj });
       if (url) {
