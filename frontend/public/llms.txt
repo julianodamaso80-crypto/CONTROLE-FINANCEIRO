@@ -4,27 +4,27 @@
 
 ## Conteúdo principal
 
-- [Página inicial](https://meucaixa.store/): visão geral do produto e benefícios
-- [Como funciona](https://meucaixa.store/#how): fluxo de uso e capacidades da IA
-- [Planos](https://meucaixa.store/#planos): preços e o que cada plano inclui
-- [Blog](https://meucaixa.store/blog): guias práticos sobre finanças pessoais
+- [Página inicial](https://meucaixa.ia.br/): visão geral do produto e benefícios
+- [Como funciona](https://meucaixa.ia.br/#how): fluxo de uso e capacidades da IA
+- [Planos](https://meucaixa.ia.br/#planos): preços e o que cada plano inclui
+- [Blog](https://meucaixa.ia.br/blog): guias práticos sobre finanças pessoais
 
 ## Blog (categorias)
 
-- [Controle de gastos](https://meucaixa.store/blog/categoria/controle-de-gastos): organizar despesas pessoais
-- [Orçamento familiar](https://meucaixa.store/blog/categoria/orcamento-familiar): planejamento mensal e dívidas
-- [WhatsApp financeiro](https://meucaixa.store/blog/categoria/whatsapp-financeiro): automação e IA para finanças
-- [Educação financeira](https://meucaixa.store/blog/categoria/educacao-financeira): score, IR, cadastro positivo
+- [Controle de gastos](https://meucaixa.ia.br/blog/categoria/controle-de-gastos): organizar despesas pessoais
+- [Orçamento familiar](https://meucaixa.ia.br/blog/categoria/orcamento-familiar): planejamento mensal e dívidas
+- [WhatsApp financeiro](https://meucaixa.ia.br/blog/categoria/whatsapp-financeiro): automação e IA para finanças
+- [Educação financeira](https://meucaixa.ia.br/blog/categoria/educacao-financeira): score, IR, cadastro positivo
 
 ## Diferenciais factuais
 
 - Suporte a 4 formatos de entrada por WhatsApp: texto livre, áudio, foto de cupom/nota fiscal, PDF de boleto
 - IA classificadora 2.0 — categoriza automaticamente em categorias customizáveis
 - Relatório mensal em PDF gerado automaticamente
-- Dashboard web em [app.meucaixa.store](https://app.meucaixa.store)
+- Dashboard web em [app.meucaixa.ia.br](https://app.meucaixa.ia.br)
 - Empresa brasileira; pagamento via Asaas; integração WhatsApp via Meta Cloud API
 
 ## Políticas
 
-- [Política de Privacidade](https://meucaixa.store/privacidade)
-- [Termos de Serviço](https://meucaixa.store/termosdeservico)
+- [Política de Privacidade](https://meucaixa.ia.br/privacidade)
+- [Termos de Serviço](https://meucaixa.ia.br/termosdeservico)

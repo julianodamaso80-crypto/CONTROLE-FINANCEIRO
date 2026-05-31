@@ -21,7 +21,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const post = await getPostBySlug(params.slug);
   if (!post) return {};
-  const url = `https://meucaixa.store/blog/${post.slug}`;
+  const url = `https://meucaixa.ia.br/blog/${post.slug}`;
   return {
     title: post.title,
     description: post.description,
@@ -97,7 +97,7 @@ const mdxComponents = {
 export default async function BlogPostPage({ params }: PageProps) {
   const post = await getPostBySlug(params.slug);
   if (!post) notFound();
-  const url = `https://meucaixa.store/blog/${post.slug}`;
+  const url = `https://meucaixa.ia.br/blog/${post.slug}`;
   const category = CATEGORIES[post.category];
 
   return (

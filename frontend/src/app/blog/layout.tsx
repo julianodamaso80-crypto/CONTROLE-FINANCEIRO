@@ -16,20 +16,20 @@ const organizationLd = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
   name: 'Meu Caixa',
-  url: 'https://meucaixa.store',
-  logo: 'https://meucaixa.store/logo-sem-fundo-2.png',
+  url: 'https://meucaixa.ia.br',
+  logo: 'https://meucaixa.ia.br/logo-sem-fundo-2.png',
   description: 'SaaS de controle financeiro pessoal com IA e WhatsApp.',
-  sameAs: ['https://www.instagram.com/meucaixa.store'],
+  sameAs: ['https://www.instagram.com/meucaixa.ia.br'],
 };
 
 const websiteLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   name: 'Meu Caixa',
-  url: 'https://meucaixa.store',
+  url: 'https://meucaixa.ia.br',
   potentialAction: {
     '@type': 'SearchAction',
-    target: 'https://meucaixa.store/blog?q={search_term_string}',
+    target: 'https://meucaixa.ia.br/blog?q={search_term_string}',
     'query-input': 'required name=search_term_string',
   },
 };

@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: 'ClaudeBot', allow: '/blog' },
       { userAgent: 'Google-Extended', allow: '/blog' },
     ],
-    sitemap: 'https://meucaixa.store/sitemap.xml',
-    host: 'https://meucaixa.store',
+    sitemap: 'https://meucaixa.ia.br/sitemap.xml',
+    host: 'https://meucaixa.ia.br',
   };
 }
