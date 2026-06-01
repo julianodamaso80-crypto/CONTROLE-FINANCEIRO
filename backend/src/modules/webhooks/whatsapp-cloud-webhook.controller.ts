@@ -7,6 +7,7 @@ import {
   Logger,
   Post,
   Query,
+  RawBodyRequest,
   Req,
   Res,
 } from '@nestjs/common';
@@ -14,32 +15,65 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AppConfigService } from '../../common/config/app.config';
 import { Public } from '../../common/decorators/public.decorator';
+import {
+  WhatsAppService,
+  type MessageData,
+} from '../whatsapp/whatsapp.service';
+import { WhatsAppCloudService } from '../whatsapp-cloud/whatsapp-cloud.service';
+
+/** Mensagem individual no payload da Graph API (entry[].changes[].value.messages[]). */
+interface CloudMessage {
+  from?: string;
+  id?: string;
+  type?: string;
+  text?: { body?: string };
+  image?: { id?: string; mime_type?: string; caption?: string };
+  audio?: { id?: string; mime_type?: string; voice?: boolean };
+  document?: {
+    id?: string;
+    mime_type?: string;
+    filename?: string;
+    caption?: string;
+  };
+}
+
+interface CloudWebhookBody {
+  object?: string;
+  entry?: Array<{
+    id?: string;
+    changes?: Array<{
+      field?: string;
+      value?: {
+        messaging_product?: string;
+        metadata?: { phone_number_id?: string; display_phone_number?: string };
+        contacts?: Array<{ wa_id?: string; profile?: { name?: string } }>;
+        messages?: CloudMessage[];
+        statuses?: Array<{ id?: string; status?: string; recipient_id?: string }>;
+      };
+    }>;
+  }>;
+}
 
 /**
- * Webhook do WhatsApp Cloud API (Meta Graph API).
+ * Webhook do WhatsApp Cloud API (Meta Graph API) — número oficial.
  *
- * - GET  /webhooks/whatsapp-cloud → handshake de verificação. Meta envia
- *   hub.mode, hub.verify_token, hub.challenge. Se o token bate com
- *   WHATSAPP_CLOUD_VERIFY_TOKEN, devolvemos o challenge como texto puro.
- * - POST /webhooks/whatsapp-cloud → entrega de eventos (mensagens recebidas,
- *   status de mensagem enviada, etc). Por enquanto só loga e responde 200 OK.
- *   O processamento real (IA + lançamento) vem numa próxima etapa.
- *
- * Doc: developers.facebook.com/docs/whatsapp/cloud-api/guides/set-up-webhooks
+ * - GET  /webhooks/whatsapp-cloud → handshake de verificação.
+ * - POST /webhooks/whatsapp-cloud → entrega de eventos. Valida a assinatura
+ *   (se APP_SECRET setado), normaliza cada mensagem pro shape interno e
+ *   despacha pro pipeline de IA (WhatsAppService.processCloudInbound).
+ *   Responde 200 OK rápido — Meta tem timeout de ~20s e re-enfileira.
  */
 @Controller('webhooks/whatsapp-cloud')
 @SkipThrottle()
 export class WhatsAppCloudWebhookController {
   private readonly logger = new Logger(WhatsAppCloudWebhookController.name);
 
-  constructor(private readonly config: AppConfigService) {}
+  constructor(
+    private readonly config: AppConfigService,
+    private readonly whatsapp: WhatsAppService,
+    private readonly cloud: WhatsAppCloudService,
+  ) {}
 
-  /**
-   * Handshake de verificação. Meta chama com query params:
-   *   ?hub.mode=subscribe&hub.verify_token=...&hub.challenge=...
-   *
-   * Devolvemos o hub.challenge em text/plain SE o verify_token bater.
-   */
   @Get()
   @Public()
   verify(
@@ -61,94 +95,101 @@ export class WhatsAppCloudWebhookController {
     throw new BadRequestException('Verification failed');
   }
 
-  /**
-   * Entrega de eventos. Por enquanto SÓ LOGA. Sempre responde 200 OK rápido
-   * pra Meta não re-enfileirar (eles têm timeout de 20s).
-   */
   @Post()
   @Public()
   @HttpCode(200)
   receive(
     @Headers('x-hub-signature-256') signature: string | undefined,
-    @Req() req: Request,
+    @Req() req: RawBodyRequest<Request>,
   ) {
-    const body = req.body as unknown;
-
-    // TODO: validar assinatura HMAC com APP_SECRET (não-bloqueante por ora)
-    if (signature) {
-      this.logger.debug(`[receive] signature header presente: ${signature.slice(0, 16)}...`);
+    // Valida assinatura HMAC quando APP_SECRET está setado e temos o corpo cru.
+    if (req.rawBody && !this.cloud.verifyWebhookSignature(req.rawBody, signature)) {
+      this.logger.warn('[receive] Assinatura inválida — descartando payload');
+      return { received: true };
     }
 
-    try {
-      const summary = this.summarize(body);
-      this.logger.log(`[receive] ${summary}`);
-    } catch (err) {
-      this.logger.warn(
-        `[receive] Falha ao resumir payload: ${err instanceof Error ? err.message : 'erro'}`,
-      );
+    const body = req.body as CloudWebhookBody;
+
+    // Processa fora do ciclo da resposta — Meta só quer o 200 rápido.
+    for (const data of this.extractMessages(body)) {
+      this.whatsapp.processCloudInbound(data).catch((e: unknown) => {
+        this.logger.error(
+          `[receive] ${e instanceof Error ? e.message : 'erro desconhecido'}`,
+        );
+      });
     }
 
     return { received: true };
   }
 
   /**
-   * Extrai um resumo legível do payload pra log (sem despejar JSON inteiro).
-   * Estrutura: entry[].changes[].value.{messages|statuses}.
+   * Extrai e normaliza as mensagens recebidas pro shape interno MessageData
+   * que o pipeline de IA já entende. Ignora statuses (recibos de entrega).
    */
-  private summarize(body: unknown): string {
-    if (!body || typeof body !== 'object') return 'payload vazio';
+  private extractMessages(body: CloudWebhookBody): MessageData[] {
+    if (body.object !== 'whatsapp_business_account') return [];
 
-    const obj = body as {
-      object?: string;
-      entry?: Array<{
-        id?: string;
-        changes?: Array<{
-          field?: string;
-          value?: {
-            messaging_product?: string;
-            metadata?: { phone_number_id?: string; display_phone_number?: string };
-            contacts?: Array<{ wa_id?: string; profile?: { name?: string } }>;
-            messages?: Array<{
-              id?: string;
-              from?: string;
-              type?: string;
-              text?: { body?: string };
-            }>;
-            statuses?: Array<{
-              id?: string;
-              status?: string;
-              recipient_id?: string;
-            }>;
-          };
-        }>;
-      }>;
-    };
-
-    const parts: string[] = [`object=${obj.object ?? '?'}`];
-
-    for (const entry of obj.entry ?? []) {
+    const out: MessageData[] = [];
+    for (const entry of body.entry ?? []) {
       for (const change of entry.changes ?? []) {
-        const v = change.value;
-        if (!v) continue;
-
-        const phoneId = v.metadata?.phone_number_id;
-        if (phoneId) parts.push(`phoneId=${phoneId}`);
-
-        for (const m of v.messages ?? []) {
-          const preview = m.text?.body?.slice(0, 80) ?? '';
-          parts.push(
-            `msg from=${m.from} type=${m.type} id=${m.id} text="${preview}"`,
-          );
-        }
-
-        for (const s of v.statuses ?? []) {
-          parts.push(
-            `status id=${s.id} status=${s.status} to=${s.recipient_id}`,
-          );
+        for (const msg of change.value?.messages ?? []) {
+          const normalized = this.normalize(msg);
+          if (normalized) out.push(normalized);
         }
       }
     }
+    return out;
+  }
 
-    return parts.join(' | ');
+  private normalize(msg: CloudMessage): MessageData | null {
+    if (!msg.from || !msg.id) return null;
+
+    // remoteJid no formato Baileys pro pipeline extrair o número (digits@...).
+    const remoteJid = `${msg.from}@s.whatsapp.net`;
+
+    const message: MessageData['message'] = {};
+    let mediaId: string | undefined;
+
+    switch (msg.type) {
+      case 'text':
+        message.conversation = msg.text?.body;
+        break;
+      case 'image':
+        message.imageMessage = {
+          caption: msg.image?.caption,
+          mimetype: msg.image?.mime_type,
+        };
+        mediaId = msg.image?.id;
+        break;
+      case 'audio':
+        message.audioMessage = {
+          mimetype: msg.audio?.mime_type,
+          ptt: msg.audio?.voice ?? true,
+        };
+        mediaId = msg.audio?.id;
+        break;
+      case 'document':
+        message.documentMessage = {
+          fileName: msg.document?.filename,
+          mimetype: msg.document?.mime_type,
+          caption: msg.document?.caption,
+        };
+        mediaId = msg.document?.id;
+        break;
+      default:
+        // Tipos não suportados (location, sticker, etc) — ignora.
+        return null;
+    }
+
+    return {
+      key: {
+        id: msg.id,
+        fromMe: false,
+        remoteJid,
+        mediaId,
+      },
+      message,
+      messageType: msg.type,
+    };
   }
 }

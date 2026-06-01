@@ -105,6 +105,35 @@ export class AppConfigService {
     return this.getRequired('WHATSAPP_CLOUD_VERIFY_TOKEN');
   }
 
+  getWhatsAppCloudPhoneNumberId(): string {
+    return this.getRequired('WHATSAPP_CLOUD_PHONE_NUMBER_ID');
+  }
+
+  getWhatsAppCloudAccessToken(): string {
+    return this.getRequired('WHATSAPP_CLOUD_ACCESS_TOKEN');
+  }
+
+  getWhatsAppCloudWabaId(): string | undefined {
+    return this.config.get<string>('WHATSAPP_CLOUD_WABA_ID');
+  }
+
+  getWhatsAppCloudApiVersion(): string {
+    return this.getOptional('WHATSAPP_CLOUD_API_VERSION', 'v21.0');
+  }
+
+  /** Opcional — quando setado, valida a assinatura HMAC do webhook. */
+  getWhatsAppCloudAppSecret(): string | undefined {
+    return this.config.get<string>('WHATSAPP_CLOUD_APP_SECRET');
+  }
+
+  /** True quando dá pra ENVIAR pela Cloud API (phone number id + token). */
+  isWhatsAppCloudConfigured(): boolean {
+    return (
+      !!this.config.get<string>('WHATSAPP_CLOUD_PHONE_NUMBER_ID') &&
+      !!this.config.get<string>('WHATSAPP_CLOUD_ACCESS_TOKEN')
+    );
+  }
+
   // ============================================================
   // Tracking server-side (Meta CAPI + GA4 MP + Google Ads EC)
   // ============================================================

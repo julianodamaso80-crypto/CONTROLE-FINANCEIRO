@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { EvolutionModule } from '../evolution/evolution.module';
+import { WhatsAppCloudModule } from '../whatsapp-cloud/whatsapp-cloud.module';
 import { AiModule } from '../ai/ai.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { SegmentsModule } from '../segments/segments.module';
@@ -13,6 +14,7 @@ import { WhatsAppController } from './whatsapp.controller';
 @Module({
   imports: [
     EvolutionModule,
+    WhatsAppCloudModule,
     AiModule,
     TransactionsModule,
     SegmentsModule,

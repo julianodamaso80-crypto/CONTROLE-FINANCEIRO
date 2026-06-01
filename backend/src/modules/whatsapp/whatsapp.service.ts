@@ -11,6 +11,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { AppConfigService } from '../../common/config/app.config';
 import { phoneVariants } from '../../common/utils/phone.util';
 import { EvolutionService } from '../evolution/evolution.service';
+import { WhatsAppCloudService } from '../whatsapp-cloud/whatsapp-cloud.service';
 import { AiService, type LlmUsage } from '../ai/ai.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { SegmentsService } from '../segments/segments.service';
@@ -33,6 +34,8 @@ interface MessageKey {
   remoteJidAlt?: string;
   participant?: string;
   addressingMode?: string;
+  // Cloud API: id da MÍDIA (≠ id da mensagem), usado pra baixar via Graph API.
+  mediaId?: string;
 }
 
 interface MessageContent {
@@ -43,10 +46,38 @@ interface MessageContent {
   documentMessage?: { fileName?: string; mimetype?: string; caption?: string };
 }
 
-interface MessageData {
+export interface MessageData {
   key?: MessageKey;
   message?: MessageContent;
   messageType?: string;
+}
+
+/** Referência de mídia recebida. Evolution usa a key inteira; Cloud o mediaId. */
+interface MediaRef {
+  id?: string;
+  remoteJid?: string;
+  fromMe?: boolean;
+  mediaId?: string;
+}
+
+/**
+ * Abstração de transporte de saída. O pipeline de IA fala só com isto, sem
+ * saber se está respondendo pela Evolution (clientes antigos) ou pela Cloud
+ * API / número oficial Meta (clientes novos). Como a resposta sempre volta
+ * pelo mesmo canal que recebeu, a janela de 24h da Cloud está sempre aberta.
+ */
+export interface MessageTransport {
+  sendText(to: string, text: string): Promise<void>;
+  sendDocument(
+    to: string,
+    params: {
+      base64: string;
+      fileName: string;
+      mimetype: string;
+      caption?: string;
+    },
+  ): Promise<void>;
+  getMedia(ref: MediaRef): Promise<{ base64: string; mimetype: string } | null>;
 }
 
 interface HandlerResult {
@@ -69,6 +100,7 @@ export class WhatsAppService {
     private readonly prisma: PrismaService,
     private readonly appConfig: AppConfigService,
     private readonly evolution: EvolutionService,
+    private readonly cloud: WhatsAppCloudService,
     private readonly ai: AiService,
     private readonly transactions: TransactionsService,
     private readonly segments: SegmentsService,
@@ -78,6 +110,26 @@ export class WhatsAppService {
     @Inject(forwardRef(() => SubscriptionsService))
     private readonly subscriptions: SubscriptionsService,
   ) {}
+
+  /** Transporte que responde pela instância Evolution informada. */
+  private evolutionTransport(instanceName: string): MessageTransport {
+    return {
+      sendText: (to, text) =>
+        this.evolution.sendTextMessage(instanceName, to, text),
+      sendDocument: (to, params) =>
+        this.evolution.sendDocumentMessage(instanceName, to, params),
+      getMedia: (ref) => this.evolution.getMediaBase64(instanceName, ref),
+    };
+  }
+
+  /** Transporte que responde pelo número oficial Meta (Cloud API). */
+  private cloudTransport(): MessageTransport {
+    return {
+      sendText: (to, text) => this.cloud.sendText(to, text),
+      sendDocument: (to, params) => this.cloud.sendDocument(to, params),
+      getMedia: (ref) => this.cloud.getMedia(ref.mediaId ?? ref.id ?? ''),
+    };
+  }
 
   async connectWhatsApp(companyId: string) {
     const missing = this.appConfig.getMissingEvolutionVars();
@@ -269,10 +321,41 @@ export class WhatsAppService {
   }
 
   /**
-   * Envia mensagem de boas-vindas para um novo cliente recém-cadastrado.
-   * Usa a primeira instância CONNECTED (o bot global do Meu Caixa).
+   * Envia boas-vindas para um cliente recém-cadastrado, roteando pelo
+   * transporte da empresa: Cloud API (número oficial) usa o template aprovado
+   * `cadastro_meucaixa`; Evolution usa texto livre pelo bot global.
    */
-  async sendWelcomeMessage(phone: string, name: string): Promise<void> {
+  async sendWelcomeMessage(
+    phone: string,
+    name: string,
+    companyId: string,
+  ): Promise<void> {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { whatsappTransport: true },
+    });
+    const firstName = name.split(' ')[0] ?? name;
+
+    if (company?.whatsappTransport === 'CLOUD') {
+      if (!this.appConfig.isWhatsAppCloudConfigured()) {
+        this.logger.warn(
+          'Empresa CLOUD mas Cloud API não configurada — boas-vindas não enviadas',
+        );
+        return;
+      }
+      await this.cloud
+        .sendTemplate(phone, 'cadastro_meucaixa', 'pt_BR', [
+          { type: 'body', parameters: [{ type: 'text', text: firstName }] },
+        ])
+        .catch((err) => {
+          this.logger.warn(
+            `sendWelcomeMessage (cloud) falhou: ${err instanceof Error ? err.message : 'erro'}`,
+          );
+        });
+      return;
+    }
+
+    // Empresa EVOLUTION: texto livre pelo bot global conectado.
     if (!this.appConfig.isEvolutionConfigured()) return;
 
     const instance = await this.prisma.whatsAppInstance.findFirst({
@@ -285,7 +368,6 @@ export class WhatsAppService {
       return;
     }
 
-    const firstName = name.split(' ')[0] ?? name;
     const message =
       `👋 Olá, ${firstName}! Seja bem-vindo ao *Meu Caixa*.\n\n` +
       `Sou seu assistente financeiro pelo WhatsApp. Você já pode:\n\n` +
@@ -321,7 +403,7 @@ export class WhatsAppService {
     // o roteamento agora é por phone do remetente (user.phone).
     if (event === 'messages.upsert') {
       await this.handleIncomingMessage(
-        instanceName,
+        this.evolutionTransport(instanceName),
         payload.data as unknown as MessageData,
       );
       return;
@@ -341,6 +423,21 @@ export class WhatsAppService {
     } else if (event === 'connection.update') {
       await this.handleConnectionUpdate(instance, payload.data);
     }
+  }
+
+  /**
+   * Entrada de mensagens vindas do webhook do número oficial (Cloud API).
+   * O controller já normalizou o payload Meta pro shape interno MessageData.
+   * Reusa todo o pipeline de IA/lançamento, só trocando o transporte.
+   */
+  async processCloudInbound(data: MessageData): Promise<void> {
+    if (!this.appConfig.isWhatsAppCloudConfigured()) {
+      this.logger.warn(
+        'Inbound Cloud recebido mas Cloud API não está configurada — ignorando',
+      );
+      return;
+    }
+    await this.handleIncomingMessage(this.cloudTransport(), data);
   }
 
   private async handleQrCodeUpdate(
@@ -414,7 +511,7 @@ export class WhatsAppService {
   }
 
   private async handleIncomingMessage(
-    instanceName: string,
+    transport: MessageTransport,
     data: MessageData,
   ): Promise<void> {
     if (data.key?.fromMe === true) return;
@@ -507,11 +604,9 @@ export class WhatsAppService {
         '🤖 Sou o assistente do *Meu Caixa*\n\n' +
         '❌ Esse número ainda não está cadastrado.\n\n' +
         '🌐 Crie sua conta em:\n' +
-        '   https://meucaixa.store\n\n' +
+        '   https://meucaixa.ia.br\n\n' +
         '💡 _Cadastre este mesmo WhatsApp pra começar_';
-      await this.evolution
-        .sendTextMessage(instanceName, senderNumber, reply)
-        .catch(() => {});
+      await transport.sendText(senderNumber, reply).catch(() => {});
       await this.prisma.whatsAppMessage.create({
         data: {
           companyId: null,
@@ -536,13 +631,11 @@ export class WhatsAppService {
         '━━━━━━━━━━━━━━━\n\n' +
         '😕 O período gratuito acabou ou sua assinatura está pendente.\n\n' +
         '🌐 Renove agora em:\n' +
-        '   https://meucaixa.store/plano\n\n' +
+        '   https://meucaixa.ia.br/plano\n\n' +
         '💎 *Planos:*\n' +
         '📅 Mensal — R$ 19,90/mês\n' +
         '📆 Anual — R$ 199,90/ano _(economize ~16%)_';
-      await this.evolution
-        .sendTextMessage(instanceName, senderNumber, reply)
-        .catch(() => {});
+      await transport.sendText(senderNumber, reply).catch(() => {});
       await this.prisma.whatsAppMessage.create({
         data: {
           companyId,
@@ -557,9 +650,8 @@ export class WhatsAppService {
     }
 
     if (!this.appConfig.isAiConfigured()) {
-      await this.evolution
-        .sendTextMessage(
-          instanceName,
+      await transport
+        .sendText(
           senderNumber,
           'Olá! O assistente de IA ainda não foi configurado. Entre em contato com o administrador.',
         )
@@ -571,17 +663,16 @@ export class WhatsAppService {
     // depois deixa o pipeline de texto processar normalmente.
     let transcribedText: string | null = null;
     if (hasAudio) {
-      const audioMedia = await this.evolution.getMediaBase64(instanceName, {
+      const audioMedia = await transport.getMedia({
         id: data.key?.id,
         remoteJid: data.key?.remoteJid,
         fromMe: data.key?.fromMe,
+        mediaId: data.key?.mediaId,
       });
       if (!audioMedia) {
         const reply =
           '❌ Não consegui baixar seu áudio. Tente enviar de novo ou escreva em texto.';
-        await this.evolution
-          .sendTextMessage(instanceName, senderNumber, reply)
-          .catch(() => {});
+        await transport.sendText(senderNumber, reply).catch(() => {});
         await this.prisma.whatsAppMessage.create({
           data: {
             companyId,
@@ -612,9 +703,7 @@ export class WhatsAppService {
       if (!transcribedText) {
         const reply =
           '❌ Não consegui entender o áudio. Fale um pouco mais claro ou envie em texto, por favor.';
-        await this.evolution
-          .sendTextMessage(instanceName, senderNumber, reply)
-          .catch(() => {});
+        await transport.sendText(senderNumber, reply).catch(() => {});
         await this.prisma.whatsAppMessage.create({
           data: {
             companyId,
@@ -632,17 +721,16 @@ export class WhatsAppService {
     // PDF: extrai texto com pdf-parse, alimenta pipeline de texto
     let pdfExtractedText: string | null = null;
     if (hasPdf) {
-      const pdfMedia = await this.evolution.getMediaBase64(instanceName, {
+      const pdfMedia = await transport.getMedia({
         id: data.key?.id,
         remoteJid: data.key?.remoteJid,
         fromMe: data.key?.fromMe,
+        mediaId: data.key?.mediaId,
       });
       if (!pdfMedia) {
         const reply =
           '❌ Não consegui baixar o PDF. Tente enviar de novo ou descrever em texto.';
-        await this.evolution
-          .sendTextMessage(instanceName, senderNumber, reply)
-          .catch(() => {});
+        await transport.sendText(senderNumber, reply).catch(() => {});
         await this.prisma.whatsAppMessage.create({
           data: {
             companyId,
@@ -686,9 +774,7 @@ export class WhatsAppService {
         const reply =
           '📄 Recebi seu PDF, mas não consegui ler o conteúdo. ' +
           'Me descreve o que é: por exemplo, _"despesa de 500 da nota de bobina"_ ou _"receita de 2k do cliente silva"_.';
-        await this.evolution
-          .sendTextMessage(instanceName, senderNumber, reply)
-          .catch(() => {});
+        await transport.sendText(senderNumber, reply).catch(() => {});
         await this.prisma.whatsAppMessage.create({
           data: {
             companyId,
@@ -747,17 +833,16 @@ export class WhatsAppService {
     let rawInputText = messageText;
     if (hasImage) {
       // Baixa a imagem da Evolution e manda pro gpt-4o-mini vision
-      const media = await this.evolution.getMediaBase64(instanceName, {
+      const media = await transport.getMedia({
         id: data.key?.id,
         remoteJid: data.key?.remoteJid,
         fromMe: data.key?.fromMe,
+        mediaId: data.key?.mediaId,
       });
       if (!media) {
         const reply =
           '❌ Não consegui baixar a imagem. Tente enviar de novo ou descrever em texto.';
-        await this.evolution
-          .sendTextMessage(instanceName, senderNumber, reply)
-          .catch(() => {});
+        await transport.sendText(senderNumber, reply).catch(() => {});
         await this.prisma.whatsAppMessage.create({
           data: {
             companyId,
@@ -797,7 +882,7 @@ export class WhatsAppService {
             pendingReport.range,
           );
           await this.deliverResult(
-            instanceName,
+            transport,
             senderNumber,
             companyId,
             sender.id,
@@ -813,7 +898,7 @@ export class WhatsAppService {
             pendingReport.groupBy,
           );
           await this.deliverResult(
-            instanceName,
+            transport,
             senderNumber,
             companyId,
             sender.id,
@@ -823,9 +908,7 @@ export class WhatsAppService {
         }
         if (choice === 'cancel') {
           const reply = '👍 Ok, deixei pra lá. Quando quiser, é só pedir de novo.';
-          await this.evolution
-            .sendTextMessage(instanceName, senderNumber, reply)
-            .catch(() => {});
+          await transport.sendText(senderNumber, reply).catch(() => {});
           await this.prisma.whatsAppMessage.create({
             data: {
               companyId,
@@ -848,8 +931,8 @@ export class WhatsAppService {
       if (pending) {
         if (this.isConfirmYes(rawInputText)) {
           const result = await this.applyPendingDelete(companyId, pending);
-          await this.evolution
-            .sendTextMessage(instanceName, senderNumber, result.responseText)
+          await transport
+            .sendText(senderNumber, result.responseText)
             .catch(() => {});
           await this.prisma.whatsAppMessage.create({
             data: {
@@ -866,9 +949,7 @@ export class WhatsAppService {
         }
         if (this.isConfirmNo(rawInputText)) {
           const reply = '👍 Ok, cancelado. Nada foi excluído.';
-          await this.evolution
-            .sendTextMessage(instanceName, senderNumber, reply)
-            .catch(() => {});
+          await transport.sendText(senderNumber, reply).catch(() => {});
           await this.prisma.whatsAppMessage.create({
             data: {
               companyId,
@@ -909,9 +990,7 @@ export class WhatsAppService {
         (interpretation.reasoning
           ? `_O que encontrei no documento: ${interpretation.reasoning}_`
           : '');
-      await this.evolution
-        .sendTextMessage(instanceName, senderNumber, reply)
-        .catch(() => {});
+      await transport.sendText(senderNumber, reply).catch(() => {});
       await this.prisma.whatsAppMessage.create({
         data: {
           companyId,
@@ -945,22 +1024,14 @@ export class WhatsAppService {
 
     try {
       if (result.mediaAttachment) {
-        await this.evolution.sendDocumentMessage(
-          instanceName,
-          senderNumber,
-          {
-            base64: result.mediaAttachment.base64,
-            fileName: result.mediaAttachment.fileName,
-            mimetype: result.mediaAttachment.mimetype,
-            caption: result.responseText,
-          },
-        );
+        await transport.sendDocument(senderNumber, {
+          base64: result.mediaAttachment.base64,
+          fileName: result.mediaAttachment.fileName,
+          mimetype: result.mediaAttachment.mimetype,
+          caption: result.responseText,
+        });
       } else {
-        await this.evolution.sendTextMessage(
-          instanceName,
-          senderNumber,
-          result.responseText,
-        );
+        await transport.sendText(senderNumber, result.responseText);
       }
     } catch (error) {
       this.logger.error(
@@ -994,7 +1065,7 @@ export class WhatsAppService {
    * uma pendência (escolha de formato de relatório).
    */
   private async deliverResult(
-    instanceName: string,
+    transport: MessageTransport,
     senderNumber: string,
     companyId: string,
     userId: string,
@@ -1002,18 +1073,14 @@ export class WhatsAppService {
   ): Promise<void> {
     try {
       if (result.mediaAttachment) {
-        await this.evolution.sendDocumentMessage(instanceName, senderNumber, {
+        await transport.sendDocument(senderNumber, {
           base64: result.mediaAttachment.base64,
           fileName: result.mediaAttachment.fileName,
           mimetype: result.mediaAttachment.mimetype,
           caption: result.responseText,
         });
       } else {
-        await this.evolution.sendTextMessage(
-          instanceName,
-          senderNumber,
-          result.responseText,
-        );
+        await transport.sendText(senderNumber, result.responseText);
       }
     } catch (error) {
       this.logger.error(

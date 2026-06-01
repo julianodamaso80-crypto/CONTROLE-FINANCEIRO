@@ -98,6 +98,14 @@ enum WhatsAppInstanceStatus {
   FAILED
 }
 
+// Por qual sistema a empresa conversa no WhatsApp.
+// CLOUD = número oficial Meta (Cloud API) — padrão pra cadastros novos.
+// EVOLUTION = bot Baileys/Evolution — clientes antigos (backfill).
+enum WhatsAppTransport {
+  EVOLUTION
+  CLOUD
+}
+
 enum SubscriptionPlan {
   MONTHLY
   ANNUAL
@@ -145,6 +153,7 @@ model Company {
   plan           CompanyPlan @default(FREE)
   planExpiresAt  DateTime?   @map("plan_expires_at")
   whatsappNumber String?     @unique @map("whatsapp_number")
+  whatsappTransport WhatsAppTransport @default(CLOUD) @map("whatsapp_transport")
   googleSheetId  String?     @map("google_sheet_id")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")

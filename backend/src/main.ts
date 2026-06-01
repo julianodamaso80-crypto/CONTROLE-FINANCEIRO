@@ -5,7 +5,9 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: true expõe req.rawBody (Buffer) pra validar a assinatura HMAC
+  // do webhook do WhatsApp Cloud sem perder o parse JSON normal.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.setGlobalPrefix('api');
 
