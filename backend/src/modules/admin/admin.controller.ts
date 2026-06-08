@@ -50,6 +50,15 @@ export class AdminController {
       phone: string;
       password: string;
       accessType: 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME';
+      role?: 'USER' | 'ADMIN' | 'INFLUENCER';
+      referredByInfluencerId?: string;
+      influencer?: {
+        refCode?: string;
+        saleCommissionPct?: number;
+        recurringCommissionPct?: number;
+        pixKey?: string;
+        notes?: string;
+      };
     },
     @Req() req: Request,
   ) {

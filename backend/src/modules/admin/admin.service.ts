@@ -10,9 +10,12 @@ import { Request } from 'express';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { normalizePhone } from '../../common/utils/phone.util';
 import { seedDefaultCategories } from '../categories/categories-seed';
+import { CommissionService } from '../influencers/commission.service';
+import { InfluencersService } from '../influencers/influencers.service';
 import { AdminAuditService, AdminActionType } from './admin-audit.service';
 
 type AccessType = 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME';
+type AccountRole = 'USER' | 'ADMIN' | 'INFLUENCER';
 
 @Injectable()
 export class AdminService {
@@ -21,6 +24,8 @@ export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AdminAuditService,
+    private readonly influencers: InfluencersService,
+    private readonly commissions: CommissionService,
   ) {}
 
   // Taxa USD → BRL (atualizar periodicamente)
@@ -45,12 +50,12 @@ export class AdminService {
       activeClients,
     ] = await Promise.all([
       // Clientes = users que NÃO são SUPER_ADMIN
-      this.prisma.user.count({ where: { role: { not: 'ADMIN' } } }),
+      this.prisma.user.count({ where: { role: { notIn: ['ADMIN', 'INFLUENCER'] } } }),
       this.prisma.user.count({
-        where: { role: { not: 'ADMIN' }, createdAt: { gte: startOfMonth } },
+        where: { role: { notIn: ['ADMIN', 'INFLUENCER'] }, createdAt: { gte: startOfMonth } },
       }),
       this.prisma.user.count({
-        where: { role: { not: 'ADMIN' }, createdAt: { gte: startOfWeek } },
+        where: { role: { notIn: ['ADMIN', 'INFLUENCER'] }, createdAt: { gte: startOfWeek } },
       }),
       this.prisma.whatsAppMessage.count(),
       this.prisma.whatsAppMessage.count({
@@ -58,7 +63,7 @@ export class AdminService {
       }),
       // Últimos 10 clientes cadastrados (excluindo sistema e admin)
       this.prisma.user.findMany({
-        where: { role: { not: 'ADMIN' } },
+        where: { role: { notIn: ['ADMIN', 'INFLUENCER'] } },
         orderBy: { createdAt: 'desc' },
         take: 10,
         select: {
@@ -195,6 +200,7 @@ export class AdminService {
 
   async listUsers() {
     const users = await this.prisma.user.findMany({
+      where: { role: { not: 'INFLUENCER' } },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -313,6 +319,19 @@ export class AdminService {
       phone: string;
       password: string;
       accessType: AccessType;
+      // Tipo de conta. Default USER (cliente). ADMIN = admin da plataforma.
+      // INFLUENCER = afiliado com área e comissões.
+      role?: AccountRole;
+      // Influencer indicador (id) — só pra contas USER, atribuição manual.
+      referredByInfluencerId?: string;
+      // Dados do influencer — só quando role = INFLUENCER.
+      influencer?: {
+        refCode?: string;
+        saleCommissionPct?: number;
+        recurringCommissionPct?: number;
+        pixKey?: string;
+        notes?: string;
+      };
     },
     req: Request,
   ) {
@@ -337,9 +356,23 @@ export class AdminService {
       throw new BadRequestException('Senha deve ter no mínimo 6 caracteres');
     }
 
-    const validAccess: AccessType[] = ['TRIAL', 'MONTHLY', 'ANNUAL', 'LIFETIME'];
-    if (!validAccess.includes(input.accessType)) {
-      throw new BadRequestException('Tipo de acesso inválido');
+    const role: AccountRole = input.role ?? 'USER';
+    const validRoles: AccountRole[] = ['USER', 'ADMIN', 'INFLUENCER'];
+    if (!validRoles.includes(role)) {
+      throw new BadRequestException('Tipo de conta inválido');
+    }
+
+    // accessType só importa pra cliente (USER).
+    if (role === 'USER') {
+      const validAccess: AccessType[] = [
+        'TRIAL',
+        'MONTHLY',
+        'ANNUAL',
+        'LIFETIME',
+      ];
+      if (!validAccess.includes(input.accessType)) {
+        throw new BadRequestException('Tipo de acesso inválido');
+      }
     }
 
     const existingEmail = await this.prisma.user.findFirst({
@@ -372,43 +405,82 @@ export class AdminService {
           email,
           passwordHash,
           phone,
-          role: 'USER',
+          role,
           isActive: true,
         },
       });
 
+      // Perfil de influencer criado na mesma transação (refCode único).
+      if (role === 'INFLUENCER') {
+        await this.influencers.createProfile(
+          user.id,
+          { ...(input.influencer ?? {}), fallbackName: name },
+          tx,
+        );
+      }
+
+      // Atribuição manual de indicador (só pra cliente).
+      if (role === 'USER' && input.referredByInfluencerId) {
+        await this.influencers.attachReferral(
+          company.id,
+          input.referredByInfluencerId,
+          tx,
+        );
+      }
+
       return { company, user };
     });
 
-    seedDefaultCategories(this.prisma as never, result.company.id).catch((err) =>
-      this.logger.warn(
-        `Falha ao criar categorias padrão: ${err instanceof Error ? err.message : 'erro'}`,
-      ),
-    );
+    // Categorias padrão só pra cliente (USER).
+    if (role === 'USER') {
+      seedDefaultCategories(this.prisma as never, result.company.id).catch(
+        (err) =>
+          this.logger.warn(
+            `Falha ao criar categorias padrão: ${err instanceof Error ? err.message : 'erro'}`,
+          ),
+      );
+      await this.updateUserAccess(result.user.id, input.accessType, req);
+    }
 
-    await this.updateUserAccess(result.user.id, input.accessType, req);
+    const roleLabel =
+      role === 'ADMIN'
+        ? 'administrador'
+        : role === 'INFLUENCER'
+          ? 'influencer'
+          : 'cliente';
+    const accessSuffix =
+      role === 'USER'
+        ? ` com acesso ${this.accessTypeLabel(input.accessType)}`
+        : '';
 
     await this.audit.log({
       req,
-      action: 'CREATE_USER',
+      action:
+        role === 'INFLUENCER'
+          ? 'CREATE_INFLUENCER'
+          : role === 'ADMIN'
+            ? 'CREATE_ADMIN'
+            : 'CREATE_USER',
       targetType: 'user',
       targetId: result.user.id,
       targetLabel: `${result.user.name} (${result.user.email})`,
-      description: `Criou o cliente ${result.user.name} (${result.user.email}) com acesso ${this.accessTypeLabel(input.accessType)}`,
+      description: `Criou o ${roleLabel} ${result.user.name} (${result.user.email})${accessSuffix}`,
       metadata: {
-        accessType: input.accessType,
+        role,
+        accessType: role === 'USER' ? input.accessType : undefined,
         companyId: result.company.id,
         phone: result.user.phone,
       },
     });
 
     return {
-      message: 'Cliente criado com sucesso',
+      message: `${roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1)} criado com sucesso`,
       user: {
         id: result.user.id,
         name: result.user.name,
         email: result.user.email,
         phone: result.user.phone,
+        role,
         companyId: result.company.id,
       },
     };
@@ -530,6 +602,13 @@ export class AdminService {
         });
       }
       resultMessage = `Plano ${accessType === 'MONTHLY' ? 'mensal' : 'anual'} ativado`;
+    }
+
+    // Venda de plano pago → gera comissão se a empresa foi indicada por um
+    // influencer (primeira venda = SALE, renovações = RECURRING). Só mensal e
+    // anual comissionam — vitalício não tem preço fixo.
+    if (accessType === 'MONTHLY' || accessType === 'ANNUAL') {
+      await this.commissions.recordPlanSale(user.companyId, accessType);
     }
 
     if (req) {

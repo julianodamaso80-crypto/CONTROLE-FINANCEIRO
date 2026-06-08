@@ -54,4 +54,10 @@ export class RegisterDto {
   @IsOptional()
   @IsObject()
   tracking?: RegisterTrackingDto;
+
+  /** Código de indicação do influencer (?ref=...) — opcional */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  ref?: string;
 }

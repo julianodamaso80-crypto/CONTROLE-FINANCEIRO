@@ -16,6 +16,9 @@ import {
   MessageCircle,
   ArrowLeftRight,
   UserPlus,
+  User as UserIcon,
+  Shield,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -99,6 +102,41 @@ function statusBadge(user: AdminUser) {
 }
 
 type AccessType = 'TRIAL' | 'MONTHLY' | 'ANNUAL' | 'LIFETIME';
+type AccountRole = 'USER' | 'ADMIN' | 'INFLUENCER';
+
+interface InfluencerOption {
+  id: string;
+  name: string;
+  refCode: string;
+}
+
+interface CreateForm {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  accessType: AccessType;
+  role: AccountRole;
+  referredByInfluencerId: string;
+  refCode: string;
+  saleCommissionPct: string;
+  recurringCommissionPct: string;
+  pixKey: string;
+}
+
+const EMPTY_CREATE_FORM: CreateForm = {
+  name: '',
+  email: '',
+  phone: '',
+  password: '',
+  accessType: 'TRIAL',
+  role: 'USER',
+  referredByInfluencerId: '',
+  refCode: '',
+  saleCommissionPct: '30',
+  recurringCommissionPct: '10',
+  pixKey: '',
+};
 
 export default function AdminUsuariosPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -107,19 +145,10 @@ export default function AdminUsuariosPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' });
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<{
-    name: string;
-    email: string;
-    phone: string;
-    password: string;
-    accessType: AccessType;
-  }>({
-    name: '',
-    email: '',
-    phone: '',
-    password: '',
-    accessType: 'TRIAL',
-  });
+  const [influencerOptions, setInfluencerOptions] = useState<
+    InfluencerOption[]
+  >([]);
+  const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE_FORM);
 
   // Sincroniza form quando abre o modal
   useEffect(() => {
@@ -194,14 +223,18 @@ export default function AdminUsuariosPage() {
     }
   };
 
-  const resetCreateForm = () =>
-    setCreateForm({
-      name: '',
-      email: '',
-      phone: '',
-      password: '',
-      accessType: 'TRIAL',
-    });
+  const resetCreateForm = () => setCreateForm(EMPTY_CREATE_FORM);
+
+  const openCreate = async () => {
+    setCreateForm(EMPTY_CREATE_FORM);
+    setCreateOpen(true);
+    try {
+      const res = await api.get('/admin/influencers/simple');
+      setInfluencerOptions(res.data.data ?? res.data ?? []);
+    } catch {
+      // sem influencers ainda — dropdown fica vazio, sem erro
+    }
+  };
 
   const handleCreate = async () => {
     if (
@@ -217,18 +250,73 @@ export default function AdminUsuariosPage() {
       toast.error('Senha precisa ter no mínimo 6 caracteres');
       return;
     }
+
+    const role = createForm.role;
+    type CreatePayload = {
+      name: string;
+      email: string;
+      phone: string;
+      password: string;
+      accessType: AccessType;
+      role: AccountRole;
+      referredByInfluencerId?: string;
+      influencer?: {
+        refCode?: string;
+        saleCommissionPct: number;
+        recurringCommissionPct: number;
+        pixKey?: string;
+      };
+    };
+
+    const payload: CreatePayload = {
+      name: createForm.name.trim(),
+      email: createForm.email.trim(),
+      phone: createForm.phone.trim(),
+      password: createForm.password,
+      accessType: createForm.accessType,
+      role,
+    };
+
+    if (role === 'USER' && createForm.referredByInfluencerId) {
+      payload.referredByInfluencerId = createForm.referredByInfluencerId;
+    }
+
+    if (role === 'INFLUENCER') {
+      const sale = Number(createForm.saleCommissionPct);
+      const rec = Number(createForm.recurringCommissionPct);
+      if (
+        Number.isNaN(sale) ||
+        Number.isNaN(rec) ||
+        sale < 0 ||
+        sale > 100 ||
+        rec < 0 ||
+        rec > 100
+      ) {
+        toast.error('Comissões devem estar entre 0 e 100%');
+        return;
+      }
+      payload.influencer = {
+        refCode: createForm.refCode.trim() || undefined,
+        saleCommissionPct: sale,
+        recurringCommissionPct: rec,
+        pixKey: createForm.pixKey.trim() || undefined,
+      };
+    }
+
     setActionLoading(true);
     try {
-      await api.post('/admin/users', createForm);
-      toast.success('Cliente criado com sucesso');
+      const res = await api.post('/admin/users', payload);
+      toast.success(
+        res.data.data?.message ?? res.data.message ?? 'Conta criada com sucesso',
+      );
       resetCreateForm();
       setCreateOpen(false);
       await fetchUsers();
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? 'Erro ao criar cliente';
-      toast.error(typeof msg === 'string' ? msg : 'Erro ao criar cliente');
+          ?.message ?? 'Erro ao criar conta';
+      toast.error(typeof msg === 'string' ? msg : 'Erro ao criar conta');
     } finally {
       setActionLoading(false);
     }
@@ -293,9 +381,9 @@ export default function AdminUsuariosPage() {
             <RefreshCw className="mr-2 h-4 w-4" />
             Atualizar
           </Button>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Button size="sm" onClick={openCreate}>
             <UserPlus className="mr-2 h-4 w-4" />
-            Adicionar cliente
+            Adicionar conta
           </Button>
         </div>
       </div>
@@ -469,9 +557,9 @@ export default function AdminUsuariosPage() {
           <div className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-xl">
             <div className="mb-6 flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-bold">Adicionar cliente</h2>
+                <h2 className="text-lg font-bold">Adicionar conta</h2>
                 <p className="text-xs text-muted-foreground">
-                  Cria empresa + usuário com plano inicial escolhido.
+                  Cliente, administrador ou influencer.
                 </p>
               </div>
               <button
@@ -486,6 +574,40 @@ export default function AdminUsuariosPage() {
             </div>
 
             <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Tipo de conta
+                </label>
+                <div className="mt-1 grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { v: 'USER', label: 'Cliente', icon: UserIcon, cls: 'text-green-400' },
+                      { v: 'INFLUENCER', label: 'Influencer', icon: Sparkles, cls: 'text-pink-400' },
+                      { v: 'ADMIN', label: 'Admin', icon: Shield, cls: 'text-amber-400' },
+                    ] as const
+                  ).map((opt) => {
+                    const Icon = opt.icon;
+                    const selected = createForm.role === opt.v;
+                    return (
+                      <button
+                        key={opt.v}
+                        type="button"
+                        onClick={() =>
+                          setCreateForm((f) => ({ ...f, role: opt.v }))
+                        }
+                        className={`flex flex-col items-center gap-1 rounded-md border px-2 py-2.5 text-xs transition-colors ${
+                          selected
+                            ? 'border-primary bg-primary/10 text-foreground'
+                            : 'hover:bg-accent'
+                        }`}
+                      >
+                        <Icon className={`h-4 w-4 ${opt.cls}`} />
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
                   Nome
@@ -545,41 +667,146 @@ export default function AdminUsuariosPage() {
                   className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">
-                  Plano inicial
-                </label>
-                <div className="mt-1 grid grid-cols-2 gap-2">
-                  {(
-                    [
-                      { v: 'TRIAL', label: 'Trial (3 dias)', icon: Clock, cls: 'text-emerald-400' },
-                      { v: 'MONTHLY', label: 'Mensal', icon: CreditCard, cls: 'text-green-400' },
-                      { v: 'ANNUAL', label: 'Anual', icon: CalendarCheck, cls: 'text-blue-400' },
-                      { v: 'LIFETIME', label: 'Vitalício', icon: Infinity, cls: 'text-purple-400' },
-                    ] as const
-                  ).map((opt) => {
-                    const Icon = opt.icon;
-                    const selected = createForm.accessType === opt.v;
-                    return (
-                      <button
-                        key={opt.v}
-                        type="button"
-                        onClick={() =>
-                          setCreateForm((f) => ({ ...f, accessType: opt.v }))
+              {/* ----- CLIENTE: plano inicial + indicado por ----- */}
+              {createForm.role === 'USER' && (
+                <>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Plano inicial
+                    </label>
+                    <div className="mt-1 grid grid-cols-2 gap-2">
+                      {(
+                        [
+                          { v: 'TRIAL', label: 'Trial (3 dias)', icon: Clock, cls: 'text-emerald-400' },
+                          { v: 'MONTHLY', label: 'Mensal', icon: CreditCard, cls: 'text-green-400' },
+                          { v: 'ANNUAL', label: 'Anual', icon: CalendarCheck, cls: 'text-blue-400' },
+                          { v: 'LIFETIME', label: 'Vitalício', icon: Infinity, cls: 'text-purple-400' },
+                        ] as const
+                      ).map((opt) => {
+                        const Icon = opt.icon;
+                        const selected = createForm.accessType === opt.v;
+                        return (
+                          <button
+                            key={opt.v}
+                            type="button"
+                            onClick={() =>
+                              setCreateForm((f) => ({ ...f, accessType: opt.v }))
+                            }
+                            className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                              selected
+                                ? 'border-primary bg-primary/10 text-foreground'
+                                : 'hover:bg-accent'
+                            }`}
+                          >
+                            <Icon className={`h-4 w-4 ${opt.cls}`} />
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Indicado por (influencer)
+                    </label>
+                    <select
+                      value={createForm.referredByInfluencerId}
+                      onChange={(e) =>
+                        setCreateForm((f) => ({
+                          ...f,
+                          referredByInfluencerId: e.target.value,
+                        }))
+                      }
+                      className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">Ninguém / venda direta</option>
+                      {influencerOptions.map((inf) => (
+                        <option key={inf.id} value={inf.id}>
+                          {inf.name} ({inf.refCode})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Se vier por link de influencer, a comissão é atribuída a ele.
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* ----- INFLUENCER: código + comissões + PIX ----- */}
+              {createForm.role === 'INFLUENCER' && (
+                <>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Código de indicação (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={createForm.refCode}
+                      onChange={(e) =>
+                        setCreateForm((f) => ({ ...f, refCode: e.target.value }))
+                      }
+                      placeholder="ex: joao (gera do nome se vazio)"
+                      className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Vira o link: /register?ref=&lt;código&gt;
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Comissão venda (%)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={createForm.saleCommissionPct}
+                        onChange={(e) =>
+                          setCreateForm((f) => ({
+                            ...f,
+                            saleCommissionPct: e.target.value,
+                          }))
                         }
-                        className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
-                          selected
-                            ? 'border-primary bg-primary/10 text-foreground'
-                            : 'hover:bg-accent'
-                        }`}
-                      >
-                        <Icon className={`h-4 w-4 ${opt.cls}`} />
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                        className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Comissão recorrência (%)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={createForm.recurringCommissionPct}
+                        onChange={(e) =>
+                          setCreateForm((f) => ({
+                            ...f,
+                            recurringCommissionPct: e.target.value,
+                          }))
+                        }
+                        className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Chave PIX (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={createForm.pixKey}
+                      onChange={(e) =>
+                        setCreateForm((f) => ({ ...f, pixKey: e.target.value }))
+                      }
+                      placeholder="Pra repasse da comissão"
+                      className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mt-6 flex items-center justify-end gap-2">
@@ -597,7 +824,7 @@ export default function AdminUsuariosPage() {
                 {actionLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  'Criar cliente'
+                  'Criar conta'
                 )}
               </Button>
             </div>

@@ -8,6 +8,7 @@ import {
   MessageCircle,
   History,
   LogOut,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
@@ -19,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/usuarios', label: 'Usuários', icon: Users },
+  { href: '/admin/influencers', label: 'Influencers', icon: Sparkles },
   { href: '/admin/whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { href: '/admin/historico', label: 'Histórico', icon: History },
 ];

@@ -9,14 +9,20 @@ import { SubscriptionBanner } from '@/components/shared/subscription-banner';
 import { SubscribeTracker } from '@/components/tracking/SubscribeTracker';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (isLoading) return;
+    if (!isAuthenticated) {
       router.replace('/login');
+      return;
     }
-  }, [isAuthenticated, isLoading, router]);
+    // Influencer não usa o app financeiro — manda pro painel dele
+    if (user?.role === 'INFLUENCER') {
+      router.replace('/influencer');
+    }
+  }, [user, isAuthenticated, isLoading, router]);
 
   if (isLoading) {
     return (

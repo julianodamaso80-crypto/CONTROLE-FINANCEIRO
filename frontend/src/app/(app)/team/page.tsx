@@ -87,6 +87,7 @@ function UserCard({ user }: { user: User }) {
     ADMIN: 'bg-purple-500/20 text-purple-400',
     FINANCE: 'bg-blue-500/20 text-blue-400',
     USER: 'bg-gray-500/20 text-gray-400',
+    INFLUENCER: 'bg-pink-500/20 text-pink-400',
   };
 
   return (

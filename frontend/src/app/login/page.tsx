@@ -41,7 +41,13 @@ export default function LoginPage() {
     setLoginError(null);
     try {
       const user = await login(data.email, data.password);
-      router.push(user.role === 'ADMIN' ? '/admin' : '/dashboard');
+      const dest =
+        user.role === 'ADMIN'
+          ? '/admin'
+          : user.role === 'INFLUENCER'
+            ? '/influencer'
+            : '/dashboard';
+      router.push(dest);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Erro ao fazer login';

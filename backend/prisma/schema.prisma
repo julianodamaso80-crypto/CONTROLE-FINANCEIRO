@@ -21,6 +21,22 @@ enum UserRole {
   ADMIN
   USER
   FINANCE
+  INFLUENCER
+}
+
+// Tipo de comissão gerada por uma venda atribuída a um influencer.
+// SALE = primeira venda (cliente vira pagante). RECURRING = renovações.
+enum CommissionType {
+  SALE
+  RECURRING
+}
+
+// Estado do pagamento da comissão pro influencer.
+// PENDING = devida. PAID = já repassada (PIX manual). CANCELED = estornada.
+enum CommissionStatus {
+  PENDING
+  PAID
+  CANCELED
 }
 
 enum CategoryType {
@@ -176,6 +192,8 @@ model Company {
   utmAttribution      UtmAttribution?
   conversionEventLogs ConversionEventLog[]
   leadStatusHistory   LeadStatusHistory[]
+  referral            Referral?
+  commissions         Commission[]
 
   @@map("companies")
 }
@@ -195,6 +213,7 @@ model User {
   company           Company             @relation(fields: [companyId], references: [id])
   transactions      Transaction[]
   passwordResetCodes PasswordResetCode[]
+  influencer        Influencer?
 
   @@unique([companyId, email])
   @@index([companyId])
@@ -740,4 +759,72 @@ model LeadStatusHistory {
 
   @@index([companyId, changedAt(sort: Desc)])
   @@map("lead_status_history")
+}
+
+// =========================================================
+// INFLUENCERS / AFILIADOS — programa de comissão por indicação
+// =========================================================
+
+/// Perfil do influencer (1:1 com o User que loga na área /influencer).
+/// O refCode é o que vai no link de divulgação (meucaixa.ia.br/cadastro?ref=<refCode>).
+/// As comissões são percentuais configurados pelo admin por influencer.
+model Influencer {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                 String   @unique @map("user_id") @db.Uuid
+  refCode                String   @unique @map("ref_code")
+  saleCommissionPct      Decimal  @default(30) @map("sale_commission_pct") @db.Decimal(5, 2)
+  recurringCommissionPct Decimal  @default(10) @map("recurring_commission_pct") @db.Decimal(5, 2)
+  pixKey                 String?  @map("pix_key")
+  notes                  String?
+  isActive               Boolean  @default(true) @map("is_active")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referrals   Referral[]
+  commissions Commission[]
+
+  @@index([refCode])
+  @@map("influencers")
+}
+
+/// Vínculo de uma empresa (cliente) ao influencer que a indicou.
+/// 1 empresa = no máximo 1 influencer (companyId único). Carimbado no signup
+/// pelo ?ref ou manualmente pelo admin ao criar/editar o cliente.
+model Referral {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  influencerId String   @map("influencer_id") @db.Uuid
+  companyId    String   @unique @map("company_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  influencer Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([influencerId])
+  @@map("referrals")
+}
+
+/// Cada comissão gerada por uma venda (SALE) ou renovação (RECURRING) de uma
+/// empresa indicada. amount = baseAmount * percentage/100, congelado no momento
+/// da geração pra não mudar se o admin alterar os % depois.
+model Commission {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  influencerId String           @map("influencer_id") @db.Uuid
+  companyId    String           @map("company_id") @db.Uuid
+  type         CommissionType
+  baseAmount   Decimal          @map("base_amount") @db.Decimal(15, 2)
+  percentage   Decimal          @db.Decimal(5, 2)
+  amount       Decimal          @db.Decimal(15, 2)
+  status       CommissionStatus @default(PENDING)
+  description  String?
+  paidAt       DateTime?        @map("paid_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  influencer Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([influencerId, status])
+  @@index([companyId])
+  @@index([createdAt])
+  @@map("commissions")
 }

@@ -49,7 +49,12 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     setIsSubmitting(true);
     try {
-      await authRegister(data);
+      // Captura o código de indicação do influencer da URL (?ref=...)
+      const ref =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search).get('ref') || undefined
+          : undefined;
+      await authRegister({ ...data, ref });
       toast.success('Conta criada com sucesso!');
       router.push('/dashboard');
     } catch (error) {

@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { normalizePhone } from '../../common/utils/phone.util';
 import { seedDefaultCategories } from '../categories/categories-seed';
+import { InfluencersService } from '../influencers/influencers.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { TrackingService } from '../tracking/tracking.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -28,6 +29,7 @@ export class AuthService {
     private readonly whatsapp: WhatsAppService,
     private readonly subscriptions: SubscriptionsService,
     private readonly tracking: TrackingService,
+    private readonly influencers: InfluencersService,
   ) {}
 
   async register(
@@ -91,6 +93,17 @@ export class AuthService {
 
       return { company, user };
     });
+
+    // Atribuição de indicação (link ?ref do influencer) — silenciosa se inválida
+    if (dto.ref) {
+      await this.influencers
+        .attachReferralByCode(result.company.id, dto.ref)
+        .catch((err) =>
+          this.logger.warn(
+            `Falha ao vincular indicação (ref=${dto.ref}): ${err instanceof Error ? err.message : 'erro'}`,
+          ),
+        );
+    }
 
     // Seed de categorias padrão pra empresa nova
     seedDefaultCategories(this.prisma as never, result.company.id).catch(

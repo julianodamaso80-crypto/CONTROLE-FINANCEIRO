@@ -4,6 +4,8 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 
 export type AdminActionType =
   | 'CREATE_USER'
+  | 'CREATE_ADMIN'
+  | 'CREATE_INFLUENCER'
   | 'UPDATE_USER_DATA'
   | 'GRANT_TRIAL'
   | 'GRANT_MONTHLY'

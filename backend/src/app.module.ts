@@ -30,6 +30,7 @@ import { GoalsModule } from './modules/goals/goals.module';
 import { ImportsModule } from './modules/imports/imports.module';
 import { ExportsModule } from './modules/exports/exports.module';
 import { TrackingModule } from './modules/tracking/tracking.module';
+import { InfluencersModule } from './modules/influencers/influencers.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { TrackingModule } from './modules/tracking/tracking.module';
     DashboardModule,
     WhatsAppModule,
     AdminModule,
+    InfluencersModule,
     SubscriptionsModule,
     WebhooksModule,
     TrackingModule,

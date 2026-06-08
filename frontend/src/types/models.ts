@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'USER' | 'FINANCE';
+export type UserRole = 'ADMIN' | 'USER' | 'FINANCE' | 'INFLUENCER';
 export type CategoryType = 'INCOME' | 'EXPENSE' | 'BOTH';
 export type BankAccountType =
   | 'CHECKING'

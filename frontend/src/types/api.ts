@@ -26,6 +26,8 @@ export interface RegisterData {
   email: string;
   password: string;
   phone: string;
+  /** Código de indicação do influencer (?ref=...) — opcional */
+  ref?: string;
 }
 
 export interface WhatsAppStatus {
