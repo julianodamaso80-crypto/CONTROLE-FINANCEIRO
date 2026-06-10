@@ -12,6 +12,7 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AppConfigService } from '../../common/config/app.config';
 import { AsaasService } from '../asaas/asaas.service';
+import { WhatsAppCloudService } from '../whatsapp-cloud/whatsapp-cloud.service';
 
 const TRIAL_DAYS = 3;
 const PLAN_VALUES: Record<SubscriptionPlan, number> = {
@@ -31,6 +32,7 @@ export class SubscriptionsService {
     private readonly prisma: PrismaService,
     private readonly asaas: AsaasService,
     private readonly appConfig: AppConfigService,
+    private readonly cloud: WhatsAppCloudService,
   ) {}
 
   /**
@@ -549,6 +551,59 @@ export class SubscriptionsService {
       data: { status: 'PAST_DUE' },
     });
     this.logger.log(`Sub ${sub.id} → PAST_DUE`);
+
+    // Avisa o cliente no WhatsApp que a mensalidade venceu, já com o link
+    // direto da fatura em atraso pra ele pagar e reativar a compra.
+    await this.notifyOverdue(sub);
+  }
+
+  /**
+   * Avisa o dono da empresa, pelo WhatsApp Cloud oficial, que a mensalidade
+   * venceu e o acesso foi pausado — já mandando o link de pagamento da fatura
+   * em atraso (boleto/Pix/cartão) pra ele reativar na hora.
+   * Best-effort: nunca lança — uma falha aqui não pode derrubar o webhook.
+   */
+  private async notifyOverdue(sub: Subscription): Promise<void> {
+    try {
+      if (!this.appConfig.isWhatsAppCloudConfigured()) return;
+
+      const owner = await this.prisma.user.findFirst({
+        where: { companyId: sub.companyId, isActive: true },
+        orderBy: [{ role: 'desc' }, { createdAt: 'asc' }],
+        select: { name: true, phone: true },
+      });
+      if (!owner?.phone) return;
+
+      // Link real da fatura pendente/em atraso no Asaas; cai no /plano se faltar.
+      let payUrl: string | null = null;
+      if (sub.asaasSubscriptionId) {
+        payUrl = await this.asaas.getNextPaymentUrl(sub.asaasSubscriptionId);
+        if (payUrl && payUrl !== sub.asaasPaymentUrl) {
+          await this.prisma.subscription
+            .update({ where: { id: sub.id }, data: { asaasPaymentUrl: payUrl } })
+            .catch(() => {});
+        }
+      }
+      const link = payUrl ?? 'https://meucaixa.ia.br/plano';
+
+      const firstName = owner.name.split(' ')[0] ?? owner.name;
+      await this.cloud.sendTemplate(owner.phone, 'mensalidade_vencida', 'pt_BR', [
+        {
+          type: 'body',
+          parameters: [
+            { type: 'text', text: firstName },
+            { type: 'text', text: link },
+          ],
+        },
+      ]);
+      this.logger.log(
+        `Aviso de mensalidade vencida enviado: company=${sub.companyId}`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `notifyOverdue falhou company=${sub.companyId}: ${err instanceof Error ? err.message : 'erro'}`,
+      );
+    }
   }
 
   async handlePaymentRefunded(subscriptionId?: string) {

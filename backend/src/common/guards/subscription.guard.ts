@@ -43,7 +43,7 @@ export class SubscriptionGuard implements CanActivate {
     const allowed = await this.subscriptions.isAccessAllowed(user.companyId);
     if (!allowed) {
       throw new ForbiddenException(
-        'Sua assinatura expirou ou não está ativa. Renove em https://meucaixa.store/plano',
+        'Sua assinatura expirou ou não está ativa. Renove em https://meucaixa.ia.br/plano',
       );
     }
 
