@@ -11,8 +11,8 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  // CORS: aceita localhost em dev, qualquer subdomínio de meucaixa.store e vercel.app em prod,
-  // além de origens extras via env var CORS_ORIGINS
+  // CORS: aceita localhost em dev, qualquer subdomínio de meucaixa.store /
+  // meucaixa.ia.br e vercel.app em prod, além de origens extras via CORS_ORIGINS
   const extraOrigins = process.env['CORS_ORIGINS']
     ?.split(',')
     .map((s) => s.trim())
@@ -25,9 +25,12 @@ async function bootstrap() {
         /^http:\/\/localhost(:\d+)?$/.test(origin) ||
         /\.meucaixa\.store$/.test(origin) ||
         origin === 'https://meucaixa.store' ||
+        /\.meucaixa\.ia\.br$/.test(origin) ||
+        origin === 'https://meucaixa.ia.br' ||
         /\.vercel\.app$/.test(origin) ||
         extraOrigins.includes(origin);
-      callback(allowed ? null : new Error('Not allowed by CORS'), allowed);
+      // Origem não permitida → nega limpo (sem lançar, pra não virar 500)
+      callback(null, allowed);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
