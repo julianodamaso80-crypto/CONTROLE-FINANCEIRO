@@ -432,65 +432,99 @@ export class SubscriptionsService {
       });
     }
 
-    // Se ainda não tem customer/sub no Asaas, cria agora
-    if (!sub.asaasSubscriptionId || !sub.asaasCustomerId) {
-      const user = company.users[0];
-      if (!user) throw new NotFoundException('Usuário ativo não encontrado');
+    const user = company.users[0];
+    if (!user) throw new NotFoundException('Usuário ativo não encontrado');
 
-      // Reusa customer se já existe; senão cria novo já com cpfCnpj
-      let customerId = sub.asaasCustomerId;
-      if (!customerId) {
-        const customer = await this.asaas.createCustomer({
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          cpfCnpj,
-          externalReference: companyId,
-        });
-        customerId = customer.id;
-      } else {
-        // Customer existe mas sub não — atualiza cpfCnpj caso falte
-        await this.asaas.updateCustomer(customerId, { cpfCnpj });
-      }
+    // Capturados aqui pra não perder o narrowing dentro da closure (sub é let).
+    const subId = sub.id;
+    const trialEndsAt = sub.trialEndsAt;
 
-      const nextDueDate = (sub.trialEndsAt > new Date()
-        ? sub.trialEndsAt
+    // Cria customer + subscription do ZERO na conta Asaas atual. Usado tanto
+    // no primeiro pagamento quanto pra se recuperar de vínculos inutilizáveis
+    // (ex: assinatura criada numa conta Asaas antiga que foi trocada).
+    const createFresh = async (): Promise<Subscription> => {
+      const customer = await this.asaas.createCustomer({
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        cpfCnpj,
+        externalReference: companyId,
+      });
+      const nextDueDate = (trialEndsAt && trialEndsAt > new Date()
+        ? trialEndsAt
         : new Date()
       )
         .toISOString()
         .slice(0, 10);
-
       const asaasSub = await this.asaas.createSubscription({
-        customerId,
+        customerId: customer.id,
         value: PLAN_VALUES[plan],
         cycle: PLAN_CYCLE[plan],
         nextDueDate,
         billingType: 'UNDEFINED',
         externalReference: companyId,
       });
-
-      sub = await this.prisma.subscription.update({
-        where: { id: sub.id },
+      return this.prisma.subscription.update({
+        where: { id: subId },
         data: {
           plan,
-          asaasCustomerId: customerId,
+          asaasCustomerId: customer.id,
           asaasSubscriptionId: asaasSub.id,
+          asaasPaymentUrl: null,
           lastError: null,
         },
       });
-    } else if (sub.plan !== plan) {
-      // Troca de plano no Asaas
-      await this.asaas.updateSubscription(sub.asaasSubscriptionId, {
-        value: PLAN_VALUES[plan],
-        cycle: PLAN_CYCLE[plan],
-      });
-      sub = await this.prisma.subscription.update({
-        where: { id: sub.id },
-        data: { plan },
-      });
+    };
+
+    let justCreated = false;
+
+    if (!sub.asaasSubscriptionId || !sub.asaasCustomerId) {
+      // Sem vínculo utilizável → cria do zero.
+      sub = await createFresh();
+      justCreated = true;
+    } else {
+      // Tem vínculo. Tenta trocar de plano (se preciso) e reaproveitar. Se o
+      // Asaas recusar — assinatura órfã de conta trocada (404) ou travada
+      // ("invalid_action: não pode ser atualizada") — descarta e recria.
+      try {
+        if (sub.plan !== plan) {
+          await this.asaas.updateSubscription(sub.asaasSubscriptionId, {
+            value: PLAN_VALUES[plan],
+            cycle: PLAN_CYCLE[plan],
+          });
+          sub = await this.prisma.subscription.update({
+            where: { id: sub.id },
+            data: { plan },
+          });
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Não deu pra reaproveitar a assinatura Asaas ${sub.asaasSubscriptionId} ` +
+            `(${err instanceof Error ? err.message : 'erro'}). Recriando na conta atual.`,
+        );
+        await this.asaas
+          .deleteSubscription(sub.asaasSubscriptionId!)
+          .catch(() => undefined);
+        sub = await createFresh();
+        justCreated = true;
+      }
     }
 
-    const url = await this.asaas.getNextPaymentUrl(sub.asaasSubscriptionId!);
+    let url = await this.asaas.getNextPaymentUrl(sub.asaasSubscriptionId!);
+
+    // Reaproveitou uma assinatura mas ela não tem fatura pra pagar → quase
+    // sempre é órfã (conta Asaas trocada). Recria do zero uma única vez.
+    if (!url && !justCreated) {
+      this.logger.warn(
+        `Assinatura ${sub.asaasSubscriptionId} sem fatura disponível — recriando na conta atual.`,
+      );
+      await this.asaas
+        .deleteSubscription(sub.asaasSubscriptionId!)
+        .catch(() => undefined);
+      sub = await createFresh();
+      url = await this.asaas.getNextPaymentUrl(sub.asaasSubscriptionId!);
+    }
+
     if (url && url !== sub.asaasPaymentUrl) {
       await this.prisma.subscription.update({
         where: { id: sub.id },
