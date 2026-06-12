@@ -12,7 +12,8 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // CORS: aceita localhost em dev, qualquer subdomínio de meucaixa.store /
-  // meucaixa.ia.br e vercel.app em prod, além de origens extras via CORS_ORIGINS
+  // meucaixa.ia.br / controlei.ia.br e vercel.app em prod, além de origens
+  // extras via CORS_ORIGINS. (Controlei é rebrand do Meu Caixa, mesmo backend.)
   const extraOrigins = process.env['CORS_ORIGINS']
     ?.split(',')
     .map((s) => s.trim())
@@ -27,6 +28,8 @@ async function bootstrap() {
         origin === 'https://meucaixa.store' ||
         /\.meucaixa\.ia\.br$/.test(origin) ||
         origin === 'https://meucaixa.ia.br' ||
+        /\.controlei\.ia\.br$/.test(origin) ||
+        origin === 'https://controlei.ia.br' ||
         /\.vercel\.app$/.test(origin) ||
         extraOrigins.includes(origin);
       // Origem não permitida → nega limpo (sem lançar, pra não virar 500)

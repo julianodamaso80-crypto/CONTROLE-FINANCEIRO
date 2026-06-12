@@ -1,0 +1,30 @@
+# Controlei — llms.txt
+
+> Controlei é um SaaS brasileiro de controle financeiro pessoal que permite registrar despesas e receitas por mensagem no WhatsApp (texto, áudio, foto de nota fiscal ou PDF de boleto). A IA categoriza automaticamente cada lançamento e gera relatórios mensais em PDF.
+
+## Conteúdo principal
+
+- [Página inicial](https://controlei.ia.br/): visão geral do produto e benefícios
+- [Como funciona](https://controlei.ia.br/#how): fluxo de uso e capacidades da IA
+- [Planos](https://controlei.ia.br/#planos): preços e o que cada plano inclui
+- [Blog](https://controlei.ia.br/blog): guias práticos sobre finanças pessoais
+
+## Blog (categorias)
+
+- [Controle de gastos](https://controlei.ia.br/blog/categoria/controle-de-gastos): organizar despesas pessoais
+- [Orçamento familiar](https://controlei.ia.br/blog/categoria/orcamento-familiar): planejamento mensal e dívidas
+- [WhatsApp financeiro](https://controlei.ia.br/blog/categoria/whatsapp-financeiro): automação e IA para finanças
+- [Educação financeira](https://controlei.ia.br/blog/categoria/educacao-financeira): score, IR, cadastro positivo
+
+## Diferenciais factuais
+
+- Suporte a 4 formatos de entrada por WhatsApp: texto livre, áudio, foto de cupom/nota fiscal, PDF de boleto
+- IA classificadora 2.0 — categoriza automaticamente em categorias customizáveis
+- Relatório mensal em PDF gerado automaticamente
+- Dashboard web em [app.controlei.ia.br](https://app.controlei.ia.br)
+- Empresa brasileira; pagamento via Asaas; integração WhatsApp via Meta Cloud API
+
+## Políticas
+
+- [Política de Privacidade](https://controlei.ia.br/privacidade)
+- [Termos de Serviço](https://controlei.ia.br/termosdeservico)

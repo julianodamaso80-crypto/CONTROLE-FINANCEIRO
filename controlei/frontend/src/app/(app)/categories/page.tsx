@@ -1,0 +1,311 @@
+'use client';
+
+import { useState } from 'react';
+import {
+  ChevronDown,
+  ChevronRight,
+  FolderTree,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
+import {
+  useCategories,
+  useDeleteCategory,
+  useSeedCategories,
+} from '@/hooks/use-categories';
+import type { Category } from '@/types/models';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { CategoryFormDialog } from '@/components/categories/category-form-dialog';
+import { PageHeader } from '@/components/shared/page-header';
+
+const typeLabels: Record<string, string> = {
+  INCOME: 'Receita',
+  EXPENSE: 'Despesa',
+  BOTH: 'Ambos',
+};
+
+const typeVariants: Record<string, 'success' | 'destructive' | 'secondary'> = {
+  INCOME: 'success',
+  EXPENSE: 'destructive',
+  BOTH: 'secondary',
+};
+
+function CategoryRow({
+  cat,
+  depth,
+  onEdit,
+  onDelete,
+  onAddChild,
+}: {
+  cat: Category;
+  depth: number;
+  onEdit: (c: Category) => void;
+  onDelete: (id: string) => void;
+  onAddChild?: (parentId: string) => void;
+}) {
+  const indent = depth > 0 ? `ml-${Math.min(depth * 6, 18)}` : '';
+  return (
+    <div
+      className={`flex items-center justify-between rounded-md border px-4 py-3 ${
+        depth > 0 ? `${indent} border-dashed` : ''
+      }`}
+      style={depth > 0 ? { marginLeft: `${depth * 1.5}rem` } : undefined}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-xs font-bold text-black"
+          style={{ backgroundColor: cat.color }}
+        >
+          {cat.name.charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{cat.name}</p>
+        </div>
+        <Badge
+          variant={typeVariants[cat.type] ?? 'secondary'}
+          className="shrink-0"
+        >
+          {typeLabels[cat.type] ?? cat.type}
+        </Badge>
+      </div>
+
+      <div className="flex items-center gap-1">
+        {/* Permite adicionar sub em nível 0 e 1 (max 3 níveis total) */}
+        {depth < 2 && onAddChild && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title="Adicionar subcategoria"
+            onClick={() => onAddChild(cat.id)}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit(cat)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() => onDelete(cat.id)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+}
+
+/** Renderiza uma categoria com seus filhos recursivamente (até 3 níveis). */
+function CategoryTree({
+  cat,
+  depth,
+  onEdit,
+  onDelete,
+  onAddChild,
+}: {
+  cat: Category;
+  depth: number;
+  onEdit: (c: Category) => void;
+  onDelete: (id: string) => void;
+  onAddChild: (parentId: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(depth === 0);
+  const kids = cat.children ?? [];
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        className="flex w-full items-center gap-1 text-left"
+        onClick={() => kids.length > 0 && setExpanded((v) => !v)}
+      >
+        {kids.length > 0 ? (
+          expanded ? (
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )
+        ) : (
+          <div className="w-4" />
+        )}
+        <div className="flex-1">
+          <CategoryRow
+            cat={cat}
+            depth={depth}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onAddChild={onAddChild}
+          />
+        </div>
+      </button>
+
+      {expanded &&
+        kids.map((child) => (
+          <CategoryTree
+            key={child.id}
+            cat={child as Category}
+            depth={depth + 1}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onAddChild={onAddChild}
+          />
+        ))}
+    </div>
+  );
+}
+
+export default function CategoriesPage() {
+  const { data: categories, isLoading } = useCategories();
+  const deleteMutation = useDeleteCategory();
+  const seedMutation = useSeedCategories();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [defaultParentId, setDefaultParentId] = useState<string | undefined>();
+
+  const handleEdit = (category: Category) => {
+    setDefaultParentId(undefined);
+    setEditingCategory(category);
+    setDialogOpen(true);
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setEditingCategory(null);
+      setDefaultParentId(undefined);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta categoria?')) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const handleAddChild = (parentId: string) => {
+    setEditingCategory(null);
+    setDefaultParentId(parentId);
+    setDialogOpen(true);
+  };
+
+  const handleNewCategory = () => {
+    setDefaultParentId(undefined);
+    setEditingCategory(null);
+    setDialogOpen(true);
+  };
+
+  // Raízes: categorias sem parent (nível 0). Agora são "Despesa" e "Receita".
+  const roots = categories?.filter((c) => !c.parentCategoryId) ?? [];
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Categorias"
+        subtitle="Organize receitas e despesas com categorias pai e subcategorias"
+        helpTitle="Como funciona a hierarquia?"
+        helpBody={
+          <>
+            <p>
+              <strong>Categorias pai</strong> agrupam o geral (ex: Insumos,
+              Tributos, Despesas Fixas).{' '}
+              <strong>Subcategorias</strong> detalham (ex: Bobina, Tinta
+              dentro de Insumos).
+            </p>
+            <p className="pt-1">
+              No relatório, o gráfico de pizza mostra as categorias pai.
+              Ao clicar, você vê o detalhamento por subcategoria. No
+              WhatsApp, o bot reconhece:{' '}
+              <em>&quot;comprei bobina 500&quot;</em> → Insumos {'>'} Bobina.
+            </p>
+            <p className="pt-1">
+              Use o botão <strong>+</strong> ao lado de uma categoria
+              pai pra adicionar subcategorias rapidamente.
+            </p>
+          </>
+        }
+        actions={
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => seedMutation.mutate()}
+              disabled={seedMutation.isPending}
+            >
+              {seedMutation.isPending
+                ? 'Instalando...'
+                : 'Instalar sugeridas'}
+            </Button>
+            <Button onClick={handleNewCategory}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Categoria
+            </Button>
+          </div>
+        }
+      />
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-[56px]" />
+          ))}
+        </div>
+      ) : categories && categories.length > 0 ? (
+        <div className="space-y-4">
+          {roots.map((root) => (
+            <CategoryTree
+              key={root.id}
+              cat={root}
+              depth={0}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onAddChild={handleAddChild}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
+          <FolderTree className="mb-4 h-12 w-12 text-muted-foreground" />
+          <h3 className="mb-2 text-lg font-medium">
+            Nenhuma categoria criada
+          </h3>
+          <p className="mb-6 max-w-md text-center text-sm text-muted-foreground">
+            Crie categorias pra organizar suas transações. O sistema já
+            cria as mais comuns no cadastro, mas você pode personalizar.
+          </p>
+          <Button onClick={handleNewCategory}>
+            <Plus className="mr-2 h-4 w-4" />
+            Criar primeira categoria
+          </Button>
+        </div>
+      )}
+
+      <CategoryFormDialog
+        open={dialogOpen}
+        onOpenChange={handleOpenChange}
+        editingCategory={editingCategory}
+        defaultParentId={defaultParentId}
+      />
+    </div>
+  );
+}
