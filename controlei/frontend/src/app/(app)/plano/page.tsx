@@ -156,30 +156,18 @@ export default function PlanoPage() {
       // tracking nunca pode bloquear o checkout
     }
 
-    // Abre a aba de pagamento JÁ no clique (gesto do usuário). Se a gente
-    // esperar o await pra abrir, o navegador do celular bloqueia o popup e
-    // o pagamento "não vai pra lado nenhum". Preenchemos a URL depois.
-    const payWindow = window.open('', '_blank');
-
     try {
       const url = await checkout.mutateAsync({ plan, cpfCnpj });
       if (url) {
-        if (payWindow && !payWindow.closed) {
-          payWindow.location.href = url;
-        } else {
-          // popup foi bloqueado mesmo assim → navega na mesma aba
-          window.location.href = url;
-        }
+        window.open(url, '_blank');
         setCpfCnpjModal(null);
         setCpfCnpjInput('');
       } else {
-        payWindow?.close();
         toast.error(
           'Link de pagamento ainda não disponível. Aguarde alguns segundos e tente de novo.',
         );
       }
     } catch (err) {
-      payWindow?.close();
       if (err instanceof CpfCnpjRequiredError) {
         setCpfCnpjModal({ plan });
       }
