@@ -63,4 +63,11 @@ export interface BotInterpretation {
     categoryType?: NewCategoryType;
   };
   reasoning?: string;
+  /**
+   * true quando a intent veio de uma FALHA TÉCNICA da IA (timeout, rate
+   * limit, JSON inválido) e não de uma classificação genuína. Permite o
+   * handler responder "tive uma instabilidade, reenvia" em vez de
+   * "só ajudo com finanças" — e nunca tratar erro técnico como "não entendi".
+   */
+  technicalError?: boolean;
 }

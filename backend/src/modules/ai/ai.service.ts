@@ -278,52 +278,94 @@ FORMATO DE SAÍDA — APENAS JSON válido:
   ): Promise<{ interpretation: BotInterpretation; usage: LlmUsage | null }> {
     const systemPrompt = this.buildSystemPrompt(context);
 
-    try {
-      const { data } = await axios.post<ChatCompletionResponse>(
-        `${this.appConfig.getOpenRouterBaseUrl()}/chat/completions`,
-        {
-          model: this.appConfig.getOpenRouterModel(),
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: text },
-          ],
-          temperature: 0.2,
-          max_tokens: 500,
-          response_format: { type: 'json_object' },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.appConfig.getOpenRouterApiKey()}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://meucaixa.store',
-            'X-Title': 'Meu Caixa',
+    // Classificar é crítico: uma falha transitória da IA (timeout, rate
+    // limit, 5xx, JSON malformado, resposta vazia) NÃO pode virar "unknown"
+    // e fazer o bot ignorar uma despesa legítima. Tentamos algumas vezes
+    // antes de desistir; se desistir, marca technicalError (não "não entendi").
+    const MAX_ATTEMPTS = 3;
+    let lastReason = 'Erro de comunicação com IA';
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const { data } = await axios.post<ChatCompletionResponse>(
+          `${this.appConfig.getOpenRouterBaseUrl()}/chat/completions`,
+          {
+            model: this.appConfig.getOpenRouterModel(),
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: text },
+            ],
+            temperature: 0.2,
+            max_tokens: 500,
+            response_format: { type: 'json_object' },
           },
-          timeout: 30_000,
-        },
-      );
-
-      const usage = extractUsage(data, this.appConfig.getOpenRouterModel());
-      const content = data.choices[0]?.message.content;
-      if (!content) {
-        return { interpretation: this.fallbackInterpretation('Resposta vazia da IA'), usage };
-      }
-
-      const parsed: unknown = JSON.parse(content);
-      return { interpretation: this.validateInterpretation(parsed), usage };
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        this.logger.warn('Resposta da IA não é JSON válido');
-        return { interpretation: this.fallbackInterpretation('JSON inválido'), usage: null };
-      }
-      if (axios.isAxiosError(error)) {
-        this.logger.error(
-          `OpenRouter HTTP ${error.response?.status ?? 'TIMEOUT'}`,
+          {
+            headers: {
+              Authorization: `Bearer ${this.appConfig.getOpenRouterApiKey()}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://meucaixa.store',
+              'X-Title': 'Meu Caixa',
+            },
+            timeout: 30_000,
+          },
         );
-      } else if (error instanceof Error) {
-        this.logger.error(`OpenRouter: ${error.message}`);
+
+        const usage = extractUsage(data, this.appConfig.getOpenRouterModel());
+        const content = data.choices[0]?.message.content;
+        if (!content) {
+          // resposta vazia é transitória → retenta
+          lastReason = 'Resposta vazia da IA';
+          if (attempt < MAX_ATTEMPTS) {
+            await this.delay(400 * attempt);
+            continue;
+          }
+          return {
+            interpretation: this.fallbackInterpretation(lastReason, true),
+            usage,
+          };
+        }
+
+        const parsed: unknown = JSON.parse(content);
+        return { interpretation: this.validateInterpretation(parsed), usage };
+      } catch (error) {
+        if (error instanceof SyntaxError) {
+          // JSON malformado é transitório (o modelo às vezes "vaza" texto) → retenta
+          this.logger.warn(
+            `Resposta da IA não é JSON válido (tentativa ${attempt}/${MAX_ATTEMPTS})`,
+          );
+          lastReason = 'JSON inválido';
+        } else if (axios.isAxiosError(error)) {
+          const status = error.response?.status;
+          this.logger.error(
+            `OpenRouter HTTP ${status ?? 'TIMEOUT'} (tentativa ${attempt}/${MAX_ATTEMPTS})`,
+          );
+          // 4xx (exceto 429 rate limit) não adianta retentar — é config/auth
+          if (status && status >= 400 && status < 500 && status !== 429) {
+            return {
+              interpretation: this.fallbackInterpretation(`HTTP ${status}`, true),
+              usage: null,
+            };
+          }
+          lastReason = `HTTP ${status ?? 'TIMEOUT'}`;
+        } else if (error instanceof Error) {
+          this.logger.error(
+            `OpenRouter: ${error.message} (tentativa ${attempt}/${MAX_ATTEMPTS})`,
+          );
+          lastReason = error.message;
+        }
+
+        if (attempt < MAX_ATTEMPTS) {
+          await this.delay(400 * attempt);
+          continue;
+        }
       }
-      return { interpretation: this.fallbackInterpretation('Erro de comunicação com IA'), usage: null };
     }
+
+    // Todas as tentativas falharam por motivo técnico.
+    return {
+      interpretation: this.fallbackInterpretation(lastReason, true),
+      usage: null,
+    };
   }
 
   /** Constrói o prompt de sistema com contexto da empresa */
@@ -685,12 +727,20 @@ EXEMPLOS:
   }
 
   /** Retorno seguro quando a IA falha */
-  private fallbackInterpretation(reason: string): BotInterpretation {
+  private fallbackInterpretation(
+    reason: string,
+    technicalError = false,
+  ): BotInterpretation {
     return {
       intent: 'unknown',
       confidence: 0,
       data: {},
       reasoning: reason,
+      technicalError,
     };
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

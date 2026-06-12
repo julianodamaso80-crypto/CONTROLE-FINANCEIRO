@@ -1286,6 +1286,19 @@ export class WhatsAppService {
           relatedTransactionId: null,
         };
       default:
+        // Falha TÉCNICA da IA (timeout, rate limit, etc) — não é "não entendi".
+        // Não podemos dizer "só ajudo com finanças" pra um lançamento legítimo
+        // que o modelo engasgou. Pedimos pra reenviar.
+        if (interpretation.technicalError) {
+          return {
+            responseText:
+              '⚠️ Tive uma instabilidade momentânea pra processar sua mensagem. ' +
+              'Pode *reenviar*? Se foi um lançamento (ex: _"paguei 100 no fornecedor"_), ' +
+              'reenvie que eu registro certinho.',
+            actionTaken: 'ai_error',
+            relatedTransactionId: null,
+          };
+        }
         return {
           responseText:
             '🤔 Sou o assistente do *Meu Caixa* — só consigo te ajudar com finanças (despesas, receitas, saldo e relatórios).\n\n' +
