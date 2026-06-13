@@ -45,7 +45,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <div className="p-4 md:p-6">
-        <FinnixLogo size="sm" href="/dashboard" />
+        <div className="inline-flex items-center rounded-xl bg-slate-900 px-3 py-2.5 shadow-sm ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
+          <FinnixLogo size="sm" href="/dashboard" />
+        </div>
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
@@ -117,7 +119,9 @@ export function MobileHeader() {
     <>
       {/* Barra do topo — só aparece em telas < md */}
       <header className="flex items-center justify-between border-b bg-card px-4 py-3 md:hidden">
-        <FinnixLogo size="sm" href="/dashboard" />
+        <div className="inline-flex items-center rounded-xl bg-slate-900 px-2.5 py-1.5 shadow-sm ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
+          <FinnixLogo size="sm" href="/dashboard" />
+        </div>
         <div className="flex items-center gap-1">
           <ThemeToggle />
           <Button
