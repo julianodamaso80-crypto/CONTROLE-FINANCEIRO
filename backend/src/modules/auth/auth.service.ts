@@ -141,7 +141,12 @@ export class AuthService {
     );
 
     this.whatsapp
-      .sendWelcomeMessage(normalizedPhone, result.user.name, result.company.id)
+      .sendWelcomeMessage(
+        normalizedPhone,
+        result.user.name,
+        result.company.id,
+        result.user.email,
+      )
       .catch((err) =>
         this.logger.warn(
           `Falha ao enviar boas-vindas para ${normalizedPhone}: ${

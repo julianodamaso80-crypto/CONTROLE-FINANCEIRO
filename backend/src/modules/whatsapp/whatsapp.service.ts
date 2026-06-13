@@ -329,6 +329,7 @@ export class WhatsAppService {
     phone: string,
     name: string,
     companyId: string,
+    email?: string,
   ): Promise<void> {
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
@@ -343,9 +344,18 @@ export class WhatsAppService {
         );
         return;
       }
+      // Template `cadastro_meucaixa` aprovado com 2 variáveis:
+      // {{1}} = primeiro nome, {{2}} = e-mail (texto pra "verifique {{2}}")
+      const verifyText = email && email.trim() ? email.trim() : 'seu e-mail de cadastro';
       await this.cloud
         .sendTemplate(phone, 'cadastro_meucaixa', 'pt_BR', [
-          { type: 'body', parameters: [{ type: 'text', text: firstName }] },
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: firstName },
+              { type: 'text', text: verifyText },
+            ],
+          },
         ])
         .catch((err) => {
           this.logger.warn(
