@@ -44,7 +44,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <>
-      <div className="p-4 md:p-6">
+      <div className="flex justify-center p-4 md:p-6">
         <div className="inline-flex items-center rounded-xl bg-slate-900 px-3 py-2.5 shadow-sm ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10">
           <FinnixLogo size="sm" href="/dashboard" />
         </div>
@@ -59,7 +59,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
+                'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-bold transition-colors',
                 isActive
                   ? 'border-l-2 border-primary bg-primary/10 text-primary'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground',
