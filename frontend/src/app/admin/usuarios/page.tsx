@@ -553,12 +553,12 @@ export default function AdminUsuariosPage() {
 
       {/* ========== CREATE MODAL ========== */}
       {createOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-xl">
-            <div className="mb-6 flex items-start justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-xl border-2 bg-card p-6 shadow-2xl">
+            <div className="mb-5 flex items-start justify-between border-b-2 pb-4">
               <div>
-                <h2 className="text-lg font-bold">Adicionar conta</h2>
-                <p className="text-xs text-muted-foreground">
+                <h2 className="text-xl font-extrabold text-foreground">Adicionar conta</h2>
+                <p className="text-sm font-semibold text-foreground/70">
                   Cliente, administrador ou influencer.
                 </p>
               </div>
@@ -567,23 +567,23 @@ export default function AdminUsuariosPage() {
                   setCreateOpen(false);
                   resetCreateForm();
                 }}
-                className="rounded-md p-1 hover:bg-accent"
+                className="rounded-md border-2 p-1.5 hover:bg-accent"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" strokeWidth={2.5} />
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">
+                <label className="text-sm font-bold text-foreground">
                   Tipo de conta
                 </label>
-                <div className="mt-1 grid grid-cols-3 gap-2">
+                <div className="mt-1.5 grid grid-cols-3 gap-2">
                   {(
                     [
-                      { v: 'USER', label: 'Cliente', icon: UserIcon, cls: 'text-green-400' },
-                      { v: 'INFLUENCER', label: 'Influencer', icon: Sparkles, cls: 'text-pink-400' },
-                      { v: 'ADMIN', label: 'Admin', icon: Shield, cls: 'text-amber-400' },
+                      { v: 'USER', label: 'Cliente', icon: UserIcon, cls: 'text-green-500' },
+                      { v: 'INFLUENCER', label: 'Influencer', icon: Sparkles, cls: 'text-pink-500' },
+                      { v: 'ADMIN', label: 'Admin', icon: Shield, cls: 'text-amber-500' },
                     ] as const
                   ).map((opt) => {
                     const Icon = opt.icon;
@@ -595,13 +595,13 @@ export default function AdminUsuariosPage() {
                         onClick={() =>
                           setCreateForm((f) => ({ ...f, role: opt.v }))
                         }
-                        className={`flex flex-col items-center gap-1 rounded-md border px-2 py-2.5 text-xs transition-colors ${
+                        className={`flex flex-col items-center gap-1.5 rounded-md border-2 px-2 py-3 text-sm font-bold transition-colors ${
                           selected
-                            ? 'border-primary bg-primary/10 text-foreground'
-                            : 'hover:bg-accent'
+                            ? 'border-primary bg-primary/15 text-foreground'
+                            : 'border-border text-foreground/80 hover:bg-accent hover:text-foreground'
                         }`}
                       >
-                        <Icon className={`h-4 w-4 ${opt.cls}`} />
+                        <Icon className={`h-5 w-5 ${opt.cls}`} strokeWidth={2.5} />
                         {opt.label}
                       </button>
                     );
@@ -609,7 +609,7 @@ export default function AdminUsuariosPage() {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">
+                <label className="text-sm font-bold text-foreground">
                   Nome
                 </label>
                 <input
@@ -619,11 +619,11 @@ export default function AdminUsuariosPage() {
                     setCreateForm((f) => ({ ...f, name: e.target.value }))
                   }
                   placeholder="Nome completo"
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="mt-1.5 w-full rounded-md border-2 bg-background px-3 py-2.5 text-sm font-semibold text-foreground placeholder:font-medium placeholder:text-foreground/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">
+                <label className="text-sm font-bold text-foreground">
                   Email
                 </label>
                 <input
@@ -633,11 +633,11 @@ export default function AdminUsuariosPage() {
                     setCreateForm((f) => ({ ...f, email: e.target.value }))
                   }
                   placeholder="cliente@email.com"
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="mt-1.5 w-full rounded-md border-2 bg-background px-3 py-2.5 text-sm font-semibold text-foreground placeholder:font-medium placeholder:text-foreground/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">
+                <label className="text-sm font-bold text-foreground">
                   WhatsApp (com DDD)
                 </label>
                 <input
@@ -647,14 +647,14 @@ export default function AdminUsuariosPage() {
                     setCreateForm((f) => ({ ...f, phone: e.target.value }))
                   }
                   placeholder="(21) 99999-9999"
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="mt-1.5 w-full rounded-md border-2 bg-background px-3 py-2.5 text-sm font-semibold text-foreground placeholder:font-medium placeholder:text-foreground/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-1.5 text-xs font-semibold text-foreground/60">
                   Salva sempre como JID (55+DDD+número).
                 </p>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">
+                <label className="text-sm font-bold text-foreground">
                   Senha provisória
                 </label>
                 <input
@@ -664,23 +664,23 @@ export default function AdminUsuariosPage() {
                     setCreateForm((f) => ({ ...f, password: e.target.value }))
                   }
                   placeholder="Mínimo 6 caracteres"
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="mt-1.5 w-full rounded-md border-2 bg-background px-3 py-2.5 text-sm font-semibold text-foreground placeholder:font-medium placeholder:text-foreground/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
               {/* ----- CLIENTE: plano inicial + indicado por ----- */}
               {createForm.role === 'USER' && (
                 <>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-sm font-bold text-foreground">
                       Plano inicial
                     </label>
-                    <div className="mt-1 grid grid-cols-2 gap-2">
+                    <div className="mt-1.5 grid grid-cols-2 gap-2">
                       {(
                         [
-                          { v: 'TRIAL', label: 'Trial (3 dias)', icon: Clock, cls: 'text-emerald-400' },
-                          { v: 'MONTHLY', label: 'Mensal', icon: CreditCard, cls: 'text-green-400' },
-                          { v: 'ANNUAL', label: 'Anual', icon: CalendarCheck, cls: 'text-blue-400' },
-                          { v: 'LIFETIME', label: 'Vitalício', icon: Infinity, cls: 'text-purple-400' },
+                          { v: 'TRIAL', label: 'Trial (3 dias)', icon: Clock, cls: 'text-emerald-500' },
+                          { v: 'MONTHLY', label: 'Mensal', icon: CreditCard, cls: 'text-green-500' },
+                          { v: 'ANNUAL', label: 'Anual', icon: CalendarCheck, cls: 'text-blue-500' },
+                          { v: 'LIFETIME', label: 'Vitalício', icon: Infinity, cls: 'text-purple-500' },
                         ] as const
                       ).map((opt) => {
                         const Icon = opt.icon;
@@ -692,13 +692,13 @@ export default function AdminUsuariosPage() {
                             onClick={() =>
                               setCreateForm((f) => ({ ...f, accessType: opt.v }))
                             }
-                            className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                            className={`flex items-center gap-2 rounded-md border-2 px-3 py-2.5 text-sm font-bold transition-colors ${
                               selected
-                                ? 'border-primary bg-primary/10 text-foreground'
-                                : 'hover:bg-accent'
+                                ? 'border-primary bg-primary/15 text-foreground'
+                                : 'border-border text-foreground/80 hover:bg-accent hover:text-foreground'
                             }`}
                           >
-                            <Icon className={`h-4 w-4 ${opt.cls}`} />
+                            <Icon className={`h-4 w-4 ${opt.cls}`} strokeWidth={2.5} />
                             {opt.label}
                           </button>
                         );
@@ -706,7 +706,7 @@ export default function AdminUsuariosPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-sm font-bold text-foreground">
                       Indicado por (influencer)
                     </label>
                     <select
@@ -717,7 +717,7 @@ export default function AdminUsuariosPage() {
                           referredByInfluencerId: e.target.value,
                         }))
                       }
-                      className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="mt-1.5 w-full rounded-md border-2 bg-background px-3 py-2.5 text-sm font-semibold text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                     >
                       <option value="">Ninguém / venda direta</option>
                       {influencerOptions.map((inf) => (
@@ -726,7 +726,7 @@ export default function AdminUsuariosPage() {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
+                    <p className="mt-1.5 text-xs font-semibold text-foreground/60">
                       Se vier por link de influencer, a comissão é atribuída a ele.
                     </p>
                   </div>
@@ -737,7 +737,7 @@ export default function AdminUsuariosPage() {
               {createForm.role === 'INFLUENCER' && (
                 <>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-sm font-bold text-foreground">
                       Código de indicação (opcional)
                     </label>
                     <input
@@ -747,15 +747,15 @@ export default function AdminUsuariosPage() {
                         setCreateForm((f) => ({ ...f, refCode: e.target.value }))
                       }
                       placeholder="ex: joao (gera do nome se vazio)"
-                      className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="mt-1.5 w-full rounded-md border-2 bg-background px-3 py-2.5 text-sm font-semibold text-foreground placeholder:font-medium placeholder:text-foreground/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
-                    <p className="mt-1 text-[11px] text-muted-foreground">
+                    <p className="mt-1.5 text-xs font-semibold text-foreground/60">
                       Vira o link: /register?ref=&lt;código&gt;
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground">
+                      <label className="text-sm font-bold text-foreground">
                         Comissão venda (%)
                       </label>
                       <input
@@ -769,11 +769,11 @@ export default function AdminUsuariosPage() {
                             saleCommissionPct: e.target.value,
                           }))
                         }
-                        className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="mt-1.5 w-full rounded-md border-2 bg-background px-3 py-2.5 text-sm font-semibold text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground">
+                      <label className="text-sm font-bold text-foreground">
                         Comissão recorrência (%)
                       </label>
                       <input
@@ -787,12 +787,12 @@ export default function AdminUsuariosPage() {
                             recurringCommissionPct: e.target.value,
                           }))
                         }
-                        className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="mt-1.5 w-full rounded-md border-2 bg-background px-3 py-2.5 text-sm font-semibold text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-sm font-bold text-foreground">
                       Chave PIX (opcional)
                     </label>
                     <input
@@ -802,14 +802,14 @@ export default function AdminUsuariosPage() {
                         setCreateForm((f) => ({ ...f, pixKey: e.target.value }))
                       }
                       placeholder="Pra repasse da comissão"
-                      className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="mt-1.5 w-full rounded-md border-2 bg-background px-3 py-2.5 text-sm font-semibold text-foreground placeholder:font-medium placeholder:text-foreground/40 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </div>
                 </>
               )}
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-2">
+            <div className="mt-6 flex items-center justify-end gap-2 border-t-2 pt-5">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -817,10 +817,15 @@ export default function AdminUsuariosPage() {
                   resetCreateForm();
                 }}
                 disabled={actionLoading}
+                className="border-2 font-bold"
               >
                 Cancelar
               </Button>
-              <Button onClick={handleCreate} disabled={actionLoading}>
+              <Button
+                onClick={handleCreate}
+                disabled={actionLoading}
+                className="font-bold"
+              >
                 {actionLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
