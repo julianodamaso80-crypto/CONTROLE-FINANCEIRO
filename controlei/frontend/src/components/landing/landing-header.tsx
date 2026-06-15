@@ -13,12 +13,12 @@ export function LandingHeader() {
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
         <Link href="/" className="flex items-center" aria-label="Controlei">
           <Image
-            src="/logo-sem-fundo-2.png"
+            src="/logo-controlei.jpg"
             alt="Controlei"
             width={180}
-            height={48}
+            height={60}
             priority
-            className="h-12 w-auto object-contain"
+            className="h-14 w-auto rounded-md object-contain"
           />
         </Link>
 

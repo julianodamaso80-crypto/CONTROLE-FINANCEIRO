@@ -10,29 +10,28 @@ interface FinnixLogoProps {
   href?: string | null;
 }
 
-// As logos "sem fundo" são quadradas (ícone + texto "Controlei").
-// Renderizamos só a imagem, sem texto adicional. Aspect ratio ~1:1.
+// Logo oficial Controlei (icone + texto, fundo branco). Aspect ratio ~3:1.
 const sizes = {
-  sm: { h: 40 },
-  md: { h: 56 },
-  lg: { h: 96 },
+  sm: { h: 36, w: 108 },
+  md: { h: 52, w: 156 },
+  lg: { h: 80, w: 240 },
 };
 
 export function FinnixLogo({
   size = 'md',
-  variant = 'app',
+  variant: _variant = 'app',
   className,
   href = '/',
 }: FinnixLogoProps) {
   const s = sizes[size];
-  const src =
-    variant === 'auth' ? '/logo-sem-fundo.png' : '/logo-sem-fundo-2.png';
+  // _variant ignorado: usamos a mesma logo oficial em todos os contextos.
+  void _variant;
 
   const img = (
     <Image
-      src={src}
+      src="/logo-controlei.jpg"
       alt="Controlei"
-      width={s.h}
+      width={s.w}
       height={s.h}
       priority
       className="object-contain"

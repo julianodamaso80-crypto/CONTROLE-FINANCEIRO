@@ -22,7 +22,7 @@ export function ArticleSchema({ post, url }: Props) {
     publisher: {
       '@type': 'Organization',
       name: 'Controlei',
-      logo: { '@type': 'ImageObject', url: 'https://controlei.ia.br/logo-sem-fundo-2.png' },
+      logo: { '@type': 'ImageObject', url: 'https://controlei.ia.br/logo-controlei.jpg' },
       url: 'https://controlei.ia.br',
     },
     mainEntityOfPage: url,

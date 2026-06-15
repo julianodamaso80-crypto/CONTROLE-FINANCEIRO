@@ -17,7 +17,7 @@ const organizationLd = {
   '@type': 'Organization',
   name: 'Controlei',
   url: 'https://controlei.ia.br',
-  logo: 'https://controlei.ia.br/logo-sem-fundo-2.png',
+  logo: 'https://controlei.ia.br/logo-controlei.jpg',
   description: 'SaaS de controle financeiro pessoal com IA e WhatsApp.',
   sameAs: ['https://www.instagram.com/controlei.ia.br'],
 };
@@ -50,12 +50,12 @@ export default function BlogLayout({ children }: { children: React.ReactNode }) 
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
           <Link href="/blog" className="flex items-center gap-3">
             <Image
-              src="/logo-sem-fundo-2.png"
+              src="/logo-controlei.jpg"
               alt="Controlei Blog"
-              width={140}
-              height={40}
+              width={160}
+              height={52}
               priority
-              className="h-10 w-auto object-contain"
+              className="h-12 w-auto rounded-md object-contain"
             />
             <span className="hidden font-display text-lg font-bold text-white/80 sm:inline">/ Blog</span>
           </Link>
