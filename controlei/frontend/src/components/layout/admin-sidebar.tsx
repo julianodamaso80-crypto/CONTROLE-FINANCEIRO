@@ -30,15 +30,15 @@ export function AdminSidebar() {
   const { user, logout } = useAuth();
 
   return (
-    <aside className="flex h-screen w-[260px] flex-col border-r bg-card">
-      <div className="p-6">
-        <FinnixLogo size="md" href="/admin" />
-        <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-primary">
+    <aside className="flex h-screen w-[280px] flex-col border-r-2 bg-card">
+      <div className="flex flex-col items-center px-4 py-6">
+        <FinnixLogo size="lg" href="/admin" />
+        <p className="mt-3 text-sm font-extrabold uppercase tracking-wider text-primary">
           Painel Admin
         </p>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3">
+      <nav className="flex-1 space-y-1.5 px-3">
         {navItems.map((item) => {
           const isActive =
             item.href === '/admin'
@@ -49,13 +49,13 @@ export function AdminSidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
+                'flex items-center gap-3 rounded-md px-3 py-3 text-base font-bold transition-colors',
                 isActive
-                  ? 'border-l-2 border-primary bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                  ? 'border-l-4 border-primary bg-primary/15 text-primary'
+                  : 'text-foreground/70 hover:bg-accent hover:text-foreground',
               )}
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon className="h-5 w-5" strokeWidth={2.5} />
               {item.label}
             </Link>
           );
@@ -66,15 +66,15 @@ export function AdminSidebar() {
         <Separator className="mb-4" />
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{user?.name}</p>
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="truncate text-sm font-bold text-foreground">{user?.name}</p>
+            <p className="truncate text-xs font-semibold text-foreground/60">
               {user?.email}
             </p>
           </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
             <Button variant="ghost" size="icon" onClick={logout} title="Sair">
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-5 w-5" strokeWidth={2.5} />
             </Button>
           </div>
         </div>
