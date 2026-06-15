@@ -134,7 +134,7 @@ export function DailyTimeline() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
             </span>
-            UM DIA COM MEUCAIXA
+            UM DIA COM CONTROLEI
           </div>
           <h2 className="mx-auto mt-6 max-w-3xl text-balance font-cabinet text-5xl font-extrabold tracking-tighter sm:text-6xl">
             6 momentos. Você lembra de{' '}
@@ -347,7 +347,7 @@ function WhatsAppBubble({
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold leading-tight">
-            MeuCaixa
+            Controlei
           </p>
           <p className="flex items-center gap-1 text-[10px] leading-tight text-white/80">
             <span className="h-1.5 w-1.5 rounded-full bg-[#90ff6b]" />

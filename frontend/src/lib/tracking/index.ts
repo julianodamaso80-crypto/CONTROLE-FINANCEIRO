@@ -1,5 +1,5 @@
 /**
- * MeuCaixa — Biblioteca de tracking client-side.
+ * Controlei — Biblioteca de tracking client-side.
  *
  * Responsabilidades:
  * 1. Capturar gclid/fbclid/gbraid/wbraid/msclkid no 1º pageview e persistir em cookie 90d

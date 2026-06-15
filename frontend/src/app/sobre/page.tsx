@@ -4,17 +4,17 @@ import { LandingHeader } from '@/components/landing/landing-header';
 import { LandingFooter } from '@/components/landing/landing-footer';
 
 export const metadata = {
-  title: 'Sobre o MeuCaixa — Por que existimos e quem está atrás disso',
+  title: 'Sobre o Controlei — Por que existimos e quem está atrás disso',
   description:
-    'O MeuCaixa nasceu da dor de pequenos empreendedores brasileiros que perdiam controle financeiro por ter que abrir planilha. Conheça a história, missão e o time por trás.',
-  alternates: { canonical: 'https://meucaixa.store/sobre' },
+    'O Controlei nasceu da dor de pequenos empreendedores brasileiros que perdiam controle financeiro por ter que abrir planilha. Conheça a história, missão e o time por trás.',
+  alternates: { canonical: 'https://controlei.ia.br/sobre' },
 };
 
 const values = [
   {
     icon: Zap,
     title: 'Simplicidade radical',
-    text: 'Se uma feature precisa de tutorial pra usar, ela não está pronta. O MeuCaixa tem que funcionar no nível "manda mensagem no WhatsApp".',
+    text: 'Se uma feature precisa de tutorial pra usar, ela não está pronta. O Controlei tem que funcionar no nível "manda mensagem no WhatsApp".',
   },
   {
     icon: Heart,
@@ -51,7 +51,7 @@ const timeline = [
   },
   {
     year: '2026',
-    title: 'MeuCaixa lança publicamente',
+    title: 'Controlei lança publicamente',
     text: 'Plataforma completa, dashboard web, multi-usuário pra compartilhar com família, importação OFX, cartão de crédito parcelado, projeção de saldo. Hoje, mais de 100 pessoas usam diariamente.',
   },
 ];
@@ -82,7 +82,7 @@ export default function SobrePage() {
           <p className="mx-auto mt-10 max-w-3xl text-balance text-xl font-medium text-white/70">
             Pequeno empreendedor brasileiro perde dinheiro todo mês não por gastar errado,
             mas por não ter visibilidade do que está acontecendo. Planilha é remédio que
-            ninguém toma. WhatsApp todo mundo abre 50 vezes por dia. Foi daí que nasceu o MeuCaixa.
+            ninguém toma. WhatsApp todo mundo abre 50 vezes por dia. Foi daí que nasceu o Controlei.
           </p>
 
           <div className="mt-12 flex items-center justify-center gap-2 text-sm font-bold text-[#90ff6b]">
@@ -115,7 +115,7 @@ export default function SobrePage() {
               Resultado: você nunca sabe pra onde foi o salário e gasta no impulso.
             </p>
             <p className="mt-6 text-xl font-medium leading-relaxed lg:text-2xl">
-              O MeuCaixa existe pra resolver isso. Você manda mensagem no WhatsApp como já manda
+              O Controlei existe pra resolver isso. Você manda mensagem no WhatsApp como já manda
               50 vezes por dia, a IA categoriza e o número fica certo no fim do mês,
               sem você precisar lembrar de anotar nada.
             </p>

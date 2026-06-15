@@ -366,7 +366,7 @@ export default function AdminUsuariosPage() {
         <div>
           <h1 className="text-2xl font-bold">Usuários</h1>
           <p className="text-sm text-muted-foreground">
-            Todos os clientes cadastrados no MeuCaixa
+            Todos os clientes cadastrados no Controlei
           </p>
         </div>
         <div className="flex items-center gap-2">

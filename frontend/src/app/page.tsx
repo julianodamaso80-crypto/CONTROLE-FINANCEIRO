@@ -26,7 +26,7 @@ import { TestimonialsWhatsApp } from '@/components/landing/testimonials-whatsapp
 import { FAQSection } from '@/components/landing/faq-section';
 
 export const metadata = {
-  title: 'MeuCaixa — Controle de gastos pelo WhatsApp com IA',
+  title: 'Controlei — Controle de gastos pelo WhatsApp com IA',
   description:
     'Lance suas despesas e receitas falando no WhatsApp. A IA categoriza tudo, gera relatórios em PDF e te ajuda a organizar a vida financeira sem planilha.',
   keywords: [
@@ -40,9 +40,9 @@ export const metadata = {
   ],
   openGraph: {
     type: 'website',
-    url: 'https://meucaixa.store',
-    siteName: 'MeuCaixa',
-    title: 'MeuCaixa — Controle de gastos pelo WhatsApp com IA',
+    url: 'https://controlei.ia.br',
+    siteName: 'Controlei',
+    title: 'Controlei — Controle de gastos pelo WhatsApp com IA',
     description:
       'Lance suas despesas e receitas falando no WhatsApp. A IA categoriza tudo e gera relatórios em PDF na hora.',
     images: [
@@ -50,19 +50,19 @@ export const metadata = {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'MeuCaixa — Controle de gastos pelo WhatsApp',
+        alt: 'Controlei — Controle de gastos pelo WhatsApp',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'MeuCaixa — Controle de gastos pelo WhatsApp com IA',
+    title: 'Controlei — Controle de gastos pelo WhatsApp com IA',
     description:
       'Lance suas despesas e receitas falando no WhatsApp. A IA categoriza tudo.',
     images: ['/og-image.png'],
   },
   alternates: {
-    canonical: 'https://meucaixa.store',
+    canonical: 'https://controlei.ia.br',
   },
 };
 
@@ -82,7 +82,7 @@ const capabilities = [
 const orgSchema = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'MeuCaixa',
+  name: 'Controlei',
   applicationCategory: 'FinanceApplication',
   operatingSystem: 'Web, WhatsApp',
   offers: [
@@ -199,7 +199,7 @@ export default function LandingPage() {
                 <div className="h-3 w-3 rounded-full bg-[#b7c6c2]" />
                 <div className="h-3 w-3 rounded-full bg-[#28c840]" />
                 <div className="ml-4 flex-1 rounded-md border border-white/20 bg-[#171e19] px-3 py-1 text-xs font-bold text-[#b7c6c2]">
-                  app.meucaixa.store/dashboard
+                  app.controlei.ia.br/dashboard
                 </div>
               </div>
 
@@ -297,7 +297,7 @@ export default function LandingPage() {
           <div className="grid gap-8 lg:grid-cols-2">
             <div className="rounded-3xl border-2 border-dashed border-gray-400 bg-[#f4f4f5] p-10 opacity-70">
               <h3 className="mb-6 font-cabinet text-3xl font-extrabold">
-                Hoje, sem o MeuCaixa
+                Hoje, sem o Controlei
               </h3>
               <ul className="space-y-4">
                 {[
@@ -319,7 +319,7 @@ export default function LandingPage() {
 
             <div className="brutal-shadow rounded-3xl border-2 border-black bg-[#90ff6b] p-10">
               <h3 className="mb-6 font-cabinet text-3xl font-extrabold">
-                Com o MeuCaixa
+                Com o Controlei
               </h3>
               <ul className="space-y-4">
                 {[

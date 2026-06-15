@@ -1,10 +1,10 @@
 /**
- * Helpers pra cookies first-party (.meucaixa.ia.br) e localStorage.
+ * Helpers pra cookies first-party (.controlei.ia.br) e localStorage.
  * Usado pra persistir UTMs e click IDs (gclid/fbclid/gbraid/wbraid/msclkid)
  * por 90 dias no domínio raiz, sobrevivendo a navegação cross-subdomain.
  */
 
-const COOKIE_DOMAIN = ".meucaixa.ia.br";
+const COOKIE_DOMAIN = ".controlei.ia.br";
 const COOKIE_DAYS = 90;
 
 export function setCookie(name: string, value: string, days = COOKIE_DAYS) {
@@ -14,7 +14,7 @@ export function setCookie(name: string, value: string, days = COOKIE_DAYS) {
   const host = typeof window !== "undefined" ? window.location.hostname : "";
   // só seta domain= em produção (com TLD); em localhost deixa sem domain
   const domainPart =
-    host.endsWith("meucaixa.ia.br") ? `; domain=${COOKIE_DOMAIN}` : "";
+    host.endsWith("controlei.ia.br") ? `; domain=${COOKIE_DOMAIN}` : "";
   document.cookie = `${name}=${encodeURIComponent(
     value,
   )}; expires=${expires.toUTCString()}; path=/${domainPart}; SameSite=Lax`;

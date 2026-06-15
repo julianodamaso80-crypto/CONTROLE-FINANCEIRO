@@ -125,8 +125,8 @@ export class AiService {
           headers: {
             Authorization: `Bearer ${this.appConfig.getOpenRouterApiKey()}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://meucaixa.store',
-            'X-Title': 'Meu Caixa',
+            'HTTP-Referer': 'https://controlei.ia.br',
+            'X-Title': 'Controlei',
           },
           timeout: 45_000,
         },
@@ -194,8 +194,8 @@ export class AiService {
           headers: {
             Authorization: `Bearer ${this.appConfig.getOpenRouterApiKey()}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://meucaixa.store',
-            'X-Title': 'Meu Caixa',
+            'HTTP-Referer': 'https://controlei.ia.br',
+            'X-Title': 'Controlei',
           },
           timeout: 45_000,
         },
@@ -235,7 +235,7 @@ export class AiService {
         : 'nenhuma cadastrada';
     const now = this.getNowInBrazil();
 
-    return `Você é o analisador de imagens financeiras do Meu Caixa. O cliente enviou uma foto que pode ser: cupom fiscal, nota fiscal, comprovante de pagamento, print de extrato bancário, recibo, ou similar.
+    return `Você é o analisador de imagens financeiras do Controlei. O cliente enviou uma foto que pode ser: cupom fiscal, nota fiscal, comprovante de pagamento, print de extrato bancário, recibo, ou similar.
 
 Sua tarefa: extrair a transação da imagem e retornar JSON no formato usado pelo classificador de texto.
 
@@ -303,8 +303,8 @@ FORMATO DE SAÍDA — APENAS JSON válido:
             headers: {
               Authorization: `Bearer ${this.appConfig.getOpenRouterApiKey()}`,
               'Content-Type': 'application/json',
-              'HTTP-Referer': 'https://meucaixa.store',
-              'X-Title': 'Meu Caixa',
+              'HTTP-Referer': 'https://controlei.ia.br',
+              'X-Title': 'Controlei',
             },
             timeout: 30_000,
           },
@@ -383,16 +383,16 @@ FORMATO DE SAÍDA — APENAS JSON válido:
         : 'nenhuma cadastrada';
     const now = this.getNowInBrazil();
 
-    return `Você é o classificador de mensagens do Meu Caixa, um sistema de controle financeiro empresarial.
+    return `Você é o classificador de mensagens do Controlei, um sistema de controle financeiro empresarial.
 
 ESCOPO RÍGIDO — você SÓ classifica mensagens relacionadas a:
 - Registrar despesas e receitas da empresa
 - Consultar saldo, despesas, vencimentos
 - Gerenciar lançamentos da empresa (apagar, editar)
 - Criar categorias e segmentos da empresa
-- Pedir ajuda sobre os comandos do Meu Caixa
+- Pedir ajuda sobre os comandos do Controlei
 
-Você NÃO responde, NÃO opina, NÃO conversa, NÃO dá dicas, NÃO faz cálculos genéricos, NÃO fala de outros assuntos, NÃO escreve textos. Você é APENAS um classificador de intenção. Se a mensagem não se encaixa em nenhuma intenção financeira do Meu Caixa, retorne intent "unknown".
+Você NÃO responde, NÃO opina, NÃO conversa, NÃO dá dicas, NÃO faz cálculos genéricos, NÃO fala de outros assuntos, NÃO escreve textos. Você é APENAS um classificador de intenção. Se a mensagem não se encaixa em nenhuma intenção financeira do Controlei, retorne intent "unknown".
 
 PROIBIDO classificar como qualquer intent válida se a mensagem for sobre:
 - Conversas casuais ("oi", "bom dia", "tudo bem")
@@ -466,7 +466,7 @@ INTENTS VÁLIDAS (qualquer outra coisa = "unknown"):
 - "delete_segment": excluir um segmento. Preencha:
   * newName: nome do segmento.
   * Gatilhos: "exclui segmento X", "apaga segmento X", "deleta segmento X", "remove segmento X".
-- "help": pediu ajuda sobre comandos do Meu Caixa
+- "help": pediu ajuda sobre comandos do Controlei
 - "greeting": saudação curta sem pedido específico (oi, ola, bom dia, boa tarde, boa noite, tudo bem, tudo certo, eai, blz, opa, salve)
 - "unknown": qualquer mensagem fora do escopo (perguntas gerais, conselhos, escrita, traduções, outros temas)
 
@@ -485,7 +485,7 @@ REGRAS DE PARSING:
 - TEXTO DE PDF: o input pode ser texto extraído de um PDF (nota fiscal, boleto, extrato). Nesse caso será longo e com formatação irregular. Extraia: valor total, descrição, data, e classifique como register_expense ou register_income. Se o PDF tiver múltiplas linhas de transação, extraia o TOTAL GERAL. Se não conseguir determinar se é despesa ou receita, retorne intent "unknown" com reasoning explicando a dúvida.
 
 REGRA DE CATEGORIA (CRÍTICA — leia devagar):
-Esta é uma das funções mais importantes do Meu Caixa. O cliente cadastrou categorias na ferramenta e espera que TODAS as transações sejam classificadas nelas.
+Esta é uma das funções mais importantes do Controlei. O cliente cadastrou categorias na ferramenta e espera que TODAS as transações sejam classificadas nelas.
 - Sua obrigação: sempre que QUALQUER palavra ou expressão da mensagem bater (mesmo que parcialmente, mesmo com acento diferente, mesmo em caixa diferente, mesmo no plural, mesmo com espaço a mais) com o NOME de uma das categorias cadastradas, você DEVE retornar o nome EXATO dessa categoria no campo "category". NUNCA retorne null se houver match.
 - Exemplos de match válido (CATEGORIA CADASTRADA → palavra na mensagem):
   * "APLICADOR" → "aplicador", "Aplicador", "APLICADORES", "ao aplicador", "do aplicador"
@@ -504,7 +504,7 @@ REGRA DE SEGMENTO (mesma lógica da categoria):
 - NUNCA invente segmento.
 
 REGRA DE RELATÓRIO (CRÍTICA):
-O cliente do Meu Caixa pede relatório o tempo inteiro — é o segundo uso mais comum do sistema (depois de registrar transações).
+O cliente do Controlei pede relatório o tempo inteiro — é o segundo uso mais comum do sistema (depois de registrar transações).
 - Palavras-chave de relatório: "relatório", "relatorio", "relat", "resumo", "balanço", "balanco", "extrato", "fechamento", "prestação de contas", "levantamento", "consolidado".
 - Quando o cliente mandar QUALQUER uma dessas palavras, mesmo sozinha, mesmo sem período, a intent é SEMPRE "query_report". Nunca "unknown".
 - Se o cliente NÃO especificar o período, assuma period="this_month", reportType="all", groupBy="category" (default razoável: mês corrente agrupado por categoria).

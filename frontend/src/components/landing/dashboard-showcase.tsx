@@ -118,7 +118,7 @@ export function DashboardShowcase() {
                   <div className="h-3 w-3 rounded-full bg-[#28c840]" />
                 </div>
                 <div className="ml-3 rounded-md border border-white/20 bg-[#0d130f] px-3 py-0.5 font-mono text-[11px] text-white/80">
-                  app.meucaixa.store/dashboard
+                  app.controlei.ia.br/dashboard
                 </div>
               </div>
               <div className="flex items-center gap-3 text-[11px] font-bold text-[#b7c6c2]">

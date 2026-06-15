@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { getAllPosts } from '@/lib/blog';
 
-const BASE = 'https://meucaixa.ia.br';
+const BASE = 'https://controlei.ia.br';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();

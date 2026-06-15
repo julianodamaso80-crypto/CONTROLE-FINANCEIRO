@@ -1,6 +1,6 @@
-# Meu Caixa — Frontend
+# Controlei — Frontend
 
-Interface web do SaaS de controle financeiro Meu Caixa.
+Interface web do SaaS de controle financeiro Controlei.
 
 ## Stack
 

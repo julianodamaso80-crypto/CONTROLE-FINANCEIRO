@@ -6,7 +6,7 @@ import { TrackEventDto } from './dto/track-event.dto';
 import { TrackingDestination } from '@prisma/client';
 
 /**
- * Mapa: evento interno MeuCaixa → Meta standard event.
+ * Mapa: evento interno Controlei → Meta standard event.
  * `Subscribe` é o evento dedicado pra SaaS recorrente (ASC/Advantage+ otimiza melhor).
  */
 const META_EVENT_MAP: Record<string, string> = {
@@ -93,7 +93,7 @@ export class TrackingService {
           event_time: Math.floor(Date.now() / 1000),
           event_id: event.transactionId,
           action_source: 'website',
-          event_source_url: 'https://meucaixa.store/plano',
+          event_source_url: 'https://controlei.ia.br/plano',
           user_data: userData,
           custom_data: {
             currency: event.currency,
@@ -149,7 +149,7 @@ export class TrackingService {
             items: [
               {
                 item_id: 'meucaixa_subscription',
-                item_name: 'MeuCaixa Assinatura',
+                item_name: 'Controlei Assinatura',
                 price: event.value,
                 quantity: 1,
               },

@@ -4,8 +4,8 @@ import Image from 'next/image';
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | Blog Meu Caixa',
-    default: 'Blog Meu Caixa — Controle Financeiro, Orçamento e WhatsApp',
+    template: '%s | Blog Controlei',
+    default: 'Blog Controlei — Controle Financeiro, Orçamento e WhatsApp',
   },
   description:
     'Conteúdo prático sobre controle de gastos, orçamento familiar e automação financeira pelo WhatsApp.',
@@ -15,21 +15,21 @@ export const metadata: Metadata = {
 const organizationLd = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  name: 'Meu Caixa',
-  url: 'https://meucaixa.ia.br',
-  logo: 'https://meucaixa.ia.br/logo-sem-fundo-2.png',
+  name: 'Controlei',
+  url: 'https://controlei.ia.br',
+  logo: 'https://controlei.ia.br/logo-sem-fundo-2.png',
   description: 'SaaS de controle financeiro pessoal com IA e WhatsApp.',
-  sameAs: ['https://www.instagram.com/meucaixa.ia.br'],
+  sameAs: ['https://www.instagram.com/controlei.ia.br'],
 };
 
 const websiteLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  name: 'Meu Caixa',
-  url: 'https://meucaixa.ia.br',
+  name: 'Controlei',
+  url: 'https://controlei.ia.br',
   potentialAction: {
     '@type': 'SearchAction',
-    target: 'https://meucaixa.ia.br/blog?q={search_term_string}',
+    target: 'https://controlei.ia.br/blog?q={search_term_string}',
     'query-input': 'required name=search_term_string',
   },
 };
@@ -51,7 +51,7 @@ export default function BlogLayout({ children }: { children: React.ReactNode }) 
           <Link href="/blog" className="flex items-center gap-3">
             <Image
               src="/logo-sem-fundo-2.png"
-              alt="Meu Caixa Blog"
+              alt="Controlei Blog"
               width={140}
               height={40}
               priority
@@ -99,7 +99,7 @@ export default function BlogLayout({ children }: { children: React.ReactNode }) 
       <footer className="mt-24 border-t border-white/10 bg-black/40 px-6 py-12 text-sm text-white/60">
         <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <div>
-            <p className="font-extrabold text-white">Meu Caixa</p>
+            <p className="font-extrabold text-white">Controlei</p>
             <p className="mt-1">Controle de gastos por WhatsApp — feito no Brasil.</p>
           </div>
           <div className="flex flex-wrap gap-6">

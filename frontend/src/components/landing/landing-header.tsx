@@ -11,10 +11,10 @@ export function LandingHeader() {
   return (
     <header className="sticky top-0 z-50 border-b-2 border-[#90ff6b] bg-black">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-        <Link href="/" className="flex items-center" aria-label="MeuCaixa">
+        <Link href="/" className="flex items-center" aria-label="Controlei">
           <Image
             src="/logo-sem-fundo-2.png"
-            alt="MeuCaixa"
+            alt="Controlei"
             width={180}
             height={48}
             priority

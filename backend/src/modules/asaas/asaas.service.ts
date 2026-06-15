@@ -47,7 +47,7 @@ export class AsaasService {
         headers: {
           access_token: this.appConfig.getAsaasApiKey(),
           'Content-Type': 'application/json',
-          'User-Agent': 'MeuCaixa/1.0',
+          'User-Agent': 'Controlei/1.0',
         },
         timeout: 30_000,
       });
@@ -126,7 +126,7 @@ export class AsaasService {
           nextDueDate: input.nextDueDate,
           cycle: input.cycle,
           description:
-            input.description ?? 'Assinatura Meu Caixa — controle financeiro',
+            input.description ?? 'Assinatura Controlei — controle financeiro',
           externalReference: input.externalReference,
         },
       );

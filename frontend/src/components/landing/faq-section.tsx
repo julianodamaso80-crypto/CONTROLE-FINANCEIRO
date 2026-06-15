@@ -10,11 +10,11 @@ export const faqItems = [
   },
   {
     q: 'Preciso instalar algum app no celular?',
-    a: 'Não. Você usa o WhatsApp que já tem instalado pra lançar transações, consultar saldo e pedir relatórios. Pra ver dashboards e configurar orçamentos, acessa app.meucaixa.store pelo navegador do celular ou computador. Sem app pra baixar.',
+    a: 'Não. Você usa o WhatsApp que já tem instalado pra lançar transações, consultar saldo e pedir relatórios. Pra ver dashboards e configurar orçamentos, acessa app.controlei.ia.br pelo navegador do celular ou computador. Sem app pra baixar.',
   },
   {
     q: 'Preciso conectar meu WhatsApp com QR code?',
-    a: 'Não. A MeuCaixa tem um número oficial — (21) 98312-8245. Você só salva esse contato no seu zap e manda mensagem normal pra ele. O bot identifica você pelo número que você cadastrou na conta e responde com seus dados.',
+    a: 'Não. A Controlei tem um número oficial — (21) 98312-8245. Você só salva esse contato no seu zap e manda mensagem normal pra ele. O bot identifica você pelo número que você cadastrou na conta e responde com seus dados.',
   },
   {
     q: 'Posso compartilhar com cônjuge, sócio ou família?',
@@ -38,7 +38,7 @@ export const faqItems = [
   },
   {
     q: 'Meus dados ficam seguros?',
-    a: 'Servidor no Brasil, backup diário automático, senha criptografada, conexão HTTPS em todas as páginas. Cumprimos a LGPD: você pode pedir exportação ou exclusão dos seus dados a qualquer momento pelo email contato@meucaixa.store.',
+    a: 'Servidor no Brasil, backup diário automático, senha criptografada, conexão HTTPS em todas as páginas. Cumprimos a LGPD: você pode pedir exportação ou exclusão dos seus dados a qualquer momento pelo email contato@controlei.ia.br.',
   },
   {
     q: 'Se eu cancelar, perco meus dados?',

@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const cat = CATEGORIES[params.category];
   if (!cat) return {};
   return {
-    title: `${cat.label} | Blog Meu Caixa`,
+    title: `${cat.label} | Blog Controlei`,
     description: cat.description,
     alternates: { canonical: `/blog/categoria/${params.category}` },
   };

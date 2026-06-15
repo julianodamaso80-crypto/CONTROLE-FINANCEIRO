@@ -1,9 +1,9 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Política de Privacidade — MeuCaixa',
+  title: 'Política de Privacidade — Controlei',
   description:
-    'Política de Privacidade do MeuCaixa: como coletamos, usamos e protegemos seus dados.',
+    'Política de Privacidade do Controlei: como coletamos, usamos e protegemos seus dados.',
   robots: { index: false, follow: false },
 };
 
@@ -28,12 +28,12 @@ export default function PrivacidadePage() {
         <section className="mt-10 space-y-4">
           <h2 className="font-cabinet text-2xl font-extrabold">1. Quem somos</h2>
           <p>
-            O MeuCaixa (acessível em{' '}
+            O Controlei (acessível em{' '}
             <a
-              href="https://meucaixa.store"
+              href="https://controlei.ia.br"
               className="font-bold underline"
             >
-              meucaixa.store
+              controlei.ia.br
             </a>
             ) é uma plataforma de controle financeiro empresarial via WhatsApp e
             painel web. Esta Política descreve como coletamos, usamos,
@@ -148,10 +148,10 @@ export default function PrivacidadePage() {
           <p>
             Para exercer qualquer direito, envie um e-mail para{' '}
             <a
-              href="mailto:contato@meucaixa.store"
+              href="mailto:contato@controlei.ia.br"
               className="font-bold underline"
             >
-              contato@meucaixa.store
+              contato@controlei.ia.br
             </a>
             .
           </p>
@@ -198,10 +198,10 @@ export default function PrivacidadePage() {
           <p>
             <strong>E-mail:</strong>{' '}
             <a
-              href="mailto:contato@meucaixa.store"
+              href="mailto:contato@controlei.ia.br"
               className="font-bold underline"
             >
-              contato@meucaixa.store
+              contato@controlei.ia.br
             </a>
           </p>
         </section>

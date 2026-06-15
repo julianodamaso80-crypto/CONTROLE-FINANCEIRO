@@ -11,9 +11,9 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  // CORS: aceita localhost em dev, qualquer subdomínio de meucaixa.store /
-  // meucaixa.ia.br / controlei.ia.br e vercel.app em prod, além de origens
-  // extras via CORS_ORIGINS. (Controlei é rebrand do Meu Caixa, mesmo backend.)
+  // CORS: aceita localhost em dev, controlei.ia.br (novo dominio) e
+  // meucaixa.store/.ia.br (legacy enquanto DNS migra) e vercel.app em prod,
+  // alem de origens extras via CORS_ORIGINS.
   const extraOrigins = process.env['CORS_ORIGINS']
     ?.split(',')
     .map((s) => s.trim())
@@ -24,12 +24,15 @@ async function bootstrap() {
       if (!origin) return callback(null, true);
       const allowed =
         /^http:\/\/localhost(:\d+)?$/.test(origin) ||
-        /\.meucaixa\.store$/.test(origin) ||
-        origin === 'https://meucaixa.store' ||
-        /\.meucaixa\.ia\.br$/.test(origin) ||
-        origin === 'https://meucaixa.ia.br' ||
-        /\.controlei\.ia\.br$/.test(origin) ||
+        // Novo dominio (Controlei)
         origin === 'https://controlei.ia.br' ||
+        /\.controlei\.ia\.br$/.test(origin) ||
+        // Legacy (MeuCaixa) — manter ate migrar DNS
+        origin === 'https://meucaixa.store' ||
+        /\.meucaixa\.store$/.test(origin) ||
+        origin === 'https://meucaixa.ia.br' ||
+        /\.meucaixa\.ia\.br$/.test(origin) ||
+        // Previews da Vercel
         /\.vercel\.app$/.test(origin) ||
         extraOrigins.includes(origin);
       // Origem não permitida → nega limpo (sem lançar, pra não virar 500)

@@ -104,7 +104,7 @@ export function ExtendedFeatureGrid() {
             <span className="text-stroke">Zero</span> planilha pra abrir.
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg font-medium text-black/80">
-            Você cadastra a sua conta, salva o número da MeuCaixa no zap e ganha um assistente financeiro completo.
+            Você cadastra a sua conta, salva o número da Controlei no zap e ganha um assistente financeiro completo.
             De OCR de cupom fiscal até projeção de saldo pra 60 dias.
           </p>
         </div>

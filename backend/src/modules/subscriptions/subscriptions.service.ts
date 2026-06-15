@@ -618,7 +618,7 @@ export class SubscriptionsService {
             .catch(() => {});
         }
       }
-      const link = payUrl ?? 'https://meucaixa.ia.br/plano';
+      const link = payUrl ?? 'https://controlei.ia.br/plano';
 
       const firstName = owner.name.split(' ')[0] ?? owner.name;
       await this.cloud.sendTemplate(owner.phone, 'mensalidade_vencida', 'pt_BR', [

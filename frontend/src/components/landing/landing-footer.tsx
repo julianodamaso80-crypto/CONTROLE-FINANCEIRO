@@ -12,7 +12,7 @@ export function LandingFooter() {
                 <Zap className="h-5 w-5 fill-black text-black" />
               </div>
               <span className="font-cabinet text-2xl font-extrabold">
-                MeuCaixa
+                Controlei
               </span>
             </Link>
             <p className="mt-4 max-w-xs font-medium text-[#b7c6c2]">
@@ -76,7 +76,7 @@ export function LandingFooter() {
 
         <div className="mt-16 flex flex-col items-start justify-between gap-6 border-t border-[#272727] pt-8 md:flex-row md:items-center">
           <p className="text-sm font-medium text-[#b7c6c2]">
-            © 2026 MeuCaixa. Todos os direitos reservados.
+            © 2026 Controlei. Todos os direitos reservados.
           </p>
           <p className="text-sm font-medium text-[#b7c6c2]">
             Feito com <span className="text-[#90ff6b]">verde</span> no Brasil 🇧🇷

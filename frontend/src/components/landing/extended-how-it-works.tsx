@@ -14,7 +14,7 @@ const steps = [
   {
     n: '02',
     icon: MessageCircle,
-    title: 'Salve o número da MeuCaixa no seu zap',
+    title: 'Salve o número da Controlei no seu zap',
     description:
       'Você recebe boas-vindas no nosso número oficial (21 98312-8245) na hora que cadastra. Salve nos contatos e pronto.',
     detail:
@@ -36,7 +36,7 @@ const steps = [
     icon: BarChart3,
     title: 'Acompanha pelo dashboard web',
     description:
-      'Acessa app.meucaixa.store, vê 6 KPIs em tempo real, gráficos por categoria e projeção de caixa pra 60 dias.',
+      'Acessa app.controlei.ia.br, vê 6 KPIs em tempo real, gráficos por categoria e projeção de caixa pra 60 dias.',
     detail:
       'Filtra por período, categoria ou conta. Importa extrato OFX direto do banco, exporta CSV pra abrir no Excel. Configura orçamentos, metas e cartão de crédito até 48x.',
     color: '#fde047',
@@ -75,7 +75,7 @@ export function ExtendedHowItWorks() {
             em 5 minutos.
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg font-medium text-[#b7c6c2]">
-            Sem QR code, sem app pra instalar, sem treinamento. Você cadastra o seu WhatsApp, salva o número da MeuCaixa e já começa a usar.
+            Sem QR code, sem app pra instalar, sem treinamento. Você cadastra o seu WhatsApp, salva o número da Controlei e já começa a usar.
           </p>
         </div>
 

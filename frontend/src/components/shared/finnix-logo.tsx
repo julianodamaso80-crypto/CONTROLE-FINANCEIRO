@@ -8,7 +8,7 @@ interface FinnixLogoProps {
 }
 
 // As logos "sem fundo" são banners horizontais que já contêm o
-// porquinho + texto "Meu Caixa". Renderizamos só a imagem, sem
+// porquinho + texto "Controlei". Renderizamos só a imagem, sem
 // texto adicional. A largura é ~3x a altura (aspect ratio ~3:1).
 const sizes = {
   sm: { h: 32 },
@@ -29,7 +29,7 @@ export function FinnixLogo({
     <div className={cn('flex items-center', className)}>
       <Image
         src={src}
-        alt="Meu Caixa"
+        alt="Controlei"
         width={s.h * 3}
         height={s.h}
         priority

@@ -118,7 +118,7 @@ export default function AdminDashboardPage() {
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">
-          Painel administrativo do MeuCaixa
+          Painel administrativo do Controlei
         </p>
       </div>
 

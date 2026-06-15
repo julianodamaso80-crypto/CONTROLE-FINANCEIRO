@@ -281,7 +281,7 @@ export class WhatsAppService {
     }
 
     const message =
-      `🔐 *Recuperação de senha — Meu Caixa*\n\n` +
+      `🔐 *Recuperação de senha — Controlei*\n\n` +
       `Seu código é: *${code}*\n\n` +
       `Ele expira em 10 minutos. Se você não pediu, ignore esta mensagem.`;
 
@@ -373,7 +373,7 @@ export class WhatsAppService {
     }
 
     const message =
-      `👋 Olá, ${firstName}! Seja bem-vindo ao *Meu Caixa*.\n\n` +
+      `👋 Olá, ${firstName}! Seja bem-vindo ao *Controlei*.\n\n` +
       `Sou seu assistente financeiro pelo WhatsApp. Você já pode:\n\n` +
       `💸 Registrar despesas: _"gastei 50 no uber"_\n` +
       `💰 Registrar receitas: _"recebi 2k do cliente"_\n` +
@@ -605,10 +605,10 @@ export class WhatsAppService {
       const reply =
         '👋 *Olá!*\n' +
         '━━━━━━━━━━━━━━━\n\n' +
-        '🤖 Sou o assistente do *Meu Caixa*\n\n' +
+        '🤖 Sou o assistente do *Controlei*\n\n' +
         '❌ Esse número ainda não está cadastrado.\n\n' +
         '🌐 Crie sua conta em:\n' +
-        '   https://meucaixa.ia.br\n\n' +
+        '   https://controlei.ia.br\n\n' +
         '💡 _Cadastre este mesmo WhatsApp pra começar_';
       await transport.sendText(senderNumber, reply).catch(() => {});
       await this.prisma.whatsAppMessage.create({
@@ -635,7 +635,7 @@ export class WhatsAppService {
         '━━━━━━━━━━━━━━━\n\n' +
         '😕 O período gratuito acabou ou sua assinatura está pendente.\n\n' +
         '🌐 Renove agora em:\n' +
-        '   https://meucaixa.ia.br/plano\n\n' +
+        '   https://controlei.ia.br/plano\n\n' +
         '💎 *Planos:*\n' +
         '📅 Mensal — R$ 19,90/mês\n' +
         '📆 Anual — R$ 199,90/ano _(economize ~16%)_';
@@ -1280,7 +1280,7 @@ export class WhatsAppService {
       case 'greeting':
         return {
           responseText:
-            '👋 Olá! Sou o assistente do *Meu Caixa*. Posso te ajudar a:\n\n' +
+            '👋 Olá! Sou o assistente do *Controlei*. Posso te ajudar a:\n\n' +
             '💸 Registrar despesas: _"gastei 50 no uber"_\n' +
             '💰 Registrar receitas: _"recebi 2k do cliente"_\n' +
             '📊 Gerar relatórios: _"quanto ganhei essa semana"_\n' +
@@ -1305,7 +1305,7 @@ export class WhatsAppService {
         }
         return {
           responseText:
-            '🤔 Sou o assistente do *Meu Caixa* — só consigo te ajudar com finanças (despesas, receitas, saldo e relatórios).\n\n' +
+            '🤔 Sou o assistente do *Controlei* — só consigo te ajudar com finanças (despesas, receitas, saldo e relatórios).\n\n' +
             'Envie *ajuda* para ver os comandos disponíveis.',
           actionTaken: 'unknown',
           relatedTransactionId: null,
@@ -2719,7 +2719,7 @@ export class WhatsAppService {
   }
 
   private buildHelpMessage(): string {
-    return `🤖 *Meu Caixa — Assistente Financeiro*
+    return `🤖 *Controlei — Assistente Financeiro*
 ━━━━━━━━━━━━━━━
 
 _Mande uma mensagem e eu cuido do resto!_

@@ -24,15 +24,15 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://meucaixa.ia.br'),
-  title: 'Meu Caixa — Controle Financeiro Inteligente',
+  metadataBase: new URL('https://controlei.ia.br'),
+  title: 'Controlei — Controle Financeiro Inteligente',
   description:
     'SaaS de controle financeiro empresarial com bot WhatsApp e IA',
   openGraph: {
     type: 'website',
-    url: 'https://meucaixa.ia.br',
-    siteName: 'Meu Caixa',
-    title: 'Meu Caixa — Controle Financeiro Inteligente',
+    url: 'https://controlei.ia.br',
+    siteName: 'Controlei',
+    title: 'Controlei — Controle Financeiro Inteligente',
     description:
       'SaaS de controle financeiro empresarial com bot WhatsApp e IA',
     images: [
@@ -40,13 +40,13 @@ export const metadata: Metadata = {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Meu Caixa — Seu controle de gastos por chat',
+        alt: 'Controlei — Seu controle de gastos por chat',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Meu Caixa — Controle Financeiro Inteligente',
+    title: 'Controlei — Controle Financeiro Inteligente',
     description:
       'SaaS de controle financeiro empresarial com bot WhatsApp e IA',
     images: ['/og-image.png'],

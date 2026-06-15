@@ -75,7 +75,7 @@ export default function RegisterPage() {
 
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">Criar conta no Meu Caixa</CardTitle>
+            <CardTitle className="text-xl">Criar conta no Controlei</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

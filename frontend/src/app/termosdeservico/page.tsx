@@ -1,9 +1,9 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'Termos de Serviço — MeuCaixa',
+  title: 'Termos de Serviço — Controlei',
   description:
-    'Termos de Serviço do MeuCaixa: regras de uso, planos, pagamento e responsabilidades.',
+    'Termos de Serviço do Controlei: regras de uso, planos, pagamento e responsabilidades.',
   robots: { index: false, follow: false },
 };
 
@@ -30,12 +30,12 @@ export default function TermosDeServicoPage() {
             1. Aceitação dos termos
           </h2>
           <p>
-            Ao criar uma conta no MeuCaixa (
+            Ao criar uma conta no Controlei (
             <a
-              href="https://meucaixa.store"
+              href="https://controlei.ia.br"
               className="font-bold underline"
             >
-              meucaixa.store
+              controlei.ia.br
             </a>
             ) ou usar qualquer um dos nossos serviços, você concorda com
             estes Termos de Serviço e com a nossa{' '}
@@ -51,7 +51,7 @@ export default function TermosDeServicoPage() {
             2. Descrição do serviço
           </h2>
           <p>
-            O MeuCaixa é uma plataforma SaaS de controle financeiro
+            O Controlei é uma plataforma SaaS de controle financeiro
             empresarial que permite registrar receitas, despesas e categorias
             por meio de mensagens no WhatsApp (texto, áudio, imagem e PDF) e
             visualizar relatórios em um painel web.
@@ -166,7 +166,7 @@ export default function TermosDeServicoPage() {
           </h2>
           <p>
             Você mantém a propriedade integral dos dados financeiros e
-            documentos enviados. Concede ao MeuCaixa apenas a licença
+            documentos enviados. Concede ao Controlei apenas a licença
             necessária para armazenar, processar e exibir esse conteúdo no
             âmbito da prestação do serviço.
           </p>
@@ -190,7 +190,7 @@ export default function TermosDeServicoPage() {
             9. Limitação de responsabilidade
           </h2>
           <p>
-            O MeuCaixa é uma ferramenta de apoio à organização financeira. A
+            O Controlei é uma ferramenta de apoio à organização financeira. A
             classificação automatizada feita por IA pode apresentar
             imprecisões, e o usuário é responsável por revisar os
             lançamentos.
@@ -209,7 +209,7 @@ export default function TermosDeServicoPage() {
           </h2>
           <p>
             Todos os direitos sobre a plataforma, marca, logotipo, código,
-            interfaces e materiais visuais pertencem ao MeuCaixa. Você
+            interfaces e materiais visuais pertencem ao Controlei. Você
             recebe apenas uma licença de uso, não-exclusiva, intransferível
             e revogável, durante a vigência da contratação.
           </p>
@@ -243,10 +243,10 @@ export default function TermosDeServicoPage() {
           <p>
             <strong>E-mail:</strong>{' '}
             <a
-              href="mailto:contato@meucaixa.store"
+              href="mailto:contato@controlei.ia.br"
               className="font-bold underline"
             >
-              contato@meucaixa.store
+              contato@controlei.ia.br
             </a>
           </p>
         </section>

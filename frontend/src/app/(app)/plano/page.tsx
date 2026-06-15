@@ -111,11 +111,11 @@ export default function PlanoPage() {
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader
           title="Meu Plano"
-          subtitle="Sua assinatura Meu Caixa"
+          subtitle="Sua assinatura Controlei"
           helpTitle="Acesso vitalício"
           helpBody={
             <p>
-              Você tem acesso completo ao Meu Caixa, liberado permanentemente,
+              Você tem acesso completo ao Controlei, liberado permanentemente,
               sem cobrança recorrente. Todos os recursos (despesas, receitas,
               relatórios, WhatsApp bot) estão disponíveis.
             </p>
@@ -128,7 +128,7 @@ export default function PlanoPage() {
               Acesso Vitalício
             </CardTitle>
             <CardDescription>
-              Você tem acesso completo ao Meu Caixa, sem cobrança recorrente.
+              Você tem acesso completo ao Controlei, sem cobrança recorrente.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -202,12 +202,12 @@ export default function PlanoPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <PageHeader
         title="Meu Plano"
-        subtitle="Gerencie sua assinatura do Meu Caixa"
+        subtitle="Gerencie sua assinatura do Controlei"
         helpTitle="Como funciona a assinatura?"
         helpBody={
           <>
             <p>
-              O Meu Caixa trabalha com <strong>assinatura recorrente</strong>.
+              O Controlei trabalha com <strong>assinatura recorrente</strong>.
               Você tem 3 dias grátis pra testar, e depois continua com o
               plano Mensal (R$ 19,90/mês) ou Anual (R$ 199,90/ano — economiza
               ~16%).
@@ -265,7 +265,7 @@ export default function PlanoPage() {
           {sub.blocked && (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
               ⚠️ Seu acesso está suspenso. Renove o pagamento abaixo pra
-              voltar a usar o Meu Caixa.
+              voltar a usar o Controlei.
             </div>
           )}
 

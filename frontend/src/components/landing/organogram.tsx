@@ -189,7 +189,7 @@ export function Organogram() {
           </p>
         </div>
 
-        {/* CENTRO — bot da MeuCaixa com glow */}
+        {/* CENTRO — bot da Controlei com glow */}
         <div className="mb-10 flex justify-center">
           <div className="relative">
             {/* halo glow externo */}
@@ -214,7 +214,7 @@ export function Organogram() {
               </div>
               <div>
                 <p className="font-cabinet text-2xl font-extrabold text-[#90ff6b]">
-                  MeuCaixa Bot
+                  Controlei Bot
                 </p>
                 <p className="font-mono text-xs font-bold text-white/60">
                   (21) 98312-8245 · sempre online

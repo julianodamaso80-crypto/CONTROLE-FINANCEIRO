@@ -21,7 +21,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const post = await getPostBySlug(params.slug);
   if (!post) return {};
-  const url = `https://meucaixa.ia.br/blog/${post.slug}`;
+  const url = `https://controlei.ia.br/blog/${post.slug}`;
   return {
     title: post.title,
     description: post.description,
@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: post.description,
       publishedTime: post.publishedAt,
       modifiedTime: post.updatedAt ?? post.publishedAt,
-      authors: [post.author ?? 'Equipe Editorial Meu Caixa'],
+      authors: [post.author ?? 'Equipe Editorial Controlei'],
       images: [{ url: post.cover, width: 1200, height: 630 }],
     },
     twitter: {
@@ -97,7 +97,7 @@ const mdxComponents = {
 export default async function BlogPostPage({ params }: PageProps) {
   const post = await getPostBySlug(params.slug);
   if (!post) notFound();
-  const url = `https://meucaixa.ia.br/blog/${post.slug}`;
+  const url = `https://controlei.ia.br/blog/${post.slug}`;
   const category = CATEGORIES[post.category];
 
   return (
@@ -129,7 +129,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         </h1>
         <p className="mt-5 text-xl text-white/70">{post.description}</p>
         <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-white/50">
-          <span>{post.author ?? 'Equipe Editorial Meu Caixa'}</span>
+          <span>{post.author ?? 'Equipe Editorial Controlei'}</span>
           <span aria-hidden>·</span>
           <time dateTime={post.publishedAt}>
             {new Date(post.publishedAt).toLocaleDateString('pt-BR', {
@@ -182,7 +182,7 @@ export default async function BlogPostPage({ params }: PageProps) {
       <section className="mt-16 rounded-3xl border-2 border-[#90ff6b]/30 bg-gradient-to-br from-[#90ff6b]/10 to-transparent p-8 text-center">
         <MessageCircle className="mx-auto mb-3 h-10 w-10 text-[#90ff6b]" strokeWidth={2.5} />
         <h2 className="font-display text-3xl font-extrabold">
-          Quer ver os planos do Meu Caixa?
+          Quer ver os planos do Controlei?
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-base text-white/70">
           Registre despesas pelo WhatsApp, a IA categoriza tudo e o relatório PDF mensal

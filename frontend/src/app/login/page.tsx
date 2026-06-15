@@ -67,7 +67,7 @@ export default function LoginPage() {
 
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">Entrar no Meu Caixa</CardTitle>
+            <CardTitle className="text-xl">Entrar no Controlei</CardTitle>
           </CardHeader>
           <CardContent>
             {loginError && (

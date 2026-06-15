@@ -16,14 +16,14 @@ export function ArticleSchema({ post, url }: Props) {
     dateModified: post.updatedAt ?? post.publishedAt,
     author: {
       '@type': 'Organization',
-      name: post.author ?? 'Equipe Editorial Meu Caixa',
-      url: 'https://meucaixa.ia.br',
+      name: post.author ?? 'Equipe Editorial Controlei',
+      url: 'https://controlei.ia.br',
     },
     publisher: {
       '@type': 'Organization',
-      name: 'Meu Caixa',
-      logo: { '@type': 'ImageObject', url: 'https://meucaixa.ia.br/logo-sem-fundo-2.png' },
-      url: 'https://meucaixa.ia.br',
+      name: 'Controlei',
+      logo: { '@type': 'ImageObject', url: 'https://controlei.ia.br/logo-sem-fundo-2.png' },
+      url: 'https://controlei.ia.br',
     },
     mainEntityOfPage: url,
     keywords: (post.keywords ?? []).join(', '),
@@ -36,8 +36,8 @@ export function ArticleSchema({ post, url }: Props) {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Início', item: 'https://meucaixa.ia.br/' },
-      { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://meucaixa.ia.br/blog' },
+      { '@type': 'ListItem', position: 1, name: 'Início', item: 'https://controlei.ia.br/' },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://controlei.ia.br/blog' },
       { '@type': 'ListItem', position: 3, name: post.title, item: url },
     ],
   };

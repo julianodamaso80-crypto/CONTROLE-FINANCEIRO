@@ -113,7 +113,7 @@ export function OnboardingDialog() {
           <>
             <DialogHeader>
               <DialogTitle className="font-display text-2xl">
-                Bem-vindo ao Meu Caixa!
+                Bem-vindo ao Controlei!
               </DialogTitle>
               <DialogDescription className="text-base">
                 Antes de começar, queremos entender como seu negócio
@@ -295,7 +295,7 @@ export function OnboardingDialog() {
                 Tudo pronto!
               </DialogTitle>
               <DialogDescription className="text-base">
-                Explore o Meu Caixa. Sugestão do que fazer a seguir:
+                Explore o Controlei. Sugestão do que fazer a seguir:
               </DialogDescription>
             </DialogHeader>
             <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-muted-foreground">
