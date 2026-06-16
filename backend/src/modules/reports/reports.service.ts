@@ -137,8 +137,14 @@ export class ReportsService {
       date: { gte: from, lte: to },
     };
 
-    const [totals, byCategoryRaw, bySegmentRaw, topExpensesRaw, topIncomeRaw] =
-      await Promise.all([
+    const [
+      totals,
+      byCategoryRaw,
+      uncategorizedRaw,
+      bySegmentRaw,
+      topExpensesRaw,
+      topIncomeRaw,
+    ] = await Promise.all([
         this.prisma.transaction.groupBy({
           by: ['type'],
           where,
@@ -150,6 +156,10 @@ export class ReportsService {
           where,
           _sum: { amount: true },
           _count: { _all: true },
+        }),
+        this.prisma.transaction.findMany({
+          where: { ...where, categoryId: null },
+          select: { description: true, type: true, amount: true },
         }),
         this.prisma.transaction.groupBy({
           by: ['segmentId'],
@@ -205,16 +215,23 @@ export class ReportsService {
       : [];
     const segmentMap = new Map(segments.map((s) => [s.id, s.name]));
 
-    const byCategory = byCategoryRaw
+    const realCategories = byCategoryRaw
+      .filter((r) => r.categoryId !== null)
       .map((r) => ({
-        name: r.categoryId
-          ? categoryMap.get(r.categoryId) ?? 'Categoria removida'
-          : 'Sem categoria',
+        name: categoryMap.get(r.categoryId as string) ?? 'Categoria removida',
         type: r.type,
         total: Number(r._sum.amount ?? 0),
         count: r._count._all,
-      }))
-      .sort((a, b) => b.total - a.total);
+      }));
+
+    // Despesas/receitas sem categoria são agrupadas por descrição: as que se
+    // repetem viram linhas próprias (ex.: "Sem categoria · Pagamento aplicador
+    // Evandro"), e as avulsas ficam em "Sem categoria (diversos)".
+    const uncategorized = this.groupUncategorized(uncategorizedRaw);
+
+    const byCategory = [...realCategories, ...uncategorized].sort(
+      (a, b) => b.total - a.total,
+    );
 
     const bySegment = bySegmentRaw
       .map((r) => ({
@@ -252,6 +269,80 @@ export class ReportsService {
       topIncome: topIncomeRaw.map(mapTx),
       generatedAt: new Date().toLocaleString('pt-BR', { timeZone: TZ }),
     };
+  }
+
+  /**
+   * Agrupa transações sem categoria pela descrição. Descrições semelhantes
+   * (mesmo texto após normalizar acentos/números/pontuação) que aparecem 2x ou
+   * mais viram uma linha própria, usando a forma original mais frequente como
+   * rótulo. Lançamentos avulsos (1x) são somados em "Sem categoria (diversos)".
+   */
+  private groupUncategorized(
+    txs: Array<{ description: string; type: string; amount: Prisma.Decimal }>,
+  ): Array<{ name: string; type: string; total: number; count: number }> {
+    const groups = new Map<
+      string,
+      { type: string; total: number; count: number; labels: Map<string, number> }
+    >();
+
+    for (const tx of txs) {
+      const norm = this.normalizeDesc(tx.description);
+      const key = `${tx.type}::${norm || '__vazio__'}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = { type: tx.type, total: 0, count: 0, labels: new Map() };
+        groups.set(key, g);
+      }
+      g.total += Number(tx.amount);
+      g.count += 1;
+      const label = tx.description.trim() || 'Sem descrição';
+      g.labels.set(label, (g.labels.get(label) ?? 0) + 1);
+    }
+
+    const result: Array<{ name: string; type: string; total: number; count: number }> =
+      [];
+    const misc = new Map<string, { total: number; count: number }>();
+
+    for (const g of groups.values()) {
+      if (g.count >= 2) {
+        const sorted = [...g.labels.entries()].sort((a, b) => b[1] - a[1]);
+        const repr = sorted[0]?.[0] ?? 'Sem descrição';
+        result.push({
+          name: `Sem categoria · ${repr}`,
+          type: g.type,
+          total: g.total,
+          count: g.count,
+        });
+      } else {
+        const m = misc.get(g.type) ?? { total: 0, count: 0 };
+        m.total += g.total;
+        m.count += g.count;
+        misc.set(g.type, m);
+      }
+    }
+
+    for (const [type, m] of misc.entries()) {
+      result.push({
+        name: 'Sem categoria (diversos)',
+        type,
+        total: m.total,
+        count: m.count,
+      });
+    }
+
+    return result;
+  }
+
+  private normalizeDesc(s: string): string {
+    return s
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // remove acentos
+      .replace(/r\$\s*[\d.,]+/g, ' ') // remove valores em R$
+      .replace(/\d+/g, ' ') // remove números soltos
+      .replace(/[^a-z\s]/g, ' ') // remove pontuação
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   private formatDate(d: Date): string {
