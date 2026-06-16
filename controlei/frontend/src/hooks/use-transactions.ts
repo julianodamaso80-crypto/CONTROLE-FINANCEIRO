@@ -19,11 +19,22 @@ interface TransactionFilters {
   sortOrder?: string;
 }
 
+export interface TransactionsSummary {
+  totalIncome: number;
+  totalExpense: number;
+  balance: number;
+  count: number;
+}
+
+export type TransactionsResponse = PaginatedResponse<Transaction> & {
+  summary?: TransactionsSummary;
+};
+
 export function useTransactions(filters?: TransactionFilters) {
   return useQuery({
     queryKey: ['transactions', filters],
     queryFn: () =>
-      apiGet<PaginatedResponse<Transaction>>('/transactions', filters as Record<string, string | undefined>),
+      apiGet<TransactionsResponse>('/transactions', filters as Record<string, string | undefined>),
   });
 }
 

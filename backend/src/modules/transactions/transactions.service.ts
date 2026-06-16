@@ -55,14 +55,23 @@ export class TransactionsService {
       if (filters.dateTo) where.date.lte = new Date(filters.dateTo);
     }
 
-    if (filters.search) {
-      where.OR = [
-        { description: { contains: filters.search, mode: 'insensitive' } },
-        { notes: { contains: filters.search, mode: 'insensitive' } },
-      ];
+    // Busca textual inteligente: ignora acentos E maiúsculas/minúsculas.
+    // Como o Prisma não expõe unaccent(), filtramos via SQL os IDs que batem
+    // e restringimos o where a eles. Ex.: buscar "hidraulica" acha "hidráulica".
+    if (filters.search?.trim()) {
+      const term = `%${filters.search.trim()}%`;
+      const matches = await this.prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM transactions
+        WHERE company_id = ${companyId}::uuid
+          AND (
+            unaccent(description) ILIKE unaccent(${term})
+            OR unaccent(coalesce(notes, '')) ILIKE unaccent(${term})
+          )
+      `;
+      where.id = { in: matches.map((m) => m.id) };
     }
 
-    const [data, total] = await Promise.all([
+    const [data, total, sums] = await Promise.all([
       this.prisma.transaction.findMany({
         where,
         include: transactionIncludes,
@@ -71,7 +80,19 @@ export class TransactionsService {
         take: limit,
       }),
       this.prisma.transaction.count({ where }),
+      this.prisma.transaction.groupBy({
+        by: ['type'],
+        where,
+        _sum: { amount: true },
+      }),
     ]);
+
+    const totalIncome = Number(
+      sums.find((s) => s.type === 'INCOME')?._sum.amount ?? 0,
+    );
+    const totalExpense = Number(
+      sums.find((s) => s.type === 'EXPENSE')?._sum.amount ?? 0,
+    );
 
     return {
       data,
@@ -80,6 +101,14 @@ export class TransactionsService {
         limit,
         total,
         totalPages: Math.ceil(total / limit),
+      },
+      // Totais do conjunto filtrado inteiro (não só da página) — usado pra
+      // mostrar quanto foi gasto/recebido com o termo pesquisado.
+      summary: {
+        totalIncome,
+        totalExpense,
+        balance: totalIncome - totalExpense,
+        count: total,
       },
     };
   }

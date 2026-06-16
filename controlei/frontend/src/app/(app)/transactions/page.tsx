@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useTransactions } from '@/hooks/use-transactions';
+import { formatCurrency } from '@/lib/utils';
 import type { Transaction } from '@/types/models';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -101,6 +102,42 @@ export default function TransactionsPage() {
           setPage(1);
         }}
       />
+
+      {/* Resumo da busca: quanto foi gasto/recebido com o termo pesquisado */}
+      {filters.search && data?.summary && (
+        <div className="rounded-lg border bg-muted/40 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+            <p className="text-sm text-muted-foreground">
+              Resultado para{' '}
+              <span className="font-semibold text-foreground">
+                &ldquo;{filters.search}&rdquo;
+              </span>{' '}
+              · {data.summary.count}{' '}
+              {data.summary.count === 1 ? 'lançamento' : 'lançamentos'}
+            </p>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+              <span>
+                <span className="text-muted-foreground">Despesas: </span>
+                <span className="font-semibold text-red-400">
+                  {formatCurrency(data.summary.totalExpense)}
+                </span>
+              </span>
+              <span>
+                <span className="text-muted-foreground">Receitas: </span>
+                <span className="font-semibold text-green-400">
+                  {formatCurrency(data.summary.totalIncome)}
+                </span>
+              </span>
+              <span>
+                <span className="text-muted-foreground">Saldo: </span>
+                <span className="font-semibold">
+                  {formatCurrency(data.summary.balance)}
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">
