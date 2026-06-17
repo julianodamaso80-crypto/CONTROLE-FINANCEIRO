@@ -266,8 +266,35 @@ export class WhatsAppService {
 
   /**
    * Envia código de recuperação de senha (6 dígitos) via WhatsApp.
+   *
+   * Preferência pelo número OFICIAL do Meta (Cloud API) usando o template de
+   * autenticação `codigo_recuperacao` — fora da janela de 24h só template
+   * aprovado é permitido. Se a Cloud não estiver configurada ou o envio
+   * falhar, cai no fallback do bot global da Evolution (texto livre).
    */
   async sendPasswordResetCode(phone: string, code: string): Promise<void> {
+    if (this.appConfig.isWhatsAppCloudConfigured()) {
+      try {
+        await this.cloud.sendTemplate(phone, 'codigo_recuperacao', 'pt_BR', [
+          { type: 'body', parameters: [{ type: 'text', text: code }] },
+          {
+            type: 'button',
+            sub_type: 'url',
+            index: 0,
+            parameters: [{ type: 'text', text: code }],
+          },
+        ]);
+        return;
+      } catch (err) {
+        this.logger.warn(
+          `sendPasswordResetCode (cloud) falhou, tentando Evolution: ${
+            err instanceof Error ? err.message : 'erro'
+          }`,
+        );
+      }
+    }
+
+    // Fallback: bot global da Evolution (número não-oficial, texto livre).
     if (!this.appConfig.isEvolutionConfigured()) return;
 
     const instance = await this.prisma.whatsAppInstance.findFirst({
