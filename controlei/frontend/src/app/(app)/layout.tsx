@@ -7,6 +7,7 @@ import { Sidebar, MobileHeader } from '@/components/layout/sidebar';
 import { OnboardingDialog } from '@/components/onboarding/onboarding-dialog';
 import { SubscriptionBanner } from '@/components/shared/subscription-banner';
 import { SubscribeTracker } from '@/components/tracking/SubscribeTracker';
+import { WhatsAppFab } from '@/components/shared/whatsapp-fab';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -48,6 +49,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       <OnboardingDialog />
       <SubscribeTracker />
+      <WhatsAppFab />
     </div>
   );
 }
