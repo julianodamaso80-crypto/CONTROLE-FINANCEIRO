@@ -239,21 +239,29 @@ export class AiService {
 
 Sua tarefa: extrair a transação da imagem e retornar JSON no formato usado pelo classificador de texto.
 
-${caption ? `Legenda enviada pelo cliente: "${caption}"` : ''}
+${caption ? `⚠️ LEGENDA ENVIADA PELO CLIENTE (instrução prioritária): "${caption}"
+A legenda é uma ORDEM do cliente. Se ela indicar a categoria, o segmento, o valor ou a descrição, ela TEM PRIORIDADE sobre o que está escrito na imagem.` : ''}
 
 Regras de extração:
 - Identifique se é DESPESA (paga, saída) ou RECEITA (entrada, crédito)
 - amount: valor TOTAL em número decimal (sem R$, sem formatação). Ex: 45.90
-- description: descrição curta identificando o que é (ex: "Supermercado Pão de Açúcar", "Transferência recebida", "Nota fiscal Uber")
+- description: nome do estabelecimento/transação que aparece na imagem (ex: "Mercado Livre", "Supermercado Pão de Açúcar", "Uber"). ISSO É A DESCRIÇÃO — NUNCA use o nome do estabelecimento como categoria.
 - date: data ISO YYYY-MM-DD se visível na imagem. Null se não identificar
-- category: match com uma das categorias cadastradas abaixo, senão null
 - segment: match com um dos segmentos cadastrados abaixo, senão null
 - Se a imagem NÃO for de transação financeira (ex: foto aleatória, meme, selfie), retorne intent "unknown"
 - Se a imagem tiver MÚLTIPLAS transações (um extrato cheio), retorne só a MAIS RECENTE e mencione isso no reasoning
 
+REGRA DE CATEGORIA (CRÍTICA — leia devagar):
+O cliente cadastrou categorias e espera que a transação caia na categoria certa. É uma das funções mais importantes do Controlei.
+- A categoria NUNCA é o nome do estabelecimento. "Mercado Livre", "Uber", "Pão de Açúcar" são DESCRIÇÃO, não categoria.
+- Se a LEGENDA do cliente mencionar (mesmo parcialmente, mesmo com acento/caixa/plural diferente) o nome de uma das categorias cadastradas, você DEVE retornar essa categoria EXATA no campo "category". A legenda é a fonte da verdade — o cliente está te dizendo onde classificar.
+- Se não houver legenda, mas a imagem indicar claramente algo que bate com uma categoria cadastrada, retorne essa categoria.
+- Copie o nome IDÊNTICO da lista (preserve caixa alta, acentos, espaços). Se bater com uma SUBCATEGORIA (formato "Pai > Sub"), retorne o nome da subcategoria.
+- SÓ retorne category=null se REALMENTE nenhuma palavra da legenda nem da imagem bater com a lista. NUNCA invente categoria fora da lista.
+
 DATA DE REFERÊNCIA (America/Sao_Paulo): hoje é ${now.weekday}, ${now.br} (ISO ${now.iso}). Se a data da imagem não for legível, retorne date=null.
 
-Categorias cadastradas: ${categorias}
+Categorias cadastradas (formato "Pai > Sub1, Sub2"): ${categorias}
 Segmentos cadastrados: ${segmentos}
 
 FORMATO DE SAÍDA — APENAS JSON válido:
