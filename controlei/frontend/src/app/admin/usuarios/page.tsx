@@ -313,10 +313,20 @@ export default function AdminUsuariosPage() {
       setCreateOpen(false);
       await fetchUsers();
     } catch (e: unknown) {
+      const err = e as {
+        response?: { status?: number; data?: { message?: string } };
+        message?: string;
+      };
+      const backendMsg = err?.response?.data?.message;
       const msg =
-        (e as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? 'Erro ao criar conta';
-      toast.error(typeof msg === 'string' ? msg : 'Erro ao criar conta');
+        typeof backendMsg === 'string' && backendMsg
+          ? backendMsg
+          : err?.response?.status
+            ? `Erro ${err.response.status} ao criar conta (servidor não retornou detalhe)`
+            : err?.message
+              ? `Sem resposta do servidor: ${err.message}`
+              : 'Erro ao criar conta';
+      toast.error(msg);
     } finally {
       setActionLoading(false);
     }
@@ -554,8 +564,8 @@ export default function AdminUsuariosPage() {
       {/* ========== CREATE MODAL ========== */}
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-xl border-2 bg-card p-6 shadow-2xl">
-            <div className="mb-5 flex items-start justify-between border-b-2 pb-4">
+          <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-xl border-2 bg-card shadow-2xl">
+            <div className="flex items-start justify-between border-b-2 px-6 pb-4 pt-6">
               <div>
                 <h2 className="text-xl font-extrabold text-foreground">Adicionar conta</h2>
                 <p className="text-sm font-semibold text-foreground/70">
@@ -573,7 +583,7 @@ export default function AdminUsuariosPage() {
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
               <div>
                 <label className="text-sm font-bold text-foreground">
                   Tipo de conta
@@ -809,7 +819,7 @@ export default function AdminUsuariosPage() {
               )}
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-2 border-t-2 pt-5">
+            <div className="flex items-center justify-end gap-2 border-t-2 px-6 pb-6 pt-5">
               <Button
                 variant="outline"
                 onClick={() => {
