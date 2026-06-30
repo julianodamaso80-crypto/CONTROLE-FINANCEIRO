@@ -57,14 +57,23 @@ export default async function CategoryPage({ params }: PageProps) {
               href={`/blog/${post.slug}`}
               className="group flex flex-col overflow-hidden rounded-2xl border-2 border-white/10 bg-white/[0.02] transition hover:border-[#90ff6b]/40"
             >
-              <div className="relative aspect-[16/10] overflow-hidden">
-                <Image
-                  src={post.cover}
-                  alt={post.cover_alt ?? post.title}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 400px"
-                  className="object-cover transition group-hover:scale-[1.02]"
-                />
+              <div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-[#90ff6b]/20 via-emerald-500/10 to-transparent">
+                {post.cover && (
+                  <Image
+                    src={post.cover}
+                    alt={post.cover_alt ?? post.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 400px"
+                    className="object-cover transition group-hover:scale-[1.02]"
+                  />
+                )}
+                {!post.cover && (
+                  <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
+                    <span className="font-display text-xl font-extrabold leading-tight text-white/90">
+                      {post.title}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="flex flex-1 flex-col p-6">
                 <h3 className="text-xl font-extrabold leading-tight">{post.title}</h3>

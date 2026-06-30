@@ -11,7 +11,7 @@ export function ArticleSchema({ post, url }: Props) {
     '@type': 'Article',
     headline: post.title,
     description: post.description,
-    image: [post.cover],
+    image: post.cover ? [post.cover] : ['https://controlei.ia.br/og-default.png'],
     datePublished: post.publishedAt,
     dateModified: post.updatedAt ?? post.publishedAt,
     author: {

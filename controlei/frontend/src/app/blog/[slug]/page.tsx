@@ -22,6 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const post = await getPostBySlug(params.slug);
   if (!post) return {};
   const url = `https://controlei.ia.br/blog/${post.slug}`;
+  const ogImage = post.cover || 'https://controlei.ia.br/og-default.png';
   return {
     title: post.title,
     description: post.description,
@@ -34,13 +35,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       publishedTime: post.publishedAt,
       modifiedTime: post.updatedAt ?? post.publishedAt,
       authors: [post.author ?? 'Equipe Editorial Controlei'],
-      images: [{ url: post.cover, width: 1200, height: 630 }],
+      images: [{ url: ogImage, width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
       title: post.title,
       description: post.description,
-      images: [post.cover],
+      images: [ogImage],
     },
   };
 }
@@ -146,16 +147,18 @@ export default async function BlogPostPage({ params }: PageProps) {
         </div>
       </header>
 
-      <div className="relative mb-10 aspect-[16/9] overflow-hidden rounded-2xl border-2 border-white/10">
-        <Image
-          src={post.cover}
-          alt={post.cover_alt ?? post.title}
-          fill
-          priority
-          sizes="(max-width: 768px) 100vw, 800px"
-          className="object-cover"
-        />
-      </div>
+      {post.cover && (
+        <div className="relative mb-10 aspect-[16/9] overflow-hidden rounded-2xl border-2 border-white/10">
+          <Image
+            src={post.cover}
+            alt={post.cover_alt ?? post.title}
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, 800px"
+            className="object-cover"
+          />
+        </div>
+      )}
 
       {post.tldr && (
         <aside className="mb-12 rounded-2xl border-2 border-[#90ff6b]/30 bg-[#90ff6b]/[0.04] p-6">

@@ -12,7 +12,7 @@ export interface BlogFrontmatter {
   category: 'controle-de-gastos' | 'orcamento-familiar' | 'whatsapp-financeiro' | 'educacao-financeira';
   cluster: string;
   funnel_stage?: 'top' | 'mid' | 'bottom';
-  cover: string;
+  cover?: string;
   cover_alt?: string;
   publishedAt: string;
   updatedAt?: string;
