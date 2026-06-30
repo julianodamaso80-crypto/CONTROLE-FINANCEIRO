@@ -17,6 +17,7 @@ import {
   PiggyBank,
   Target,
   Users,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
@@ -70,6 +71,23 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             </Link>
           );
         })}
+
+        {/* Cliente que também é influencer (acumula os papéis) */}
+        {user?.isInfluencer && (
+          <Link
+            href="/influencer"
+            onClick={onNavigate}
+            className={cn(
+              'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-bold transition-colors',
+              pathname.startsWith('/influencer')
+                ? 'border-l-2 border-pink-500 bg-pink-500/10 text-pink-500'
+                : 'text-pink-500/80 hover:bg-pink-500/10 hover:text-pink-500',
+            )}
+          >
+            <Sparkles className="h-4 w-4" />
+            Painel do Influencer
+          </Link>
+        )}
       </nav>
 
       <div className="p-4">

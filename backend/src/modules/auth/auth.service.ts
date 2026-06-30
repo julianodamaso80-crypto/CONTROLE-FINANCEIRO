@@ -165,6 +165,7 @@ export class AuthService {
         email: result.user.email,
         role: result.user.role,
         companyId: result.company.id,
+        isInfluencer: false,
       },
       company: {
         id: result.company.id,
@@ -180,7 +181,10 @@ export class AuthService {
     // em etapa futura
     const user = await this.prisma.user.findFirst({
       where: { email: dto.email, isActive: true },
-      include: { company: true },
+      include: {
+        company: true,
+        influencer: { select: { isActive: true } },
+      },
     });
 
     if (!user) {
@@ -214,6 +218,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         companyId: user.companyId,
+        isInfluencer: !!user.influencer?.isActive,
       },
       company: {
         id: user.company.id,

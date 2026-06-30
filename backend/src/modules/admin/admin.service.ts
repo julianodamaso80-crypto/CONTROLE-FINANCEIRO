@@ -362,6 +362,57 @@ export class AdminService {
       throw new BadRequestException('Tipo de conta inválido');
     }
 
+    // Influencer que JÁ tem conta (mesmo WhatsApp): anexa o perfil de influencer
+    // à conta existente em vez de criar uma conta nova. Acumula os papéis —
+    // a pessoa segue cliente E vira afiliada, com o mesmo login e número.
+    if (role === 'INFLUENCER') {
+      const existing = await this.prisma.user.findUnique({
+        where: { phone },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          companyId: true,
+          role: true,
+          influencer: { select: { id: true } },
+        },
+      });
+      if (existing) {
+        if (existing.influencer) {
+          throw new ConflictException('Essa conta já é influencer');
+        }
+        await this.influencers.createProfile(existing.id, {
+          ...(input.influencer ?? {}),
+          fallbackName: existing.name,
+        });
+        await this.audit.log({
+          req,
+          action: 'CREATE_INFLUENCER',
+          targetType: 'user',
+          targetId: existing.id,
+          targetLabel: `${existing.name} (${existing.email})`,
+          description: `Tornou ${existing.name} (${existing.email}) influencer — perfil anexado à conta existente`,
+          metadata: {
+            role: existing.role,
+            attachedToExisting: true,
+            companyId: existing.companyId,
+            phone,
+          },
+        });
+        return {
+          message: `${existing.name} agora também é influencer (perfil anexado à conta existente).`,
+          user: {
+            id: existing.id,
+            name: existing.name,
+            email: existing.email,
+            phone,
+            role: existing.role,
+            companyId: existing.companyId,
+          },
+        };
+      }
+    }
+
     // accessType só importa pra cliente (USER).
     if (role === 'USER') {
       const validAccess: AccessType[] = [

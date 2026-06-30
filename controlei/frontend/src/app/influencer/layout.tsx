@@ -16,18 +16,20 @@ export default function InfluencerLayout({
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
 
+  const canAccess = user?.role === 'INFLUENCER' || user?.isInfluencer === true;
+
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) {
       router.replace('/login');
       return;
     }
-    if (user?.role !== 'INFLUENCER') {
+    if (!canAccess) {
       router.replace(user?.role === 'ADMIN' ? '/admin' : '/dashboard');
     }
-  }, [user, isAuthenticated, isLoading, router]);
+  }, [user, isAuthenticated, isLoading, router, canAccess]);
 
-  if (isLoading || !isAuthenticated || user?.role !== 'INFLUENCER') {
+  if (isLoading || !isAuthenticated || !canAccess) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />

@@ -18,6 +18,8 @@ export interface User {
   companyId: string;
   phone?: string | null;
   isActive: boolean;
+  // true quando a conta tem perfil de influencer ativo (pode acumular com USER)
+  isInfluencer?: boolean;
 }
 
 export interface Company {
