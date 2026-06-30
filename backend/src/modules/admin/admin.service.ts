@@ -401,6 +401,7 @@ export class AdminService {
         });
         return {
           message: `${existing.name} agora também é influencer (perfil anexado à conta existente).`,
+          attachedToExisting: true,
           user: {
             id: existing.id,
             name: existing.name,
@@ -526,6 +527,7 @@ export class AdminService {
 
     return {
       message: `${roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1)} criado com sucesso`,
+      attachedToExisting: false,
       user: {
         id: result.user.id,
         name: result.user.name,

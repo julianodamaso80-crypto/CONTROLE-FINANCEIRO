@@ -19,6 +19,8 @@ import {
   User as UserIcon,
   Shield,
   Sparkles,
+  Copy,
+  CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
@@ -138,6 +140,59 @@ const EMPTY_CREATE_FORM: CreateForm = {
   pixKey: '',
 };
 
+const SITE_NAME = 'Controlei';
+
+/** URL de acesso conforme o tipo de conta (usa o domínio atual do admin). */
+function buildAccessUrl(role: AccountRole): string {
+  const origin =
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : 'https://controlei.ia.br';
+  if (role === 'ADMIN') return `${origin}/admin`;
+  if (role === 'INFLUENCER') return `${origin}/influencer`;
+  return `${origin}/login`;
+}
+
+/** Monta a mensagem pronta pra enviar ao novo usuário (login + senha + link). */
+function buildCredentialsMessage(p: {
+  name: string;
+  email: string;
+  password: string;
+  role: AccountRole;
+  attached: boolean;
+}): string {
+  const url = buildAccessUrl(p.role);
+  if (p.attached) {
+    // Cliente que virou influencer: usa o login que já tem, sem senha nova.
+    return [
+      `Olá, ${p.name}! 🎉`,
+      ``,
+      `Você agora também é influencer no ${SITE_NAME}!`,
+      `Use o mesmo login de sempre — suas comissões já estão configuradas.`,
+      ``,
+      `🔗 Painel do influencer: ${url}`,
+      `📧 Login: ${p.email}`,
+    ].join('\n');
+  }
+  const areaLabel =
+    p.role === 'ADMIN'
+      ? 'o painel admin'
+      : p.role === 'INFLUENCER'
+        ? 'o painel do influencer'
+        : 'sua conta';
+  return [
+    `Olá, ${p.name}! 👋`,
+    ``,
+    `Sua conta no ${SITE_NAME} está pronta. Acesse ${areaLabel}:`,
+    ``,
+    `🔗 Link: ${url}`,
+    `📧 Login: ${p.email}`,
+    `🔑 Senha provisória: ${p.password}`,
+    ``,
+    `Recomendo trocar a senha após o primeiro acesso. 😉`,
+  ].join('\n');
+}
+
 export default function AdminUsuariosPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,6 +204,16 @@ export default function AdminUsuariosPage() {
     InfluencerOption[]
   >([]);
   const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_CREATE_FORM);
+  // Resultado da criação — dispara a tela de "copiar dados pra enviar"
+  const [createdResult, setCreatedResult] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    role: AccountRole;
+    url: string;
+    attached: boolean;
+    message: string;
+  } | null>(null);
 
   // Sincroniza form quando abre o modal
   useEffect(() => {
@@ -224,6 +289,22 @@ export default function AdminUsuariosPage() {
   };
 
   const resetCreateForm = () => setCreateForm(EMPTY_CREATE_FORM);
+
+  // Fecha o modal e zera tudo (form + tela de resultado)
+  const closeCreate = () => {
+    setCreateOpen(false);
+    setCreatedResult(null);
+    resetCreateForm();
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Mensagem copiada!');
+    } catch {
+      toast.error('Não consegui copiar — selecione e copie manualmente.');
+    }
+  };
 
   const openCreate = async () => {
     setCreateForm(EMPTY_CREATE_FORM);
@@ -306,11 +387,27 @@ export default function AdminUsuariosPage() {
     setActionLoading(true);
     try {
       const res = await api.post('/admin/users', payload);
+      const data = res.data.data ?? res.data ?? {};
+      const attached = data.attachedToExisting === true;
+      const created = {
+        name: payload.name,
+        email: payload.email,
+        password: payload.password,
+        role,
+        url: buildAccessUrl(role),
+        attached,
+        message: buildCredentialsMessage({
+          name: payload.name,
+          email: payload.email,
+          password: payload.password,
+          role,
+          attached,
+        }),
+      };
       toast.success(
-        res.data.data?.message ?? res.data.message ?? 'Conta criada com sucesso',
+        data.message ?? 'Conta criada com sucesso',
       );
-      resetCreateForm();
-      setCreateOpen(false);
+      setCreatedResult(created);
       await fetchUsers();
     } catch (e: unknown) {
       const err = e as {
@@ -567,16 +664,17 @@ export default function AdminUsuariosPage() {
           <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-xl border-2 bg-card shadow-2xl">
             <div className="flex items-start justify-between border-b-2 px-6 pb-4 pt-6">
               <div>
-                <h2 className="text-xl font-extrabold text-foreground">Adicionar conta</h2>
+                <h2 className="text-xl font-extrabold text-foreground">
+                  {createdResult ? 'Pronto!' : 'Adicionar conta'}
+                </h2>
                 <p className="text-sm font-semibold text-foreground/70">
-                  Cliente, administrador ou influencer.
+                  {createdResult
+                    ? 'Copie e envie os dados de acesso.'
+                    : 'Cliente, administrador ou influencer.'}
                 </p>
               </div>
               <button
-                onClick={() => {
-                  setCreateOpen(false);
-                  resetCreateForm();
-                }}
+                onClick={closeCreate}
                 className="rounded-md border-2 p-1.5 hover:bg-accent"
               >
                 <X className="h-5 w-5" strokeWidth={2.5} />
@@ -584,6 +682,56 @@ export default function AdminUsuariosPage() {
             </div>
 
             <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
+              {createdResult ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-green-500">
+                    <CheckCircle2 className="h-6 w-6" strokeWidth={2.5} />
+                    <span className="text-base font-extrabold">
+                      {createdResult.attached
+                        ? 'Perfil de influencer adicionado!'
+                        : 'Conta criada com sucesso!'}
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold text-foreground/70">
+                    {createdResult.attached
+                      ? 'Essa pessoa já tinha conta — anexei o perfil de influencer. Ela acessa com o login que já usa.'
+                      : 'Mensagem pronta pra enviar com login, senha e link de acesso.'}
+                  </p>
+                  <div className="space-y-2 rounded-md border-2 bg-background px-4 py-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-bold text-foreground/60">Link</span>
+                      <span className="truncate font-semibold text-foreground">
+                        {createdResult.url}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-bold text-foreground/60">Login</span>
+                      <span className="truncate font-semibold text-foreground">
+                        {createdResult.email}
+                      </span>
+                    </div>
+                    {!createdResult.attached && (
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-bold text-foreground/60">
+                          Senha provisória
+                        </span>
+                        <span className="font-semibold text-foreground">
+                          {createdResult.password}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-sm font-bold text-foreground">
+                      Mensagem pronta
+                    </label>
+                    <pre className="mt-1.5 whitespace-pre-wrap break-words rounded-md border-2 border-dashed bg-muted/40 px-4 py-3 text-sm font-medium text-foreground">
+                      {createdResult.message}
+                    </pre>
+                  </div>
+                </div>
+              ) : (
+                <>
               <div>
                 <label className="text-sm font-bold text-foreground">
                   Tipo de conta
@@ -817,31 +965,54 @@ export default function AdminUsuariosPage() {
                   </div>
                 </>
               )}
+                </>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t-2 px-6 pb-6 pt-5">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setCreateOpen(false);
-                  resetCreateForm();
-                }}
-                disabled={actionLoading}
-                className="border-2 font-bold"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleCreate}
-                disabled={actionLoading}
-                className="font-bold"
-              >
-                {actionLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Criar conta'
-                )}
-              </Button>
+              {createdResult ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setCreatedResult(null);
+                      resetCreateForm();
+                    }}
+                    className="border-2 font-bold"
+                  >
+                    Criar outra
+                  </Button>
+                  <Button
+                    onClick={() => copyToClipboard(createdResult.message)}
+                    className="gap-2 font-bold"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copiar mensagem
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={closeCreate}
+                    disabled={actionLoading}
+                    className="border-2 font-bold"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleCreate}
+                    disabled={actionLoading}
+                    className="font-bold"
+                  >
+                    {actionLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      'Criar conta'
+                    )}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
