@@ -57,9 +57,11 @@
     "cpc": 0.56,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 289,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-30",
+    "used_in_slug": "educacao-financeira-guia-completo-para-comecar-em-2026"
   },
   {
     "keyword": "ed financeira",
@@ -81,9 +83,11 @@
     "cpc": null,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 289,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-26",
+    "used_in_slug": "o-que-e-orcamento-familiar-guia-basico-em-2026"
   },
   {
     "keyword": "orçamento familiar o que é",
@@ -217,9 +221,11 @@
     "cpc": 0.63,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 229,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-26",
+    "used_in_slug": "orcamento-domestico-como-organizar-financas-da-casa"
   },
   {
     "keyword": "orçamentos domésticos",
@@ -253,9 +259,11 @@
     "cpc": 0.81,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 221,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-25",
+    "used_in_slug": "educacao-financeira-6-ano-o-que-crianca-aprende"
   },
   {
     "keyword": "educacao financeira o que e",
@@ -265,9 +273,11 @@
     "cpc": 0.17,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 218,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-30",
+    "used_in_slug": "educacao-financeira-o-que-e-conceito-e-como-aplicar"
   },
   {
     "keyword": "como juntar 10 mil em 1 ano",
@@ -317,9 +327,11 @@
     "cpc": 1.11,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 213,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-27",
+    "used_in_slug": "como-juntar-5-mil-em-1-ano-plano-realista"
   },
   {
     "keyword": "renda extra ton",
@@ -341,9 +353,11 @@
     "cpc": 1.03,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 208,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-27",
+    "used_in_slug": "como-juntar-dinheiro-em-2026-guia-completo"
   },
   {
     "keyword": "como juntar 20 mil em 1 ano",
@@ -353,9 +367,11 @@
     "cpc": 1.02,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 208,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-30",
+    "used_in_slug": "como-juntar-20-mil-em-1-ano-plano-passo-a-passo"
   },
   {
     "keyword": "organização financeiro",
@@ -365,9 +381,11 @@
     "cpc": 1.65,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 190,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-07-01",
+    "used_in_slug": "organizacao-financeira-passo-a-passo-para-2026"
   },
   {
     "keyword": "como juntar 50 mil em 1 ano",
@@ -377,9 +395,11 @@
     "cpc": 1.21,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 189,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-30",
+    "used_in_slug": "como-juntar-50-mil-em-1-ano-plano-realista"
   },
   {
     "keyword": "como juntar 10 mil em 6 meses",
@@ -389,9 +409,11 @@
     "cpc": 1.01,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 188,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-30",
+    "used_in_slug": "como-juntar-10-mil-em-6-meses-plano-agressivo"
   },
   {
     "keyword": "coisas para vender e ganhar dinheiro",
@@ -425,9 +447,11 @@
     "cpc": 0.76,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 173,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-28",
+    "used_in_slug": "como-economizar-dinheiro-em-2026-guia-pratico"
   },
   {
     "keyword": "como e economizar dinheiro",
@@ -461,9 +485,11 @@
     "cpc": 0.69,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 169,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-25",
+    "used_in_slug": "educacao-financeira-para-jovens-guia-em-2026"
   },
   {
     "keyword": "educação financeira jovens",
@@ -545,9 +571,11 @@
     "cpc": 1.35,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 162,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-07-01",
+    "used_in_slug": "como-juntar-5-mil-em-3-meses-plano-agressivo"
   },
   {
     "keyword": "como guardar dinheiro",
@@ -557,9 +585,11 @@
     "cpc": 0.98,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 159,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-28",
+    "used_in_slug": "como-guardar-dinheiro-onde-render-mais-em-2026"
   },
   {
     "keyword": "como guardar o dinheiro",
@@ -581,9 +611,11 @@
     "cpc": 0.34,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 158,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-06-28",
+    "used_in_slug": "dicas-de-como-economizar-dinheiro-no-dia-a-dia"
   },
   {
     "keyword": "como juntar dinheiro rapido",
@@ -593,9 +625,11 @@
     "cpc": 1.27,
     "intent": null,
     "cluster": null,
-    "status": "pending",
+    "status": "used",
     "score": 154,
-    "fetched_at": "2026-06-24"
+    "fetched_at": "2026-06-24",
+    "used_at": "2026-07-01",
+    "used_in_slug": "como-juntar-dinheiro-rapido-metodos-que-funcionam"
   },
   {
     "keyword": "ganhar dinheiro respondendo pesquisas pix",
@@ -608,5 +642,521 @@
     "status": "pending",
     "score": 153,
     "fetched_at": "2026-06-24"
+  },
+  {
+    "keyword": "cartoes top",
+    "volume": 33100,
+    "kd": 0,
+    "competition": "LOW",
+    "cpc": 1.73,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 452,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-29",
+    "used_in_slug": "cartoes-top-melhores-do-mercado-em-2026"
+  },
+  {
+    "keyword": "score serasa",
+    "volume": 246000,
+    "kd": 21,
+    "competition": "LOW",
+    "cpc": 0.02,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 426,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-26",
+    "used_in_slug": "score-serasa-como-funciona-e-como-aumentar-em-2026"
+  },
+  {
+    "keyword": "fundo de investimento imobiliário",
+    "volume": 135000,
+    "kd": 19,
+    "competition": "LOW",
+    "cpc": 0.89,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 416,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-29",
+    "used_in_slug": "fundo-de-investimento-imobiliario-guia-completo-para-iniciantes"
+  },
+  {
+    "keyword": "fii's",
+    "volume": 135000,
+    "kd": 19,
+    "competition": "LOW",
+    "cpc": 0.89,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 416,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "melhores cartoes",
+    "volume": 22200,
+    "kd": 7,
+    "competition": "LOW",
+    "cpc": 2.63,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 404,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-26",
+    "used_in_slug": "melhores-cartoes-de-credito-em-2026-comparacao-por-perfil"
+  },
+  {
+    "keyword": "serasa score consulta",
+    "volume": 33100,
+    "kd": 13,
+    "competition": "LOW",
+    "cpc": 0.1,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 393,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-07-01",
+    "used_in_slug": "serasa-score-consulta-como-fazer-passo-a-passo"
+  },
+  {
+    "keyword": "brb dux",
+    "volume": 6600,
+    "kd": 14,
+    "competition": "LOW",
+    "cpc": 1.54,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 328,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "renda passiva",
+    "volume": 9900,
+    "kd": 18,
+    "competition": "LOW",
+    "cpc": 0.8,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 328,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-25",
+    "used_in_slug": "renda-passiva-em-2026-guia-para-iniciantes"
+  },
+  {
+    "keyword": "rendapassiva",
+    "volume": 9900,
+    "kd": 18,
+    "competition": "LOW",
+    "cpc": 0.8,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 328,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "reserva de emergência",
+    "volume": 3600,
+    "kd": 9,
+    "competition": "LOW",
+    "cpc": 0.63,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 324,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-27",
+    "used_in_slug": "reserva-de-emergencia-quanto-guardar-por-perfil-2026"
+  },
+  {
+    "keyword": "fundos de investimentos em direitos creditórios",
+    "volume": 6600,
+    "kd": 17,
+    "competition": "LOW",
+    "cpc": 1.08,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 317,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "fundo de investimento",
+    "volume": 12100,
+    "kd": 24,
+    "competition": "LOW",
+    "cpc": 1.07,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 310,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-27",
+    "used_in_slug": "fundo-de-investimento-guia-completo-em-2026"
+  },
+  {
+    "keyword": "cartoes melhores",
+    "volume": 1300,
+    "kd": 2,
+    "competition": "LOW",
+    "cpc": 1.37,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 305,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "come cotas",
+    "volume": 2900,
+    "kd": 12,
+    "competition": "LOW",
+    "cpc": 0.11,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 305,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-29",
+    "used_in_slug": "come-cotas-o-que-e-e-como-afeta-seus-investimentos"
+  },
+  {
+    "keyword": "queroquitar é confiavel",
+    "volume": 2900,
+    "kd": 15,
+    "competition": "LOW",
+    "cpc": 1.36,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 294,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-28",
+    "used_in_slug": "queroquitar-e-confiavel-analise-completa-em-2026"
+  },
+  {
+    "keyword": "queroquitar é seguro",
+    "volume": 2400,
+    "kd": 15,
+    "competition": "LOW",
+    "cpc": 1.48,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 287,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "score bom",
+    "volume": 1600,
+    "kd": 12,
+    "competition": "LOW",
+    "cpc": 0.43,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 282,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-29",
+    "used_in_slug": "score-bom-quanto-precisa-para-conseguir-credito-em-2026"
+  },
+  {
+    "keyword": "tipos de fii",
+    "volume": 720,
+    "kd": 2,
+    "competition": "LOW",
+    "cpc": 0.16,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 280,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-25",
+    "used_in_slug": "tipos-de-fii-tijolo-papel-hibrido-fof-em-2026"
+  },
+  {
+    "keyword": "renda ativa",
+    "volume": 880,
+    "kd": 5,
+    "competition": "LOW",
+    "cpc": 1.28,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 280,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-25",
+    "used_in_slug": "renda-ativa-o-que-e-como-aumentar-em-2026"
+  },
+  {
+    "keyword": "renda passiva e ativa",
+    "volume": 1000,
+    "kd": 7,
+    "competition": "LOW",
+    "cpc": 0.27,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 279,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-29",
+    "used_in_slug": "renda-passiva-e-ativa-diferencas-e-como-combinar"
+  },
+  {
+    "keyword": "fundos de tijolos",
+    "volume": 2400,
+    "kd": 18,
+    "competition": "LOW",
+    "cpc": 0.42,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 277,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-27",
+    "used_in_slug": "fundos-de-tijolos-o-que-sao-e-como-investir"
+  },
+  {
+    "keyword": "consultar score serasa",
+    "volume": 18100,
+    "kd": 35,
+    "competition": "MEDIUM",
+    "cpc": 0.06,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 277,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "consulta serasa score",
+    "volume": 18100,
+    "kd": 35,
+    "competition": "MEDIUM",
+    "cpc": 0.06,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 277,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "fundos simples",
+    "volume": 590,
+    "kd": 1,
+    "competition": "LOW",
+    "cpc": null,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 274,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "fundo di",
+    "volume": 1600,
+    "kd": 15,
+    "competition": "LOW",
+    "cpc": 0.53,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 272,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-26",
+    "used_in_slug": "fundo-di-o-que-e-como-investir-em-2026"
+  },
+  {
+    "keyword": "fundos agro",
+    "volume": 590,
+    "kd": 2,
+    "competition": "LOW",
+    "cpc": 0.74,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 272,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "serasa score consulta cpf gratis",
+    "volume": 8100,
+    "kd": 31,
+    "competition": "LOW",
+    "cpc": 0.08,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 270,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-07-01",
+    "used_in_slug": "serasa-score-consulta-cpf-gratis-guia-2026"
+  },
+  {
+    "keyword": "dividendos fiis",
+    "volume": 590,
+    "kd": 4,
+    "competition": "LOW",
+    "cpc": 0.48,
+    "intent": null,
+    "cluster": null,
+    "status": "used",
+    "score": 266,
+    "fetched_at": "2026-07-01",
+    "used_at": "2026-06-28",
+    "used_in_slug": "dividendos-de-fiis-como-funciona-e-quanto-rende"
+  },
+  {
+    "keyword": "renda ativa e passiva",
+    "volume": 590,
+    "kd": 4,
+    "competition": "LOW",
+    "cpc": 0.13,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 266,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "fundo tijolo",
+    "volume": 1300,
+    "kd": 15,
+    "competition": "LOW",
+    "cpc": 0.47,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 265,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "fundos de investimento caixa",
+    "volume": 590,
+    "kd": 5,
+    "competition": "LOW",
+    "cpc": 0.94,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 263,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "riza terrax",
+    "volume": 480,
+    "kd": 3,
+    "competition": "LOW",
+    "cpc": 1.04,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 260,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "fiis listados",
+    "volume": 480,
+    "kd": 4,
+    "competition": "LOW",
+    "cpc": 0.86,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 257,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "investidor10 fiis",
+    "volume": 590,
+    "kd": 8,
+    "competition": "LOW",
+    "cpc": 1.06,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 255,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "fundo guepardo",
+    "volume": 590,
+    "kd": 8,
+    "competition": "LOW",
+    "cpc": 1.98,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 255,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "bresco fii",
+    "volume": 480,
+    "kd": 5,
+    "competition": "LOW",
+    "cpc": null,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 255,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "fundo xp",
+    "volume": 390,
+    "kd": 2,
+    "competition": "LOW",
+    "cpc": 0.68,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 254,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "consultar score",
+    "volume": 74000,
+    "kd": 48,
+    "competition": "MEDIUM",
+    "cpc": 0.11,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 253,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "sicredi visa infinite",
+    "volume": 2900,
+    "kd": 27,
+    "competition": "LOW",
+    "cpc": 1.46,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 253,
+    "fetched_at": "2026-07-01"
+  },
+  {
+    "keyword": "fundo patria",
+    "volume": 390,
+    "kd": 3,
+    "competition": "LOW",
+    "cpc": 0.32,
+    "intent": null,
+    "cluster": null,
+    "status": "pending",
+    "score": 251,
+    "fetched_at": "2026-07-01"
   }
 ]
