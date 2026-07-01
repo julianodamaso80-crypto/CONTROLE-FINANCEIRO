@@ -383,9 +383,17 @@ export class AdminService {
         // influencer ativo — se já existir, só reemite o acesso.
         const already = !!existing.influencer;
         const attachHash = await bcrypt.hash(input.password, 10);
+        // Respeita os dados digitados pelo admin: atualiza nome/email/senha da
+        // conta (o telefone é a chave de match). Assim o acesso enviado reflete
+        // exatamente o que foi preenchido no formulário.
         await this.prisma.user.update({
           where: { id: existing.id },
-          data: { passwordHash: attachHash, mustChangePassword: true },
+          data: {
+            name,
+            email,
+            passwordHash: attachHash,
+            mustChangePassword: true,
+          },
         });
         if (already) {
           await this.prisma.influencer.update({
@@ -417,14 +425,14 @@ export class AdminService {
         });
         return {
           message: already
-            ? `${existing.name} já era influencer — acesso reemitido com a nova senha.`
-            : `${existing.name} agora também é influencer (perfil anexado à conta existente).`,
+            ? `${name} já tinha conta com esse WhatsApp — acesso de influencer reemitido com os dados novos.`
+            : `${name} agora também é influencer (perfil anexado à conta existente).`,
           attachedToExisting: true,
           alreadyInfluencer: already,
           user: {
             id: existing.id,
-            name: existing.name,
-            email: existing.email,
+            name,
+            email,
             phone,
             role: existing.role,
             companyId: existing.companyId,

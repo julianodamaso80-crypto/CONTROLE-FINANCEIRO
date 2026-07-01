@@ -684,9 +684,8 @@ export default function AdminUsuariosPage() {
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-foreground/70">
-                    {createdResult.attached
-                      ? 'Essa pessoa já tinha conta — anexei o perfil de influencer. Ela acessa com o login que já usa.'
-                      : 'Mensagem pronta pra enviar com login, senha e link de acesso.'}
+                    Copie e envie o login, a senha e o link abaixo. No 1º acesso
+                    o sistema pede pra criar uma senha nova.
                   </p>
                   <div className="space-y-2 rounded-md border-2 bg-background px-4 py-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
