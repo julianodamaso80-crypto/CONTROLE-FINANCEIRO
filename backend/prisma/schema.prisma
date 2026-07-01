@@ -207,6 +207,8 @@ model User {
   phone        String   @unique
   role         UserRole @default(USER)
   isActive     Boolean  @default(true) @map("is_active")
+  // true quando o admin cria a conta com senha provisória: força troca no 1º login
+  mustChangePassword Boolean @default(false) @map("must_change_password")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 

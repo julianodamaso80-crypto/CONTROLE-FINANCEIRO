@@ -59,6 +59,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<User>;
   register: (data: RegisterData) => Promise<User>;
   logout: () => void;
+  updateUser: (partial: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -130,6 +131,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/login');
   }, [router]);
 
+  const updateUser = useCallback((partial: Partial<User>) => {
+    setUserState((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...partial };
+      setUser(next);
+      return next;
+    });
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -139,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        updateUser,
       }}
     >
       {children}

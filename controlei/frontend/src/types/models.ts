@@ -20,6 +20,8 @@ export interface User {
   isActive: boolean;
   // true quando a conta tem perfil de influencer ativo (pode acumular com USER)
   isInfluencer?: boolean;
+  // true quando a senha é provisória (criada pelo admin) e precisa ser trocada
+  mustChangePassword?: boolean;
 }
 
 export interface Company {

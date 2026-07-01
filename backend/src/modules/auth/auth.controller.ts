@@ -1,7 +1,11 @@
 import { Body, Controller, Headers, HttpCode, Ip, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { SkipSubscriptionCheck } from '../../common/decorators/skip-subscription-check.decorator';
+import { RequestUser } from '../../common/types/request-user.type';
 import { AuthService } from './auth.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -47,5 +51,17 @@ export class AuthController {
   @HttpCode(200)
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  // Troca de senha do usuário autenticado (fluxo de senha provisória / 1º login)
+  @Throttle({ short: { limit: 5, ttl: 60000 } })
+  @SkipSubscriptionCheck()
+  @Post('change-password')
+  @HttpCode(200)
+  async changePassword(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(user.userId, dto.newPassword);
   }
 }

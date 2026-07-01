@@ -459,6 +459,8 @@ export class AdminService {
           phone,
           role,
           isActive: true,
+          // Senha é provisória (admin definiu) — obriga o usuário a trocar no 1º login
+          mustChangePassword: true,
         },
       });
 

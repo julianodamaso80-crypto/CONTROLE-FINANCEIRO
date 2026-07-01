@@ -8,6 +8,7 @@ import { OnboardingDialog } from '@/components/onboarding/onboarding-dialog';
 import { SubscriptionBanner } from '@/components/shared/subscription-banner';
 import { SubscribeTracker } from '@/components/tracking/SubscribeTracker';
 import { WhatsAppFab } from '@/components/shared/whatsapp-fab';
+import { ForcePasswordChange } from '@/components/auth/force-password-change';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -50,6 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <OnboardingDialog />
       <SubscribeTracker />
       <WhatsAppFab />
+      <ForcePasswordChange />
     </div>
   );
 }

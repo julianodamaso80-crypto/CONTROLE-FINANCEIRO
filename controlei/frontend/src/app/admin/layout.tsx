@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { AdminSidebar } from '@/components/layout/admin-sidebar';
+import { ForcePasswordChange } from '@/components/auth/force-password-change';
 
 export default function AdminLayout({
   children,
@@ -36,6 +37,7 @@ export default function AdminLayout({
     <div className="flex h-screen">
       <AdminSidebar />
       <main className="flex-1 overflow-auto p-6">{children}</main>
+      <ForcePasswordChange />
     </div>
   );
 }

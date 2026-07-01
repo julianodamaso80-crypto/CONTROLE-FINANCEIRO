@@ -166,6 +166,7 @@ export class AuthService {
         role: result.user.role,
         companyId: result.company.id,
         isInfluencer: false,
+        mustChangePassword: false,
       },
       company: {
         id: result.company.id,
@@ -219,12 +220,30 @@ export class AuthService {
         role: user.role,
         companyId: user.companyId,
         isInfluencer: !!user.influencer?.isActive,
+        mustChangePassword: user.mustChangePassword,
       },
       company: {
         id: user.company.id,
         name: user.company.name,
       },
     };
+  }
+
+  /**
+   * Troca de senha do usuário autenticado. Usado no fluxo de senha provisória
+   * (1º login obrigatório) e também numa troca voluntária. Limpa o flag
+   * mustChangePassword no banco.
+   */
+  async changePassword(userId: string, newPassword: string) {
+    if (!newPassword || newPassword.length < 6) {
+      throw new BadRequestException('A nova senha deve ter no mínimo 6 caracteres');
+    }
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, mustChangePassword: false },
+    });
+    return { message: 'Senha alterada com sucesso' };
   }
 
   /**

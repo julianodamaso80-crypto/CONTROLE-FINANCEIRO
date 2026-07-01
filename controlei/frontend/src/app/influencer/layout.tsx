@@ -7,6 +7,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { FinnixLogo } from '@/components/shared/finnix-logo';
 import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { Button } from '@/components/ui/button';
+import { ForcePasswordChange } from '@/components/auth/force-password-change';
 
 export default function InfluencerLayout({
   children,
@@ -60,6 +61,7 @@ export default function InfluencerLayout({
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+      <ForcePasswordChange />
     </div>
   );
 }
