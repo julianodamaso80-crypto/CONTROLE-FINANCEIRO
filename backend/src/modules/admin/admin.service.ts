@@ -378,38 +378,49 @@ export class AdminService {
         },
       });
       if (existing) {
-        if (existing.influencer) {
-          throw new ConflictException('Essa conta já é influencer');
-        }
-        // Define a senha provisória que o admin digitou (pra poder enviar ao
-        // usuário) e força a troca no 1º login. Assim o fluxo de "anexar" gera
-        // um acesso enviável igual ao de conta nova.
+        // Fluxo idempotente: NUNCA dá erro. Define a senha provisória que o
+        // admin digitou (força troca no 1º login) e garante o perfil de
+        // influencer ativo — se já existir, só reemite o acesso.
+        const already = !!existing.influencer;
         const attachHash = await bcrypt.hash(input.password, 10);
         await this.prisma.user.update({
           where: { id: existing.id },
           data: { passwordHash: attachHash, mustChangePassword: true },
         });
-        await this.influencers.createProfile(existing.id, {
-          ...(input.influencer ?? {}),
-          fallbackName: existing.name,
-        });
+        if (already) {
+          await this.prisma.influencer.update({
+            where: { userId: existing.id },
+            data: { isActive: true },
+          });
+        } else {
+          await this.influencers.createProfile(existing.id, {
+            ...(input.influencer ?? {}),
+            fallbackName: existing.name,
+          });
+        }
         await this.audit.log({
           req,
           action: 'CREATE_INFLUENCER',
           targetType: 'user',
           targetId: existing.id,
           targetLabel: `${existing.name} (${existing.email})`,
-          description: `Tornou ${existing.name} (${existing.email}) influencer — perfil anexado à conta existente`,
+          description: already
+            ? `Reemitiu acesso de influencer para ${existing.name} (${existing.email})`
+            : `Tornou ${existing.name} (${existing.email}) influencer — perfil anexado à conta existente`,
           metadata: {
             role: existing.role,
             attachedToExisting: true,
+            alreadyInfluencer: already,
             companyId: existing.companyId,
             phone,
           },
         });
         return {
-          message: `${existing.name} agora também é influencer (perfil anexado à conta existente).`,
+          message: already
+            ? `${existing.name} já era influencer — acesso reemitido com a nova senha.`
+            : `${existing.name} agora também é influencer (perfil anexado à conta existente).`,
           attachedToExisting: true,
+          alreadyInfluencer: already,
           user: {
             id: existing.id,
             name: existing.name,
