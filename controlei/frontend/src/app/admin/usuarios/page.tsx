@@ -245,10 +245,7 @@ export default function AdminUsuariosPage() {
       await fetchUsers();
       setEditUser(null);
     } catch (e: unknown) {
-      const msg =
-        (e as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? 'Erro ao salvar';
-      toast.error(typeof msg === 'string' ? msg : 'Erro ao salvar');
+      toast.error(e instanceof Error && e.message ? e.message : 'Erro ao salvar');
     } finally {
       setActionLoading(false);
     }
@@ -389,41 +386,33 @@ export default function AdminUsuariosPage() {
       const res = await api.post('/admin/users', payload);
       const data = res.data.data ?? res.data ?? {};
       const attached = data.attachedToExisting === true;
+      // No attach (conta já existia) o login real é o da conta existente,
+      // não o que foi digitado — usa sempre o que o backend retorna.
+      const effName = data.user?.name ?? payload.name;
+      const effEmail = data.user?.email ?? payload.email;
       const created = {
-        name: payload.name,
-        email: payload.email,
+        name: effName,
+        email: effEmail,
         password: payload.password,
         role,
         url: buildAccessUrl(role),
         attached,
         message: buildCredentialsMessage({
-          name: payload.name,
-          email: payload.email,
+          name: effName,
+          email: effEmail,
           password: payload.password,
           role,
           attached,
         }),
       };
-      toast.success(
-        data.message ?? 'Conta criada com sucesso',
-      );
+      toast.success(data.message ?? 'Conta criada com sucesso');
       setCreatedResult(created);
       await fetchUsers();
     } catch (e: unknown) {
-      const err = e as {
-        response?: { status?: number; data?: { message?: string } };
-        message?: string;
-      };
-      const backendMsg = err?.response?.data?.message;
-      const msg =
-        typeof backendMsg === 'string' && backendMsg
-          ? backendMsg
-          : err?.response?.status
-            ? `Erro ${err.response.status} ao criar conta (servidor não retornou detalhe)`
-            : err?.message
-              ? `Sem resposta do servidor: ${err.message}`
-              : 'Erro ao criar conta';
-      toast.error(msg);
+      // O interceptor do axios (lib/api) já extrai a mensagem do backend em e.message
+      toast.error(
+        e instanceof Error && e.message ? e.message : 'Erro ao criar conta',
+      );
     } finally {
       setActionLoading(false);
     }

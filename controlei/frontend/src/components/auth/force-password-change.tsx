@@ -35,10 +35,12 @@ export function ForcePasswordChange() {
       updateUser({ mustChangePassword: false });
       toast.success('Senha alterada! Bem-vindo(a).');
     } catch (e: unknown) {
-      const msg =
-        (e as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? 'Não foi possível alterar a senha';
-      toast.error(typeof msg === 'string' ? msg : 'Não foi possível alterar a senha');
+      // O interceptor do axios (lib/api) já coloca a mensagem do backend em e.message
+      toast.error(
+        e instanceof Error && e.message
+          ? e.message
+          : 'Não foi possível alterar a senha',
+      );
     } finally {
       setLoading(false);
     }
