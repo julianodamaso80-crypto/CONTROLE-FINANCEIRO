@@ -27,8 +27,8 @@ export class AuthController {
     return this.authService.register(dto, { ip, userAgent });
   }
 
-  // Throttle agressivo para evitar brute force no login
-  @Throttle({ short: { limit: 5, ttl: 60000 } })
+  // Throttle pra evitar brute force no login (10 tentativas/min por IP)
+  @Throttle({ short: { limit: 10, ttl: 60000 } })
   @Public()
   @Post('login')
   @HttpCode(200)

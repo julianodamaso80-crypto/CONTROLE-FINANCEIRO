@@ -163,15 +163,17 @@ function buildCredentialsMessage(p: {
 }): string {
   const url = buildAccessUrl(p.role);
   if (p.attached) {
-    // Cliente que virou influencer: usa o login que já tem, sem senha nova.
+    // Cliente que virou influencer: senha provisória definida + troca no 1º login.
     return [
       `Olá, ${p.name}! 🎉`,
       ``,
-      `Você agora também é influencer no ${SITE_NAME}!`,
-      `Use o mesmo login de sempre — suas comissões já estão configuradas.`,
+      `Você agora também é influencer no ${SITE_NAME}! Suas comissões já estão configuradas.`,
       ``,
       `🔗 Painel do influencer: ${url}`,
       `📧 Login: ${p.email}`,
+      `🔑 Senha provisória: ${p.password}`,
+      ``,
+      `No primeiro acesso o sistema vai pedir pra você criar uma senha nova. 😉`,
     ].join('\n');
   }
   const areaLabel =
@@ -699,16 +701,14 @@ export default function AdminUsuariosPage() {
                         {createdResult.email}
                       </span>
                     </div>
-                    {!createdResult.attached && (
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-bold text-foreground/60">
-                          Senha provisória
-                        </span>
-                        <span className="font-semibold text-foreground">
-                          {createdResult.password}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-bold text-foreground/60">
+                        Senha provisória
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        {createdResult.password}
+                      </span>
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-bold text-foreground">

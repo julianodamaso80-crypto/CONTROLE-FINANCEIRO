@@ -381,6 +381,14 @@ export class AdminService {
         if (existing.influencer) {
           throw new ConflictException('Essa conta já é influencer');
         }
+        // Define a senha provisória que o admin digitou (pra poder enviar ao
+        // usuário) e força a troca no 1º login. Assim o fluxo de "anexar" gera
+        // um acesso enviável igual ao de conta nova.
+        const attachHash = await bcrypt.hash(input.password, 10);
+        await this.prisma.user.update({
+          where: { id: existing.id },
+          data: { passwordHash: attachHash, mustChangePassword: true },
+        });
         await this.influencers.createProfile(existing.id, {
           ...(input.influencer ?? {}),
           fallbackName: existing.name,
