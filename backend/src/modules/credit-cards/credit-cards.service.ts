@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { todayCalendarDate } from '../../common/utils/date.util';
 import { CreateCreditCardDto } from './dto/create-credit-card.dto';
 import { UpdateCreditCardDto } from './dto/update-credit-card.dto';
 import { CreateCardExpenseDto } from './dto/create-card-expense.dto';
@@ -213,7 +214,7 @@ export class CreditCardsService {
     if (fullyPaid) {
       await this.prisma.transaction.updateMany({
         where: { invoiceId },
-        data: { status: 'PAID', paymentDate: new Date() },
+        data: { status: 'PAID', paymentDate: todayCalendarDate() },
       });
     }
 

@@ -480,6 +480,14 @@ INTENTS VÁLIDAS (qualquer outra coisa = "unknown"):
 
 DATA DE REFERÊNCIA (America/Sao_Paulo): hoje é ${now.weekday}, ${now.br} (ISO ${now.iso}). Use SEMPRE esta data pra resolver "hoje", "ontem", "anteontem", "segunda passada", etc. NUNCA invente data — se o cliente não mencionar, retorne date=null (o backend preenche com a data de hoje em Brasília).
 
+LANÇAMENTO RETROATIVO (data passada) — MUITO IMPORTANTE:
+O cliente pode lançar algo que aconteceu dias, semanas ou meses atrás. Sempre que ele indicar QUANDO foi, preencha o campo "date" (ISO YYYY-MM-DD) resolvido a partir da DATA DE REFERÊNCIA acima. Isso vale tanto pra despesa quanto pra receita.
+- Gatilhos relativos: "ontem", "anteontem", "semana passada", "segunda passada", "há 3 dias", "faz uma semana", "mês passado".
+- Gatilhos de data explícita: "dia 20", "no dia 12/07", "em 05/06/2026", "dia 3 do mês passado".
+- "dia N" sem mês = dia N do mês corrente. Se esse dia ainda não chegou, entenda como o mês anterior.
+- Data no PASSADO com gasto/recebimento já realizado → status="PAID" e "date" preenchido (NUNCA use dueDate nesse caso; dueDate é só pra vencimento futuro).
+- Nunca devolva uma data futura em "date".
+
 CONTEXTO DA EMPRESA (use SOMENTE estes valores para matchear category/segment):
 - Segmentos cadastrados: ${segmentos}
 - Categorias cadastradas (formato "Pai > Sub1, Sub2"): ${categorias}
@@ -555,6 +563,10 @@ EXEMPLOS:
 15e. "me lembra dia 20 do mês que vem do boleto do aluguel, 2500" → {"intent":"register_expense","confidence":0.9,"data":{"amount":2500,"description":"Aluguel","status":"PENDING","dueDate":"2026-05-20"}}
 15f. "cliente vai pagar 3mil dia 25" → {"intent":"register_income","confidence":0.9,"data":{"amount":3000,"description":"Receita cliente","status":"PENDING","dueDate":"2026-04-25"}}
 15g. "paguei 80 de uber" → {"intent":"register_expense","confidence":0.95,"data":{"amount":80,"description":"Uber","status":"PAID"}}
+15g1. "paguei 80 de uber ontem" (referência 28/04/2026) → {"intent":"register_expense","confidence":0.95,"data":{"amount":80,"description":"Uber","status":"PAID","date":"2026-04-27"}}
+15g2. "gastei 200 no mercado dia 15" (referência 28/04/2026) → {"intent":"register_expense","confidence":0.9,"data":{"amount":200,"description":"Mercado","status":"PAID","date":"2026-04-15"}}
+15g3. "recebi 1500 do cliente silva semana passada" (referência 28/04/2026, segunda) → {"intent":"register_income","confidence":0.9,"data":{"amount":1500,"description":"Cliente Silva","client":"Silva","status":"PAID","date":"2026-04-20"}}
+15g4. "lança aí uma conta de luz de 300 que eu paguei dia 12/03" (referência 28/04/2026) → {"intent":"register_expense","confidence":0.95,"data":{"amount":300,"description":"Conta de luz","status":"PAID","date":"2026-03-12"}}
 15h. "relatório" (palavra solta) → {"intent":"query_report","confidence":0.95,"data":{"period":"this_month","reportType":"all","groupBy":"category","format":"text"}}
 15i. "resumo" (palavra solta) → {"intent":"query_report","confidence":0.95,"data":{"period":"this_month","reportType":"all","groupBy":"category","format":"text"}}
 15j. "balanço" / "extrato" / "fechamento" (palavra solta) → mesmo que 15h

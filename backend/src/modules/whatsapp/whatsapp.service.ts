@@ -10,6 +10,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AppConfigService } from '../../common/config/app.config';
 import { phoneVariants } from '../../common/utils/phone.util';
+import { toCalendarDate } from '../../common/utils/date.util';
 import { EvolutionService } from '../evolution/evolution.service';
 import { WhatsAppCloudService } from '../whatsapp-cloud/whatsapp-cloud.service';
 import { AiService, type LlmUsage } from '../ai/ai.service';
@@ -1556,8 +1557,9 @@ export class WhatsAppService {
     companyId: string,
   ): Promise<HandlerResult> {
     const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    // Datas puras em UTC — é assim que o Prisma compara colunas @db.Date.
+    const firstDay = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+    const lastDay = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0));
 
     const aggregate = await this.prisma.transaction.aggregate({
       where: {
@@ -1631,10 +1633,14 @@ export class WhatsAppService {
     data: BotInterpretation['data'],
   ): { start: Date; end: Date; label: string } | null {
     const now = new Date();
+    // `date` é coluna DATE (dia civil, sem hora), então o intervalo de um dia é
+    // o próprio dia. Converte o dia civil local — o container roda em
+    // America/Sao_Paulo — para meia-noite UTC, que é como o Prisma grava e
+    // compara colunas @db.Date. Usar 23:59 local jogaria o fim para o dia
+    // seguinte e o relatório pegaria um dia a mais.
     const startOfDay = (d: Date) =>
-      new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-    const endOfDay = (d: Date) =>
-      new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+      new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const endOfDay = startOfDay;
 
     const monthNames = [
       'Janeiro',
@@ -1745,19 +1751,20 @@ export class WhatsAppService {
       }
       case 'custom': {
         if (!data.startDate || !data.endDate) return null;
-        const s = new Date(data.startDate);
-        const e = new Date(data.endDate);
+        // startDate/endDate vêm da IA em YYYY-MM-DD — já são dias civis.
+        const s = toCalendarDate(data.startDate);
+        const e = toCalendarDate(data.endDate);
         if (isNaN(s.getTime()) || isNaN(e.getTime())) return null;
         const fmt = (d: Date) =>
           d.toLocaleDateString('pt-BR', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
-            timeZone: 'America/Sao_Paulo',
+            timeZone: 'UTC',
           });
         return {
-          start: startOfDay(s),
-          end: endOfDay(e),
+          start: s,
+          end: e,
           label: `${fmt(s)} → ${fmt(e)}`,
         };
       }
@@ -2156,7 +2163,7 @@ export class WhatsAppService {
         currency: 'BRL',
       });
       const dueFormatted = tx.dueDate
-        ? new Date(tx.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+        ? new Date(tx.dueDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
         : '—';
       const emoji = tx.type === 'EXPENSE' ? '🔴' : '🟢';
       response += `${emoji} *${dueFormatted}*\n`;

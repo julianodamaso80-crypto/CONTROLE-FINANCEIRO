@@ -5,6 +5,10 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import {
+  toCalendarDate,
+  todayCalendarDate,
+} from '../../common/utils/date.util';
 import { BankAccountsService } from '../bank-accounts/bank-accounts.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { FilterTransactionsDto } from './dto/filter-transactions.dto';
@@ -51,8 +55,8 @@ export class TransactionsService {
 
     if (filters.dateFrom || filters.dateTo) {
       where.date = {};
-      if (filters.dateFrom) where.date.gte = new Date(filters.dateFrom);
-      if (filters.dateTo) where.date.lte = new Date(filters.dateTo);
+      if (filters.dateFrom) where.date.gte = toCalendarDate(filters.dateFrom);
+      if (filters.dateTo) where.date.lte = toCalendarDate(filters.dateTo);
     }
 
     // Busca textual inteligente: ignora acentos E maiúsculas/minúsculas.
@@ -129,16 +133,19 @@ export class TransactionsService {
   async create(companyId: string, userId: string, dto: CreateTransactionDto) {
     await this.validateReferences(companyId, dto);
 
-    let paymentDate = dto.paymentDate ? new Date(dto.paymentDate) : undefined;
+    let paymentDate = dto.paymentDate
+      ? toCalendarDate(dto.paymentDate)
+      : undefined;
     const status = dto.status ?? 'PENDING';
 
+    // Num lançamento retroativo já pago, o pagamento aconteceu na data do
+    // lançamento — não hoje.
     if (status === 'PAID' && !paymentDate) {
-      paymentDate = new Date();
+      paymentDate = toCalendarDate(dto.date);
     }
 
     if (paymentDate) {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrow = this.tomorrowSP();
       if (paymentDate > tomorrow) {
         throw new BadRequestException(
           'Data de pagamento não pode estar no futuro',
@@ -154,8 +161,8 @@ export class TransactionsService {
           type: dto.type,
           amount: dto.amount,
           description: dto.description,
-          date: new Date(dto.date),
-          dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+          date: toCalendarDate(dto.date),
+          dueDate: dto.dueDate ? toCalendarDate(dto.dueDate) : undefined,
           paymentDate,
           status,
           categoryId: dto.categoryId,
@@ -196,9 +203,8 @@ export class TransactionsService {
     await this.validateReferences(companyId, dto);
 
     if (dto.paymentDate) {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      if (new Date(dto.paymentDate) > tomorrow) {
+      const tomorrow = this.tomorrowSP();
+      if (toCalendarDate(dto.paymentDate) > tomorrow) {
         throw new BadRequestException(
           'Data de pagamento não pode estar no futuro',
         );
@@ -223,9 +229,9 @@ export class TransactionsService {
           ...(dto.type !== undefined && { type: dto.type }),
           ...(dto.amount !== undefined && { amount: dto.amount }),
           ...(dto.description !== undefined && { description: dto.description }),
-          ...(dto.date !== undefined && { date: new Date(dto.date) }),
-          ...(dto.dueDate !== undefined && { dueDate: new Date(dto.dueDate) }),
-          ...(dto.paymentDate !== undefined && { paymentDate: new Date(dto.paymentDate) }),
+          ...(dto.date !== undefined && { date: toCalendarDate(dto.date) }),
+          ...(dto.dueDate !== undefined && { dueDate: toCalendarDate(dto.dueDate) }),
+          ...(dto.paymentDate !== undefined && { paymentDate: toCalendarDate(dto.paymentDate) }),
           ...(dto.status !== undefined && { status: dto.status }),
           ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
           ...(dto.clientId !== undefined && { clientId: dto.clientId }),
@@ -368,7 +374,9 @@ export class TransactionsService {
       );
     }
 
-    const paymentDate = dto.paymentDate ? new Date(dto.paymentDate) : new Date();
+    const paymentDate = dto.paymentDate
+      ? toCalendarDate(dto.paymentDate)
+      : todayCalendarDate();
 
     // Se informou bankAccountId, valida e cria/atualiza AccountTransaction
     if (dto.bankAccountId) {
@@ -435,6 +443,13 @@ export class TransactionsService {
     }
 
     return updated;
+  }
+
+  /** Amanhã como data pura — limite superior aceito para data de pagamento */
+  private tomorrowSP(): Date {
+    const tomorrow = todayCalendarDate();
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    return tomorrow;
   }
 
   /** Valida que os IDs referenciados pertencem à mesma empresa */

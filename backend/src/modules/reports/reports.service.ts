@@ -345,8 +345,13 @@ export class ReportsService {
       .trim();
   }
 
+  /**
+   * `date`/`dueDate` são colunas DATE: chegam como meia-noite UTC. Ler em
+   * America/Sao_Paulo (UTC-3) mostraria o dia anterior. `generatedAt`, que é
+   * um instante real, continua em TZ.
+   */
   private formatDate(d: Date): string {
-    return d.toLocaleDateString('pt-BR', { timeZone: TZ });
+    return d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   }
 
   private formatPeriod(from: Date, to: Date): string {

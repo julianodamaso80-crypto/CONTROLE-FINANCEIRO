@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { toCalendarDate } from '../../common/utils/date.util';
 import { parseOfx, OfxStatement } from './ofx-parser';
 
 export interface OfxPreviewItem {
@@ -51,7 +52,7 @@ export class ImportsService {
           companyId,
           amount: t.amount,
           type: t.type,
-          date: { gte: this.startOfDay(t.date), lte: this.endOfDay(t.date) },
+          date: toCalendarDate(t.date),
         },
         select: { id: true },
       });
@@ -106,7 +107,7 @@ export class ImportsService {
           companyId,
           amount: t.amount,
           type: t.type,
-          date: { gte: this.startOfDay(t.date), lte: this.endOfDay(t.date) },
+          date: toCalendarDate(t.date),
         },
         select: { id: true },
       });
@@ -130,8 +131,8 @@ export class ImportsService {
           type: t.type,
           amount: t.amount,
           description: t.description,
-          date: t.date,
-          paymentDate: t.date,
+          date: toCalendarDate(t.date),
+          paymentDate: toCalendarDate(t.date),
           status: 'PAID',
           categoryId: sel.categoryId,
           segmentId: sel.segmentId,
@@ -149,16 +150,5 @@ export class ImportsService {
     }
 
     return { imported, skipped };
-  }
-
-  private startOfDay(d: Date): Date {
-    const x = new Date(d);
-    x.setHours(0, 0, 0, 0);
-    return x;
-  }
-  private endOfDay(d: Date): Date {
-    const x = new Date(d);
-    x.setHours(23, 59, 59, 999);
-    return x;
   }
 }

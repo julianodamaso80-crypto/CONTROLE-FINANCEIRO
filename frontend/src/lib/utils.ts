@@ -13,19 +13,27 @@ export function formatCurrency(value: number | string): string {
   }).format(num);
 }
 
+/**
+ * Formata uma data de calendário (vencimento, competência, pagamento).
+ *
+ * O backend guarda esses campos em colunas DATE e os serializa como
+ * "2026-08-06T00:00:00.000Z" — meia-noite UTC. Renderizar isso em
+ * America/Sao_Paulo (UTC-3) voltaria um dia. Por isso lê-se em UTC.
+ * Para instantes reais (createdAt, pagamentos), use formatDateTime.
+ */
 export function formatDate(
   date: string | Date,
   pattern: 'short' | 'long' = 'short',
 ): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   if (pattern === 'short') {
-    return d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    return d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
   }
   return d.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
-    timeZone: 'America/Sao_Paulo',
+    timeZone: 'UTC',
   });
 }
 
