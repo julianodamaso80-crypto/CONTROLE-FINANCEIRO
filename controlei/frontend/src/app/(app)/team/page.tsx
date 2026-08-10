@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, UserPlus, Trash2, Phone, Mail, Crown, MessageCircle } from 'lucide-react';
+import { Plus, UserPlus, Trash2, Phone, Mail, Crown, MessageCircle, Copy } from 'lucide-react';
 import { useUsers, useCreateUser, useDeleteUser } from '@/hooks/use-users';
 import { useIsOwner } from '@/hooks/use-company';
 import type { User } from '@/types/models';
@@ -179,19 +179,69 @@ function InviteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  // Credenciais mostradas depois de convidar: a senha não pode ir no WhatsApp
+  // (regra do Meta), então quem convidou precisa repassar.
+  const [created, setCreated] = useState<{ name: string; email: string; password: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await create.mutateAsync({ name, email, phone, password });
+    setCreated({ name, email, password });
     setName('');
     setEmail('');
     setPhone('');
     setPassword('');
+  };
+
+  const close = () => {
+    setCreated(null);
     onOpenChange(false);
   };
 
+  if (created) {
+    const firstName = created.name.split(' ')[0];
+    const texto =
+      `Oi ${firstName}! Te adicionei na nossa conta do Controlei pra gente organizar as despesas junto.\n\n` +
+      `Entra em controlei.ia.br\n` +
+      `Email: ${created.email}\n` +
+      `Senha provisória: ${created.password}\n\n` +
+      `No primeiro acesso ele pede pra você criar sua própria senha.`;
+
+    return (
+      <Dialog open={open} onOpenChange={close}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{firstName} já faz parte da conta</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Avisamos {firstName} no WhatsApp. Por segurança, a senha não vai por
+              lá — mande você mesmo:
+            </p>
+            <pre className="whitespace-pre-wrap rounded-md bg-muted/60 p-3 text-xs">
+              {texto}
+            </pre>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                void navigator.clipboard.writeText(texto);
+              }}
+            >
+              <Copy className="mr-2 h-4 w-4" /> Copiar mensagem
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button type="button" onClick={close}>Pronto</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={close}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Convidar pessoa para a conta</DialogTitle>
@@ -238,12 +288,13 @@ function InviteDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v:
           <div className="flex gap-2 rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
             <MessageCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              Use o WhatsApp pessoal dela — é por esse número que o Controlei vai
-              reconhecer os lançamentos que ela mandar.
+              Use o WhatsApp pessoal dela — avisamos por lá que ela entrou na
+              conta, e é por esse número que o Controlei reconhece os lançamentos
+              que ela mandar.
             </span>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={close}>
               Cancelar
             </Button>
             <Button type="submit" disabled={create.isPending}>

@@ -1,13 +1,16 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  forwardRef,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { normalizePhone } from '../../common/utils/phone.util';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateSelfDto } from './dto/update-self.dto';
@@ -32,7 +35,11 @@ const MAX_ACTIVE_USERS = 2;
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => WhatsAppService))
+    private readonly whatsapp: WhatsAppService,
+  ) {}
 
   private async getOwnerId(companyId: string) {
     const company = await this.prisma.company.findUnique({
@@ -107,7 +114,7 @@ export class UsersService {
 
     // Role sempre USER: ADMIN é admin da plataforma inteira, e quem convida não
     // pode conceder isso. Senha é provisória — o membro troca no 1º login.
-    return this.prisma.user.create({
+    const member = await this.prisma.user.create({
       data: {
         companyId,
         name: dto.name,
@@ -119,6 +126,27 @@ export class UsersService {
       },
       select: userSelect,
     });
+
+    // Avisa a pessoa no WhatsApp dela. Fire-and-forget: falha de mensagem não
+    // pode desfazer um convite que já foi criado.
+    const ownerId = await this.getOwnerId(companyId);
+    const owner = ownerId
+      ? await this.prisma.user.findUnique({
+          where: { id: ownerId },
+          select: { name: true },
+        })
+      : null;
+
+    void this.whatsapp
+      .sendMemberInviteMessage(
+        normalizedPhone,
+        member.name,
+        owner?.name ?? 'Quem criou a conta',
+        companyId,
+      )
+      .catch(() => undefined);
+
+    return member;
   }
 
   /** Edição dos próprios dados — vale para o dono e para o membro convidado. */

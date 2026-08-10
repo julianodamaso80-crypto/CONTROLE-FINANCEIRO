@@ -430,6 +430,76 @@ export class WhatsAppService {
       });
   }
 
+  /**
+   * Avisa a pessoa convidada que ela ganhou acesso à conta de outra.
+   *
+   * A senha provisória NÃO vai na mensagem: template com credencial é
+   * classificado pelo Meta como AUTHENTICATION (formato fixo de código) e volta
+   * como INCORRECT_CATEGORY. Quem convidou repassa a senha — a tela mostra ela
+   * pra copiar. No transporte Evolution é texto livre, sem essa restrição, mas
+   * mantemos o mesmo conteúdo pra experiência não divergir.
+   */
+  async sendMemberInviteMessage(
+    phone: string,
+    memberName: string,
+    ownerName: string,
+    companyId: string,
+  ): Promise<void> {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { whatsappTransport: true },
+    });
+    const memberFirstName = memberName.split(' ')[0] ?? memberName;
+    const ownerFirstName = ownerName.split(' ')[0] ?? ownerName;
+
+    if (company?.whatsappTransport === 'CLOUD') {
+      if (!this.appConfig.isWhatsAppCloudConfigured()) {
+        this.logger.warn(
+          'Empresa CLOUD mas Cloud API não configurada — convite não enviado',
+        );
+        return;
+      }
+      await this.cloud
+        .sendTemplate(phone, 'conta_compartilhada_add', 'pt_BR', [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: memberFirstName },
+              { type: 'text', text: ownerFirstName },
+            ],
+          },
+        ])
+        .catch((err) => {
+          this.logger.warn(
+            `sendMemberInviteMessage (cloud) falhou: ${err instanceof Error ? err.message : 'erro'}`,
+          );
+        });
+      return;
+    }
+
+    if (!this.appConfig.isEvolutionConfigured()) return;
+
+    const instance = await this.prisma.whatsAppInstance.findFirst({
+      where: { status: 'CONNECTED' },
+    });
+    if (!instance) return;
+
+    const message =
+      `👋 Olá, ${memberFirstName}! ${ownerFirstName} adicionou você à conta ` +
+      `compartilhada do *Controlei*.\n\n` +
+      `Vocês dois passam a ver e lançar as mesmas despesas. Acesse ` +
+      `controlei.ia.br e peça a senha provisória para ${ownerFirstName}.\n\n` +
+      `Depois é só me mandar seus gastos por aqui, tipo _"mercado 60"_.`;
+
+    await this.evolution
+      .sendTextMessage(instance.instanceName, phone, message)
+      .catch((err) => {
+        this.logger.warn(
+          `sendMemberInviteMessage falhou: ${err instanceof Error ? err.message : 'erro'}`,
+        );
+      });
+  }
+
   async processWebhook(payload: WebhookPayload): Promise<void> {
     if (!this.appConfig.isEvolutionConfigured()) {
       this.logger.warn(
