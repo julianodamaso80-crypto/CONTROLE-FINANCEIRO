@@ -48,7 +48,12 @@ interface CloudWebhookBody {
         metadata?: { phone_number_id?: string; display_phone_number?: string };
         contacts?: Array<{ wa_id?: string; profile?: { name?: string } }>;
         messages?: CloudMessage[];
-        statuses?: Array<{ id?: string; status?: string; recipient_id?: string }>;
+        statuses?: Array<{
+          id?: string;
+          status?: string;
+          recipient_id?: string;
+          errors?: Array<{ code?: number; title?: string; message?: string }>;
+        }>;
       };
     }>;
   }>;
@@ -110,6 +115,8 @@ export class WhatsAppCloudWebhookController {
 
     const body = req.body as CloudWebhookBody;
 
+    this.logDeliveryStatuses(body);
+
     // Processa fora do ciclo da resposta — Meta só quer o 200 rápido.
     for (const data of this.extractMessages(body)) {
       this.whatsapp.processCloudInbound(data).catch((e: unknown) => {
@@ -120,6 +127,34 @@ export class WhatsAppCloudWebhookController {
     }
 
     return { received: true };
+  }
+
+  /**
+   * Registra o recibo de entrega de cada mensagem que enviamos.
+   *
+   * Sem isto não havia como responder "a mensagem chegou?" — o envio devolve
+   * 202 accepted mesmo para número inexistente, e a falha só aparece aqui.
+   * Entregue/lido vira debug; falha vira warning com o motivo da Meta.
+   */
+  private logDeliveryStatuses(body: CloudWebhookBody): void {
+    for (const entry of body.entry ?? []) {
+      for (const change of entry.changes ?? []) {
+        for (const st of change.value?.statuses ?? []) {
+          if (st.status === 'failed') {
+            const motivo = (st.errors ?? [])
+              .map((e) => `${e.code ?? '?'}: ${e.title ?? e.message ?? 'erro'}`)
+              .join('; ');
+            this.logger.warn(
+              `Mensagem ${st.id} NÃO entregue para ${st.recipient_id} — ${motivo || 'sem detalhe'}`,
+            );
+          } else {
+            this.logger.debug(
+              `Mensagem ${st.id} → ${st.status} (${st.recipient_id})`,
+            );
+          }
+        }
+      }
+    }
   }
 
   /**

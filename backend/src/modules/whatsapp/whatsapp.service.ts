@@ -340,6 +340,18 @@ export class WhatsAppService {
     });
     if (!instance) return { ok: true };
 
+    // O status no banco envelhece: a instância pode estar marcada CONNECTED
+    // aqui e desconectada na Evolution. Perguntar antes evita disparar uma
+    // checagem que só devolve HTTP 400 — era o que acontecia em todo cadastro.
+    const state = await this.evolution.fetchInstanceState(instance.instanceName);
+    if (state !== 'open') {
+      this.logger.warn(
+        `Instância ${instance.instanceName} está "${state}" na Evolution — ` +
+          `número não verificado no cadastro.`,
+      );
+      return { ok: true };
+    }
+
     const { exists, jid } = await this.evolution.checkNumberHasWhatsApp(
       instance.instanceName,
       phone,
