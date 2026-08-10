@@ -92,44 +92,83 @@ export class UsersService {
       );
     }
 
-    const existingEmail = await this.prisma.user.findFirst({
-      where: { email: dto.email },
-    });
-    if (existingEmail) {
-      throw new ConflictException(
-        'Este email já tem conta no Controlei. Use outro email para o membro.',
-      );
-    }
+    const ownerId = await this.getOwnerId(companyId);
 
-    const existingPhone = await this.prisma.user.findUnique({
-      where: { phone: normalizedPhone },
-    });
-    if (existingPhone) {
-      throw new ConflictException(
-        'Este WhatsApp já tem conta no Controlei. Use o número pessoal da pessoa que você quer convidar.',
-      );
+    const conflictSelect = { id: true, companyId: true, isActive: true } as const;
+    const [existingEmail, existingPhone] = await Promise.all([
+      this.prisma.user.findFirst({
+        where: { email: dto.email },
+        select: conflictSelect,
+      }),
+      this.prisma.user.findUnique({
+        where: { phone: normalizedPhone },
+        select: conflictSelect,
+      }),
+    ]);
+
+    // Remover membro é soft delete: o registro fica com isActive=false mas
+    // continua ocupando email e WhatsApp. Quem removeu alguém tem direito de
+    // convidar outra pessoa — inclusive a mesma de novo —, então reaproveita
+    // esse registro em vez de barrar. Reaproveitar preserva os lançamentos que
+    // a pessoa já tinha feito.
+    const sameRecord =
+      !existingEmail || !existingPhone || existingEmail.id === existingPhone.id;
+    const previous = existingEmail ?? existingPhone;
+    const revivable =
+      sameRecord &&
+      previous &&
+      previous.companyId === companyId &&
+      !previous.isActive &&
+      previous.id !== ownerId
+        ? previous
+        : null;
+
+    if (!revivable) {
+      if (existingEmail) {
+        throw new ConflictException(
+          'Este email já tem conta no Controlei. Use outro email para o membro.',
+        );
+      }
+      if (existingPhone) {
+        throw new ConflictException(
+          'Este WhatsApp já tem conta no Controlei. Use o número pessoal da pessoa que você quer convidar.',
+        );
+      }
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
     // Role sempre USER: ADMIN é admin da plataforma inteira, e quem convida não
     // pode conceder isso. Senha é provisória — o membro troca no 1º login.
-    const member = await this.prisma.user.create({
-      data: {
-        companyId,
-        name: dto.name,
-        email: dto.email,
-        passwordHash,
-        phone: normalizedPhone,
-        role: 'USER',
-        mustChangePassword: true,
-      },
-      select: userSelect,
-    });
+    const member = revivable
+      ? await this.prisma.user.update({
+          where: { id: revivable.id },
+          data: {
+            name: dto.name,
+            email: dto.email,
+            passwordHash,
+            phone: normalizedPhone,
+            role: 'USER',
+            isActive: true,
+            mustChangePassword: true,
+          },
+          select: userSelect,
+        })
+      : await this.prisma.user.create({
+          data: {
+            companyId,
+            name: dto.name,
+            email: dto.email,
+            passwordHash,
+            phone: normalizedPhone,
+            role: 'USER',
+            mustChangePassword: true,
+          },
+          select: userSelect,
+        });
 
     // Avisa a pessoa no WhatsApp dela. Fire-and-forget: falha de mensagem não
     // pode desfazer um convite que já foi criado.
-    const ownerId = await this.getOwnerId(companyId);
     const owner = ownerId
       ? await this.prisma.user.findUnique({
           where: { id: ownerId },
