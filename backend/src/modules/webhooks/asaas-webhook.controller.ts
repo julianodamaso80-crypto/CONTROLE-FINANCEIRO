@@ -77,9 +77,16 @@ export class AsaasWebhookController {
         break;
 
       case 'PAYMENT_REFUNDED':
+        await this.subscriptions.handlePaymentRefunded(
+          body.payment?.subscription,
+          true,
+        );
+        break;
+
       case 'PAYMENT_DELETED':
         await this.subscriptions.handlePaymentRefunded(
           body.payment?.subscription,
+          false,
         );
         break;
 

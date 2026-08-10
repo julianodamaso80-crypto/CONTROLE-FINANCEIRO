@@ -19,6 +19,13 @@ export interface AsaasSubscription {
   billingType: string;
 }
 
+/** Status do Asaas que significam "o cliente pagou de verdade". */
+export const PAID_STATUSES: readonly string[] = [
+  'RECEIVED',
+  'CONFIRMED',
+  'RECEIVED_IN_CASH',
+];
+
 export interface AsaasPayment {
   id: string;
   subscription?: string;
@@ -53,6 +60,27 @@ export class AsaasService {
       });
     }
     return this.http;
+  }
+
+  /**
+   * Procura um customer já existente pelo externalReference (companyId).
+   * Evita criar um customer novo a cada tentativa de checkout — o que gerava
+   * duplicatas e espalhava as cobranças do mesmo cliente por vários cadastros.
+   */
+  async findCustomerByExternalReference(
+    externalReference: string,
+  ): Promise<AsaasCustomer | null> {
+    try {
+      const { data } = await this.getHttp().get<{ data: AsaasCustomer[] }>(
+        `/customers?externalReference=${encodeURIComponent(externalReference)}&limit=100`,
+      );
+      const list = data.data ?? [];
+      // O mais recente primeiro — o Asaas devolve por data de criação desc.
+      return list[0] ?? null;
+    } catch (error) {
+      this.logError('findCustomerByExternalReference', error);
+      return null;
+    }
   }
 
   /** Cria um customer no Asaas. Retorna o customer com id. */
@@ -191,6 +219,38 @@ export class AsaasService {
       ['PENDING', 'OVERDUE', 'AWAITING_RISK_ANALYSIS'].includes(p.status),
     );
     return pending?.invoiceUrl ?? null;
+  }
+
+  /**
+   * Retorna o pagamento mais recente de uma assinatura que o cliente JÁ PAGOU.
+   *
+   * Existe porque "não ter fatura em aberto" tem dois significados opostos:
+   * a assinatura é órfã (conta trocada) OU o cliente acabou de pagar. Sem
+   * essa checagem o sistema confundia os dois e apagava a assinatura paga.
+   */
+  async findLastPaidPayment(
+    subscriptionId: string,
+  ): Promise<AsaasPayment | null> {
+    const payments = await this.findSubscriptionPayments(subscriptionId);
+    const paid = payments.filter((p) => PAID_STATUSES.includes(p.status));
+    if (paid.length === 0) return null;
+    // Mais recente pela data de pagamento (fallback: vencimento).
+    paid.sort((a, b) =>
+      (b.paymentDate ?? b.dueDate).localeCompare(a.paymentDate ?? a.dueDate),
+    );
+    return paid[0] ?? null;
+  }
+
+  /** Assinatura ainda existe e não foi removida na conta Asaas atual? */
+  async subscriptionExists(subscriptionId: string): Promise<boolean> {
+    try {
+      const { data } = await this.getHttp().get<{ deleted?: boolean }>(
+        `/subscriptions/${subscriptionId}`,
+      );
+      return data.deleted !== true;
+    } catch {
+      return false;
+    }
   }
 
   private logError(method: string, error: unknown): void {

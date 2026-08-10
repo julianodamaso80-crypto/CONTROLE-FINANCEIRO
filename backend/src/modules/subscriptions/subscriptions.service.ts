@@ -11,10 +11,16 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AppConfigService } from '../../common/config/app.config';
-import { AsaasService } from '../asaas/asaas.service';
+import { AsaasService, type AsaasPayment } from '../asaas/asaas.service';
 import { WhatsAppCloudService } from '../whatsapp-cloud/whatsapp-cloud.service';
 
 const TRIAL_DAYS = 3;
+/** Resposta pro frontend quando o cliente pede checkout já tendo pago. */
+const ALREADY_PAID_ERROR = {
+  code: 'ALREADY_PAID',
+  message:
+    'Seu pagamento já foi confirmado e o acesso está liberado. Atualize a página.',
+};
 const PLAN_VALUES: Record<SubscriptionPlan, number> = {
   MONTHLY: 19.9,
   ANNUAL: 199.9,
@@ -73,74 +79,21 @@ export class SubscriptionsService {
       });
     }
 
-    // Caminho Asaas (legado/fallback)
-    if (!this.appConfig.isAsaasConfigured()) {
-      this.logger.warn(
-        'Nenhum gateway configurado — criando subscription local only',
-      );
-      return this.prisma.subscription.create({
-        data: {
-          companyId: input.companyId,
-          userId: input.userId,
-          plan: 'MONTHLY',
-          status: 'TRIALING',
-          provider: 'asaas',
-          trialEndsAt,
-          lastError: 'Nenhum gateway configurado no ambiente',
-        },
-      });
-    }
-
-    try {
-      const customer = await this.asaas.createCustomer({
-        name: input.name,
-        email: input.email,
-        phone: input.phone,
-        externalReference: input.companyId,
-      });
-
-      const nextDueDate = trialEndsAt.toISOString().slice(0, 10);
-
-      const asaasSub = await this.asaas.createSubscription({
-        customerId: customer.id,
-        value: PLAN_VALUES.MONTHLY,
-        cycle: PLAN_CYCLE.MONTHLY,
-        nextDueDate,
-        billingType: 'UNDEFINED',
-        externalReference: input.companyId,
-      });
-
-      const paymentUrl = await this.asaas.getNextPaymentUrl(asaasSub.id);
-
-      return this.prisma.subscription.create({
-        data: {
-          companyId: input.companyId,
-          userId: input.userId,
-          plan: 'MONTHLY',
-          status: 'TRIALING',
-          provider: 'asaas',
-          asaasCustomerId: customer.id,
-          asaasSubscriptionId: asaasSub.id,
-          asaasPaymentUrl: paymentUrl,
-          trialEndsAt,
-          nextPaymentAt: trialEndsAt,
-        },
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'erro desconhecido';
-      this.logger.error(`Falha ao criar subscription Asaas: ${msg}`);
-      return this.prisma.subscription.create({
-        data: {
-          companyId: input.companyId,
-          userId: input.userId,
-          plan: 'MONTHLY',
-          status: 'TRIALING',
-          provider: 'asaas',
-          trialEndsAt,
-          lastError: msg,
-        },
-      });
-    }
+    // Caminho Asaas: o trial nasce só no banco. Criar customer + assinatura
+    // aqui não funciona — o Asaas exige CPF/CNPJ pra emitir cobrança e o
+    // cadastro não pede documento. A assinatura real é criada em
+    // `getCheckoutUrl`, quando o cliente informa o CPF pra pagar.
+    return this.prisma.subscription.create({
+      data: {
+        companyId: input.companyId,
+        userId: input.userId,
+        plan: 'MONTHLY',
+        status: 'TRIALING',
+        provider: 'asaas',
+        trialEndsAt,
+        nextPaymentAt: trialEndsAt,
+      },
+    });
   }
 
   async getByCompanyId(companyId: string): Promise<Subscription | null> {
@@ -226,44 +179,10 @@ export class SubscriptionsService {
         .catch(() => null);
     }
 
-    try {
-      if (this.appConfig.isAsaasConfigured()) {
-        const customer = await this.asaas.createCustomer({
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          externalReference: companyId,
-        });
-
-        const nextDueDate = trialEndsAt.toISOString().slice(0, 10);
-        const asaasSub = await this.asaas.createSubscription({
-          customerId: customer.id,
-          value: PLAN_VALUES.MONTHLY,
-          cycle: PLAN_CYCLE.MONTHLY,
-          nextDueDate,
-          billingType: 'UNDEFINED',
-          externalReference: companyId,
-        });
-
-        const paymentUrl = await this.asaas.getNextPaymentUrl(asaasSub.id);
-
-        return this.prisma.subscription.create({
-          data: {
-            companyId,
-            userId: user.id,
-            plan: 'MONTHLY',
-            status: 'TRIALING',
-            provider: 'asaas',
-            asaasCustomerId: customer.id,
-            asaasSubscriptionId: asaasSub.id,
-            asaasPaymentUrl: paymentUrl,
-            trialEndsAt,
-            nextPaymentAt: trialEndsAt,
-          },
-        });
-      }
-
-      return this.prisma.subscription.create({
+    // Mesmo motivo do signup: sem CPF/CNPJ o Asaas não emite cobrança. O
+    // trial é local e a assinatura nasce no primeiro checkout.
+    return this.prisma.subscription
+      .create({
         data: {
           companyId,
           userId: user.id,
@@ -271,27 +190,10 @@ export class SubscriptionsService {
           status: 'TRIALING',
           provider: 'asaas',
           trialEndsAt,
-          lastError: 'Asaas não configurado — trial local',
+          nextPaymentAt: trialEndsAt,
         },
-      });
-    } catch (err) {
-      this.logger.error(
-        `Auto-provision failed: ${err instanceof Error ? err.message : 'erro'}`,
-      );
-      return this.prisma.subscription
-        .create({
-          data: {
-            companyId,
-            userId: user.id,
-            plan: 'MONTHLY',
-            status: 'TRIALING',
-            provider: 'asaas',
-            trialEndsAt,
-            lastError: err instanceof Error ? err.message : 'erro',
-          },
-        })
-        .catch(() => null);
-    }
+      })
+      .catch(() => null);
   }
 
   async changePlan(
@@ -324,6 +226,12 @@ export class SubscriptionsService {
     if (sub.asaasSubscriptionId) {
       await this.asaas.deleteSubscription(sub.asaasSubscriptionId);
     }
+
+    // Log explícito: cancelamento é a única transição que tira acesso sem vir
+    // do gateway, então precisa aparecer no histórico pra auditoria.
+    this.logger.log(
+      `Cancelamento solicitado pela empresa ${companyId} — sub ${sub.id} → CANCELED`,
+    );
 
     return this.prisma.subscription.update({
       where: { id: sub.id },
@@ -443,13 +351,25 @@ export class SubscriptionsService {
     // no primeiro pagamento quanto pra se recuperar de vínculos inutilizáveis
     // (ex: assinatura criada numa conta Asaas antiga que foi trocada).
     const createFresh = async (): Promise<Subscription> => {
-      const customer = await this.asaas.createCustomer({
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        cpfCnpj,
-        externalReference: companyId,
-      });
+      // Reaproveita o customer da empresa se já existir — criar um novo a cada
+      // tentativa espalhava as cobranças do mesmo cliente por vários cadastros.
+      const existing =
+        await this.asaas.findCustomerByExternalReference(companyId);
+      const customer = existing
+        ? await this.asaas
+            .updateCustomer(existing.id, {
+              cpfCnpj,
+              name: user.name,
+              phone: user.phone,
+            })
+            .catch(() => existing)
+        : await this.asaas.createCustomer({
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            cpfCnpj,
+            externalReference: companyId,
+          });
       const nextDueDate = (trialEndsAt && trialEndsAt > new Date()
         ? trialEndsAt
         : new Date()
@@ -477,6 +397,15 @@ export class SubscriptionsService {
     };
 
     let justCreated = false;
+
+    // ANTES de qualquer coisa: o cliente já pagou nessa assinatura? Se pagou,
+    // não existe checkout a gerar — existe acesso a liberar. Sem essa checagem
+    // o fluxo abaixo interpretava "sem fatura em aberto" como assinatura órfã
+    // e apagava justamente a assinatura que o cliente tinha acabado de pagar.
+    if (sub.asaasSubscriptionId) {
+      const activated = await this.activateIfPaid(sub);
+      if (activated) throw new BadRequestException(ALREADY_PAID_ERROR);
+    }
 
     if (!sub.asaasSubscriptionId || !sub.asaasCustomerId) {
       // Sem vínculo utilizável → cria do zero.
@@ -512,15 +441,29 @@ export class SubscriptionsService {
 
     let url = await this.asaas.getNextPaymentUrl(sub.asaasSubscriptionId!);
 
-    // Reaproveitou uma assinatura mas ela não tem fatura pra pagar → quase
-    // sempre é órfã (conta Asaas trocada). Recria do zero uma única vez.
+    // Reaproveitou uma assinatura mas ela não tem fatura pra pagar. Só recria
+    // se ela realmente sumiu da conta Asaas atual (órfã de conta trocada).
+    // Se ela existe, "sem fatura em aberto" significa pagamento em dia — e
+    // apagá-la cancelaria o acesso de um cliente pagante.
     if (!url && !justCreated) {
-      this.logger.warn(
-        `Assinatura ${sub.asaasSubscriptionId} sem fatura disponível — recriando na conta atual.`,
+      if (await this.activateIfPaid(sub)) {
+        throw new BadRequestException(ALREADY_PAID_ERROR);
+      }
+
+      const stillExists = await this.asaas.subscriptionExists(
+        sub.asaasSubscriptionId!,
       );
-      await this.asaas
-        .deleteSubscription(sub.asaasSubscriptionId!)
-        .catch(() => undefined);
+      if (stillExists) {
+        this.logger.warn(
+          `Assinatura ${sub.asaasSubscriptionId} existe no Asaas mas está sem ` +
+            `fatura em aberto — mantida (não recriada).`,
+        );
+        return sub.asaasPaymentUrl;
+      }
+
+      this.logger.warn(
+        `Assinatura ${sub.asaasSubscriptionId} não existe mais na conta Asaas — recriando.`,
+      );
       sub = await createFresh();
       url = await this.asaas.getNextPaymentUrl(sub.asaasSubscriptionId!);
     }
@@ -539,6 +482,63 @@ export class SubscriptionsService {
     return PLAN_VALUES;
   }
 
+  /**
+   * Fonte da verdade do acesso: pergunta ao Asaas se a assinatura tem um
+   * pagamento confirmado e, se tiver, deixa a subscription local ACTIVE com o
+   * período correto. Retorna true se o cliente está pago.
+   *
+   * É o mesmo caminho usado pelo webhook, pela geração de checkout e pelo
+   * reconciliador — assim o acesso de quem pagou não depende de um único
+   * evento chegar. Nunca lança: quem chama trata o `false` como "não pago".
+   */
+  async activateIfPaid(sub: Subscription): Promise<boolean> {
+    if (!sub.asaasSubscriptionId) return false;
+
+    let paid: AsaasPayment | null = null;
+    try {
+      paid = await this.asaas.findLastPaidPayment(sub.asaasSubscriptionId);
+    } catch {
+      return false;
+    }
+    if (!paid) return false;
+
+    const paidAt = paid.paymentDate ? new Date(paid.paymentDate) : new Date();
+    const periodEnd = this.addCycle(paidAt, sub.plan);
+
+    // Já ACTIVE e com o período em dia? Nada a fazer.
+    if (
+      sub.status === 'ACTIVE' &&
+      sub.currentPeriodEnd &&
+      sub.currentPeriodEnd >= periodEnd
+    ) {
+      return true;
+    }
+
+    await this.prisma.subscription.update({
+      where: { id: sub.id },
+      data: {
+        status: 'ACTIVE',
+        lastPaymentAt: paidAt,
+        currentPeriodEnd: periodEnd,
+        nextPaymentAt: periodEnd,
+        lastError: null,
+      },
+    });
+    this.logger.log(
+      `Pagamento ${paid.id} confirmado no Asaas — sub ${sub.id} → ACTIVE ` +
+        `(company ${sub.companyId})`,
+    );
+    return true;
+  }
+
+  /** Soma um ciclo (mês ou ano) a uma data, conforme o plano. */
+  private addCycle(from: Date, plan: SubscriptionPlan): Date {
+    const d = new Date(from);
+    if (plan === 'ANNUAL') d.setFullYear(d.getFullYear() + 1);
+    else d.setMonth(d.getMonth() + 1);
+    return d;
+  }
+
   // ============================================================
   // Webhook handlers — chamados pelo WebhookController
   // ============================================================
@@ -548,17 +548,20 @@ export class SubscriptionsService {
     const sub = await this.prisma.subscription.findFirst({
       where: { asaasSubscriptionId: subscriptionId },
     });
-    if (!sub) return;
-
-    // Calcula próxima data de cobrança baseado no plano
-    const now = new Date();
-    const nextPeriodEnd = new Date(now);
-    if (sub.plan === 'MONTHLY') {
-      nextPeriodEnd.setMonth(nextPeriodEnd.getMonth() + 1);
-    } else {
-      nextPeriodEnd.setFullYear(nextPeriodEnd.getFullYear() + 1);
+    if (!sub) {
+      this.logger.warn(
+        `Pagamento ${asaasPaymentId} recebido para assinatura ${subscriptionId} ` +
+          `sem correspondência local — nada ativado.`,
+      );
+      return;
     }
 
+    // Confere no Asaas e ativa. Se a consulta falhar, ativa mesmo assim: o
+    // evento veio do gateway autenticado, o cliente pagou.
+    if (await this.activateIfPaid(sub)) return;
+
+    const now = new Date();
+    const nextPeriodEnd = this.addCycle(now, sub.plan);
     await this.prisma.subscription.update({
       where: { id: sub.id },
       data: {
@@ -571,6 +574,20 @@ export class SubscriptionsService {
     });
     this.logger.log(
       `Payment ${asaasPaymentId} received — sub ${sub.id} → ACTIVE`,
+    );
+  }
+
+  /**
+   * Um evento de cancelamento só pode tirar o acesso de quem não tem período
+   * pago em aberto. Assinatura removida no Asaas não apaga o mês que o cliente
+   * já pagou — e evita que eventos antigos, entregues em lote quando a fila do
+   * webhook é retomada, derrubem clientes em dia.
+   */
+  private hasPaidPeriodLeft(sub: Subscription): boolean {
+    return (
+      sub.status === 'ACTIVE' &&
+      !!sub.currentPeriodEnd &&
+      sub.currentPeriodEnd > new Date()
     );
   }
 
@@ -640,17 +657,33 @@ export class SubscriptionsService {
     }
   }
 
-  async handlePaymentRefunded(subscriptionId?: string) {
+  /**
+   * PAYMENT_REFUNDED devolve o dinheiro — corta o acesso. PAYMENT_DELETED é a
+   * remoção de uma cobrança em aberto (acontece, por exemplo, quando o próprio
+   * sistema recria uma assinatura) e não pode cancelar quem está em dia.
+   */
+  async handlePaymentRefunded(subscriptionId?: string, refunded = true) {
     if (!subscriptionId) return;
     const sub = await this.prisma.subscription.findFirst({
       where: { asaasSubscriptionId: subscriptionId },
     });
     if (!sub) return;
+
+    if (!refunded && this.hasPaidPeriodLeft(sub)) {
+      this.logger.log(
+        `Cobrança removida na assinatura ${subscriptionId}, mas o período pago ` +
+          `de ${sub.companyId} segue em aberto — acesso mantido.`,
+      );
+      return;
+    }
+
     await this.prisma.subscription.update({
       where: { id: sub.id },
       data: { status: 'CANCELED' },
     });
-    this.logger.log(`Sub ${sub.id} → CANCELED (refunded)`);
+    this.logger.log(
+      `Sub ${sub.id} → CANCELED (${refunded ? 'refunded' : 'payment deleted'})`,
+    );
   }
 
   async handleSubscriptionDeleted(subscriptionId: string) {
@@ -658,6 +691,15 @@ export class SubscriptionsService {
       where: { asaasSubscriptionId: subscriptionId },
     });
     if (!sub) return;
+
+    if (this.hasPaidPeriodLeft(sub)) {
+      this.logger.log(
+        `Assinatura ${subscriptionId} removida no Asaas, mas o período pago de ` +
+          `${sub.companyId} vai até ${sub.currentPeriodEnd?.toISOString().slice(0, 10)} — acesso mantido.`,
+      );
+      return;
+    }
+
     await this.prisma.subscription.update({
       where: { id: sub.id },
       data: { status: 'CANCELED' },
@@ -670,6 +712,15 @@ export class SubscriptionsService {
       where: { asaasSubscriptionId: subscriptionId },
     });
     if (!sub) return;
+
+    if (this.hasPaidPeriodLeft(sub)) {
+      this.logger.log(
+        `Assinatura ${subscriptionId} inativada no Asaas, mas o período pago de ` +
+          `${sub.companyId} segue em aberto — acesso mantido.`,
+      );
+      return;
+    }
+
     await this.prisma.subscription.update({
       where: { id: sub.id },
       data: { status: 'EXPIRED' },
