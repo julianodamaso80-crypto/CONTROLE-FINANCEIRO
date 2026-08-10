@@ -26,6 +26,14 @@ export const PAID_STATUSES: readonly string[] = [
   'RECEIVED_IN_CASH',
 ];
 
+export interface AsaasWebhook {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  interrupted: boolean;
+}
+
 export interface AsaasPayment {
   id: string;
   subscription?: string;
@@ -249,6 +257,39 @@ export class AsaasService {
       );
       return data.deleted !== true;
     } catch {
+      return false;
+    }
+  }
+
+  /** Webhooks cadastrados na conta Asaas. */
+  async listWebhooks(): Promise<AsaasWebhook[]> {
+    try {
+      const { data } = await this.getHttp().get<{ data: AsaasWebhook[] }>(
+        '/webhooks?limit=100',
+      );
+      return data.data ?? [];
+    } catch (error) {
+      this.logError('listWebhooks', error);
+      return [];
+    }
+  }
+
+  /**
+   * Religa um webhook que o Asaas interrompeu. O gateway pausa a fila depois
+   * de uma sequência de respostas com erro — o que acontece naturalmente
+   * enquanto o backend reinicia num deploy. Sem religar, os eventos param de
+   * chegar e ninguém percebe até um cliente reclamar que pagou e não entrou.
+   */
+  async enableWebhook(id: string, authToken: string): Promise<boolean> {
+    try {
+      await this.getHttp().put(`/webhooks/${id}`, {
+        enabled: true,
+        interrupted: false,
+        authToken,
+      });
+      return true;
+    } catch (error) {
+      this.logError('enableWebhook', error);
       return false;
     }
   }
