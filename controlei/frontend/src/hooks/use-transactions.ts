@@ -10,6 +10,7 @@ interface TransactionFilters {
   categoryId?: string;
   segmentId?: string;
   bankAccountId?: string;
+  userId?: string;
   dateFrom?: string;
   dateTo?: string;
   search?: string;

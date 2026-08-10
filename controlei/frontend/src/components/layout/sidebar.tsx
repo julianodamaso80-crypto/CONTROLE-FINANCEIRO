@@ -34,7 +34,7 @@ const navItems = [
   { href: '/goals', label: 'Metas', icon: Target },
   { href: '/segments', label: 'Segmentos', icon: Tags },
   { href: '/categories', label: 'Categorias', icon: FolderTree },
-  { href: '/team', label: 'Equipe', icon: Users },
+  { href: '/team', label: 'Compartilhar conta', icon: Users },
   { href: '/plano', label: 'Meu Plano', icon: CreditCard },
   { href: '/settings', label: 'Configurações', icon: Settings },
 ];

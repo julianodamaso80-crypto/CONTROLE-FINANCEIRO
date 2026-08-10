@@ -1,8 +1,6 @@
 import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { AccountOwnerGuard } from '../../common/guards/account-owner.guard';
 import { RequestUser } from '../../common/types/request-user.type';
 import { CompaniesService } from './companies.service';
 import { UpdateCompanyDto } from './dto/update-company.dto';
@@ -17,8 +15,7 @@ export class CompaniesController {
   }
 
   @Put('me')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(AccountOwnerGuard)
   async updateMyCompany(
     @CurrentUser() user: RequestUser,
     @Body() dto: UpdateCompanyDto,

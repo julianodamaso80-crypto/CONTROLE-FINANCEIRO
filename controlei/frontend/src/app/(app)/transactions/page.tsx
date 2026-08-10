@@ -19,6 +19,7 @@ interface Filters {
   status?: string;
   segmentId?: string;
   categoryId?: string;
+  userId?: string;
   search?: string;
 }
 

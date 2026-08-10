@@ -171,9 +171,14 @@ model Company {
   whatsappNumber String?     @unique @map("whatsapp_number")
   whatsappTransport WhatsAppTransport @default(CLOUD) @map("whatsapp_transport")
   googleSheetId  String?     @map("google_sheet_id")
+  // Dono da conta: quem criou o cadastro. É quem pode convidar/remover o membro
+  // e editar os dados da conta. Não confundir com role ADMIN, que é admin da
+  // plataforma inteira.
+  ownerId        String?     @map("owner_id") @db.Uuid
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
+  owner            User?     @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   users            User[]
   categories       Category[]
   clients          Client[]
@@ -213,6 +218,7 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   company           Company             @relation(fields: [companyId], references: [id])
+  ownedCompanies    Company[]           @relation("CompanyOwner")
   transactions      Transaction[]
   passwordResetCodes PasswordResetCode[]
   influencer        Influencer?

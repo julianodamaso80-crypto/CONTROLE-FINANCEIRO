@@ -22,6 +22,8 @@ export interface User {
   isInfluencer?: boolean;
   // true quando a senha é provisória (criada pelo admin) e precisa ser trocada
   mustChangePassword?: boolean;
+  // true para quem criou a conta — só o dono convida/remove membro
+  isOwner?: boolean;
 }
 
 export interface Company {
@@ -32,6 +34,7 @@ export interface Company {
   phone?: string | null;
   plan: string;
   whatsappNumber?: string | null;
+  ownerId?: string | null;
 }
 
 export interface CategoryChild {
@@ -189,6 +192,9 @@ export interface Transaction {
   clientId?: string | null;
   supplierId?: string | null;
   segmentId?: string | null;
+  // Quem lançou — em conta compartilhada mostra de quem foi o gasto
+  userId?: string | null;
+  user?: { id: string; name: string } | null;
   category?: Category | null;
   client?: Client | null;
   supplier?: Supplier | null;

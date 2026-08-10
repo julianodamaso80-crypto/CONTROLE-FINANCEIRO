@@ -17,6 +17,7 @@ import { UpdateTransactionDto } from './dto/update-transaction.dto';
 
 // Includes padrão para retornar dados relacionados
 const transactionIncludes = {
+  user: { select: { id: true, name: true } },
   category: { select: { id: true, name: true, color: true, icon: true, type: true } },
   client: { select: { id: true, name: true } },
   supplier: { select: { id: true, name: true } },
@@ -52,6 +53,7 @@ export class TransactionsService {
         some: { accountId: filters.bankAccountId },
       };
     }
+    if (filters.userId) where.userId = filters.userId;
 
     if (filters.dateFrom || filters.dateTo) {
       where.date = {};

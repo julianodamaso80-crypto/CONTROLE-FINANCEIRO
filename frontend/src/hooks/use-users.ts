@@ -21,6 +21,7 @@ export function useCreateUser() {
     onSuccess: () => {
       toast.success('Membro adicionado');
       void qc.invalidateQueries({ queryKey: ['users'] });
+      void qc.invalidateQueries({ queryKey: ['transactions'] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -48,8 +49,9 @@ export function useDeleteUser() {
       await api.delete(`/users/${id}`);
     },
     onSuccess: () => {
-      toast.success('Membro desativado');
+      toast.success('Membro removido');
       void qc.invalidateQueries({ queryKey: ['users'] });
+      void qc.invalidateQueries({ queryKey: ['transactions'] });
     },
     onError: (e: Error) => toast.error(e.message),
   });

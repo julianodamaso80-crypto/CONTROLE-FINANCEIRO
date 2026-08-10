@@ -1,4 +1,11 @@
-import { IsEmail, IsEnum, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { UserRole } from '@prisma/client';
 
 export class CreateUserDto {
@@ -18,6 +25,9 @@ export class CreateUserDto {
   @MaxLength(20)
   phone!: string;
 
-  @IsEnum(UserRole, { message: 'Perfil inválido. Use: ADMIN, USER ou FINANCE' })
-  role!: UserRole;
+  // Aceito por compatibilidade com telas antigas, mas ignorado: o membro
+  // convidado é sempre USER (ver UsersService.create).
+  @IsOptional()
+  @IsEnum(UserRole, { message: 'Perfil inválido' })
+  role?: UserRole;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useUsers } from '@/hooks/use-users';
 import type { Transaction } from '@/types/models';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -36,6 +37,10 @@ export function TransactionTable({
   transactions,
   onEdit,
 }: TransactionTableProps) {
+  const { data: users } = useUsers();
+  // Em conta de uma pessoa só, mostrar o autor seria ruído.
+  const isShared = (users ?? []).filter((u) => u.isActive).length > 1;
+
   if (transactions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
@@ -66,8 +71,13 @@ export function TransactionTable({
             <TableCell className="text-sm text-muted-foreground">
               {formatDate(tx.date)}
             </TableCell>
-            <TableCell className="max-w-[250px] truncate font-medium">
-              {tx.description}
+            <TableCell className="max-w-[250px] font-medium">
+              <span className="block truncate">{tx.description}</span>
+              {isShared && tx.user?.name && (
+                <span className="block truncate text-xs font-normal text-muted-foreground">
+                  por {tx.user.name.split(' ')[0]}
+                </span>
+              )}
             </TableCell>
             <TableCell className="hidden sm:table-cell">
               {tx.category ? (

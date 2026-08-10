@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { useSegments } from '@/hooks/use-segments';
 import { useCategories } from '@/hooks/use-categories';
+import { useUsers } from '@/hooks/use-users';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +21,7 @@ interface Filters {
   status?: string;
   segmentId?: string;
   categoryId?: string;
+  userId?: string;
   search?: string;
 }
 
@@ -34,7 +36,12 @@ export function TransactionFilters({
 }: TransactionFiltersProps) {
   const { data: segments } = useSegments();
   const { data: categories } = useCategories();
+  const { data: users } = useUsers();
   const [searchInput, setSearchInput] = useState(filters.search ?? '');
+
+  // Filtro por pessoa só faz sentido em conta compartilhada.
+  const people = (users ?? []).filter((u) => u.isActive);
+  const isShared = people.length > 1;
 
   // Debounce da busca textual
   useEffect(() => {
@@ -47,7 +54,12 @@ export function TransactionFilters({
   }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasFilters =
-    filters.type || filters.status || filters.segmentId || filters.categoryId || filters.search;
+    filters.type ||
+    filters.status ||
+    filters.segmentId ||
+    filters.categoryId ||
+    filters.userId ||
+    filters.search;
 
   return (
     <div className="space-y-3">
@@ -123,6 +135,27 @@ export function TransactionFilters({
             ))}
           </SelectContent>
         </Select>
+
+        {isShared && (
+          <Select
+            value={filters.userId ?? '__all__'}
+            onValueChange={(v) =>
+              onChange({ ...filters, userId: v === '__all__' ? undefined : v })
+            }
+          >
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Pessoa" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas as pessoas</SelectItem>
+              {people.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

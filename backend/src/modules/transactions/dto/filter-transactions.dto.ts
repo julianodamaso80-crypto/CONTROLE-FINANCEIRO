@@ -35,6 +35,11 @@ export class FilterTransactionsDto {
   @IsUUID('4', { message: 'ID da conta bancária deve ser um UUID válido' })
   bankAccountId?: string;
 
+  // Quem lançou — permite ver só os gastos de uma das pessoas da conta.
+  @IsOptional()
+  @IsUUID('4', { message: 'ID da pessoa deve ser um UUID válido' })
+  userId?: string;
+
   @IsOptional()
   @IsDateString({}, { message: 'Data inicial inválida' })
   dateFrom?: string;

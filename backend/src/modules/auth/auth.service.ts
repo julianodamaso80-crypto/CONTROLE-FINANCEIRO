@@ -91,6 +91,13 @@ export class AuthService {
         },
       });
 
+      // Quem cria o cadastro é o dono da conta: é quem pode convidar o membro
+      // e editar os dados da conta.
+      await tx.company.update({
+        where: { id: company.id },
+        data: { ownerId: user.id },
+      });
+
       return { company, user };
     });
 

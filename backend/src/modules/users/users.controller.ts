@@ -9,13 +9,12 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { RolesGuard } from '../../common/guards/roles.guard';
+import { AccountOwnerGuard } from '../../common/guards/account-owner.guard';
 import { RequestUser } from '../../common/types/request-user.type';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateSelfDto } from './dto/update-self.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
@@ -36,9 +35,19 @@ export class UsersController {
     return this.usersService.findOne(user.companyId, id);
   }
 
+  // Precisa vir antes de @Put(':id') senão 'me' cai na rota com parâmetro.
+  // Qualquer pessoa da conta edita os próprios dados — inclusive o membro
+  // convidado, que não é dono e não passa no AccountOwnerGuard.
+  @Put('me')
+  async updateSelf(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: UpdateSelfDto,
+  ) {
+    return this.usersService.updateSelf(user.companyId, user.userId, dto);
+  }
+
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(AccountOwnerGuard)
   async create(
     @CurrentUser() user: RequestUser,
     @Body() dto: CreateUserDto,
@@ -47,8 +56,7 @@ export class UsersController {
   }
 
   @Put(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(AccountOwnerGuard)
   async update(
     @CurrentUser() user: RequestUser,
     @Param('id') id: string,
@@ -58,8 +66,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(AccountOwnerGuard)
   async remove(
     @CurrentUser() user: RequestUser,
     @Param('id') id: string,

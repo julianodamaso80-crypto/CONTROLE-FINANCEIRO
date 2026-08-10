@@ -24,7 +24,6 @@ import type { Company, User } from '@/types/models';
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
 
   // Perfil
   const [profile, setProfile] = useState({
@@ -45,6 +44,10 @@ export default function SettingsPage() {
   const [loadingCompany, setLoadingCompany] = useState(true);
   const [savingCompany, setSavingCompany] = useState(false);
 
+  // Só o dono da conta (quem fez o cadastro) edita os dados dela. Não é a role
+  // ADMIN — essa é a de admin da plataforma.
+  const isOwner = !!company?.ownerId && company.ownerId === user?.id;
+
   useEffect(() => {
     api
       .get<ApiResponse<Company>>('/companies/me')
@@ -64,7 +67,7 @@ export default function SettingsPage() {
     if (!user) return;
     setSavingProfile(true);
     try {
-      const res = await api.put<ApiResponse<User>>(`/users/${user.id}`, {
+      const res = await api.put<ApiResponse<User>>('/users/me', {
         name: profile.name,
         phone: profile.phone || undefined,
       });
@@ -192,7 +195,9 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Perfil</Label>
                   <div>
-                    <Badge variant="secondary">{user?.role}</Badge>
+                    <Badge variant="secondary">
+                      {isOwner ? 'Dono da conta' : 'Membro da conta'}
+                    </Badge>
                   </div>
                 </div>
                 <Button type="submit" disabled={savingProfile}>
@@ -250,9 +255,9 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="text-lg">Dados da empresa</CardTitle>
               <CardDescription>
-                {isAdmin
+                {isOwner
                   ? 'Atualize os dados da sua empresa'
-                  : 'Apenas administradores podem editar'}
+                  : 'Só o dono da conta pode editar estes dados'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -274,7 +279,7 @@ export default function SettingsPage() {
                       onChange={(e) =>
                         setCompany({ ...company, name: e.target.value })
                       }
-                      disabled={!isAdmin}
+                      disabled={!isOwner}
                       required
                     />
                   </div>
@@ -287,7 +292,7 @@ export default function SettingsPage() {
                       onChange={(e) =>
                         setCompany({ ...company, email: e.target.value })
                       }
-                      disabled={!isAdmin}
+                      disabled={!isOwner}
                       required
                     />
                   </div>
@@ -299,7 +304,7 @@ export default function SettingsPage() {
                       onChange={(e) =>
                         setCompany({ ...company, document: e.target.value })
                       }
-                      disabled={!isAdmin}
+                      disabled={!isOwner}
                     />
                   </div>
                   <div className="space-y-2">
@@ -310,10 +315,10 @@ export default function SettingsPage() {
                       onChange={(e) =>
                         setCompany({ ...company, phone: e.target.value })
                       }
-                      disabled={!isAdmin}
+                      disabled={!isOwner}
                     />
                   </div>
-                  {isAdmin && (
+                  {isOwner && (
                     <Button type="submit" disabled={savingCompany}>
                       {savingCompany ? 'Salvando...' : 'Salvar alterações'}
                     </Button>

@@ -491,6 +491,12 @@ export class AdminService {
         },
       });
 
+      // Conta criada pelo admin: o usuário criado é o dono dela.
+      await tx.company.update({
+        where: { id: company.id },
+        data: { ownerId: user.id },
+      });
+
       // Perfil de influencer criado na mesma transação (refCode único).
       if (role === 'INFLUENCER') {
         await this.influencers.createProfile(
