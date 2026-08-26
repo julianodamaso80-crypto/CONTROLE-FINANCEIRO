@@ -1337,6 +1337,16 @@ export class WhatsAppService {
       }
     }
 
+    // Rede de seguranca: o modelo as vezes omite o campo "category" mesmo com
+    // a regra explicita no prompt. Nenhum lancamento pode ficar sem categoria
+    // quando existe uma compativel — cai na raiz generica criada pelo seed
+    // ("Despesa"/"Receita"), ou na unica categoria do tipo, se so houver uma.
+    const generico = type === 'EXPENSE' ? 'despesa' : 'receita';
+    const padrao =
+      normMap.find((c) => c.norm === generico) ??
+      (normMap.length === 1 ? normMap[0] : undefined);
+    if (padrao) return { id: padrao.id, name: padrao.name };
+
     return {};
   }
 

@@ -501,17 +501,19 @@ REGRAS DE PARSING:
 - TEXTO DE PDF: o input pode ser texto extraído de um PDF (nota fiscal, boleto, extrato). Nesse caso será longo e com formatação irregular. Extraia: valor total, descrição, data, e classifique como register_expense ou register_income. Se o PDF tiver múltiplas linhas de transação, extraia o TOTAL GERAL. Se não conseguir determinar se é despesa ou receita, retorne intent "unknown" com reasoning explicando a dúvida.
 
 REGRA DE CATEGORIA (CRÍTICA — leia devagar):
-Esta é uma das funções mais importantes do Controlei. O cliente cadastrou categorias na ferramenta e espera que TODAS as transações sejam classificadas nelas.
-- Sua obrigação: sempre que QUALQUER palavra ou expressão da mensagem bater (mesmo que parcialmente, mesmo com acento diferente, mesmo em caixa diferente, mesmo no plural, mesmo com espaço a mais) com o NOME de uma das categorias cadastradas, você DEVE retornar o nome EXATO dessa categoria no campo "category". NUNCA retorne null se houver match.
+Esta é uma das funções mais importantes do Controlei. Toda transação PRECISA sair com uma categoria: omitir o campo "category" ou devolvê-lo null quando existe categoria compatível na lista é FALHA GRAVE. Em register_expense e register_income o campo "category" é OBRIGATÓRIO.
+Siga esta ordem, sempre:
+- 1º) Case por NOME: sempre que QUALQUER palavra ou expressão da mensagem bater (mesmo que parcialmente, mesmo com acento diferente, mesmo em caixa diferente, mesmo no plural, mesmo com espaço a mais) com o NOME de uma das categorias cadastradas, retorne o nome EXATO dessa categoria.
 - Exemplos de match válido (CATEGORIA CADASTRADA → palavra na mensagem):
   * "APLICADOR" → "aplicador", "Aplicador", "APLICADORES", "ao aplicador", "do aplicador"
   * "BOBINA  ENVIO" (com espaço duplo) → "bobina", "bobinas", "bobina de envio", "BOBINA ENVIO"
   * "CLIENTE FINAL" → "cliente final", "Cliente final", "clientes finais"
   * "ESTRUTURA" → "estrutura", "estruturas", "em estrutura"
   * "SHOPEE" → "shopee", "Shopee", "da Shopee"
-- O nome retornado em "category" deve ser COPIADO IDÊNTICO da lista de Categorias Cadastradas (preserve caixa alta, acentos, espaços duplos — o backend normaliza).
+- 2º) Se nenhum nome bater, classifique por SIGNIFICADO: escolha da lista a categoria cujo sentido melhor abrange a transação (ex.: "uber" → "Transporte", "manicure" → "Beleza", quando existirem na lista).
+- 3º) Se nada for específico, use a categoria GENÉRICA do tipo certo: "Despesa" para gastos, "Receita" para entradas — essas duas existem em toda conta.
 - Se a palavra bate com UMA SUBCATEGORIA (formato "Pai > Sub"), retorne o nome da subcategoria — o backend resolve o parentId.
-- SÓ retorne category=null se REALMENTE nenhuma palavra da mensagem bate com nenhuma categoria da lista.
+- O nome retornado em "category" deve ser COPIADO IDÊNTICO da lista de Categorias Cadastradas (preserve caixa alta, acentos, espaços duplos — o backend normaliza).
 - NUNCA invente categoria que não esteja na lista.
 
 REGRA DE SEGMENTO (mesma lógica da categoria):
